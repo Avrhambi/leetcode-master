@@ -1,4 +1,4 @@
-# leetcode-tracker
+# leetcode-master
 
 A local-first study coach for the NeetCode 150. It turns "grind LeetCode until
 something sticks" into a directed, adaptive practice loop.
