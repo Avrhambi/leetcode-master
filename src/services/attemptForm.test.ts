@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outcomeOptions, resolvePerceivedDifficulty, snapDifficultyForOutcome } from './attemptForm';
+import { difficultiesFor, outcomeOptions, resolvePerceivedDifficulty, snapDifficultyForOutcome } from './attemptForm';
 import { qualityFor } from './reviews';
 
 describe('outcomeOptions', () => {
@@ -15,7 +15,7 @@ describe('outcomeOptions', () => {
 
   it('hides difficulty and offers only deeper help for watching the solution', () => {
     expect(outcomeOptions.watched_solution.difficulties).toBeUndefined();
-    expect(outcomeOptions.watched_solution.helpTypes).toEqual(['pseudocode', 'full_code', 'solution_video']);
+    expect(outcomeOptions.watched_solution.helpTypes).toEqual(['full_code', 'solution_video']);
   });
 
   it('hides both difficulty and help-type when the user could not solve it', () => {
@@ -76,5 +76,19 @@ describe('the matrix keeps qualityFor consistent', () => {
     // hidden-difficulty outcomes resolve to 'hard' and score weak
     expect(qualityFor('watched_solution', resolvePerceivedDifficulty('watched_solution', 'manageable'))).toBe('weak');
     expect(qualityFor('could_not_solve', resolvePerceivedDifficulty('could_not_solve', 'easy'))).toBe('weak');
+  });
+});
+
+describe('difficultiesFor', () => {
+  it('limits a pseudocode-assisted solve to "hard"', () => {
+    expect(difficultiesFor('solved_with_hint', 'pseudocode')).toEqual(['hard']);
+    expect(resolvePerceivedDifficulty('solved_with_hint', 'manageable', 'pseudocode')).toBe('hard');
+    expect(snapDifficultyForOutcome('solved_with_hint', 'manageable', 'pseudocode')).toBe('hard');
+  });
+
+  it('leaves other help types and outcomes unchanged', () => {
+    expect(difficultiesFor('solved_with_hint', 'small_hint')).toEqual(['manageable', 'hard']);
+    expect(difficultiesFor('solved_independently', 'pseudocode')).toEqual(['easy', 'manageable', 'hard']);
+    expect(difficultiesFor('watched_solution', 'full_code')).toBeUndefined();
   });
 });

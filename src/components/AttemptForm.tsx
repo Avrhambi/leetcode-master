@@ -1,29 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { localDate } from '../services/reviews';
-import { outcomeOptions, resolvePerceivedDifficulty, snapDifficultyForOutcome } from '../services/attemptForm';
+import { difficultiesFor, difficultyLabels, helpTypeLabels, outcomeLabels, outcomeOptions, resolvePerceivedDifficulty, snapDifficultyForOutcome } from '../services/attemptForm';
 import { saveAttempt } from '../db/saveAttempt';
 import type { HelpType, Outcome, PerceivedDifficulty } from '../types/models';
 
-const outcomes: { value: Outcome; label: string }[] = [
-  { value: 'solved_independently', label: 'Solved it on my own' },
-  { value: 'solved_with_hint', label: 'Solved it after a hint' },
-  { value: 'watched_solution', label: 'Gave up and watched the solution' },
-  { value: 'could_not_solve', label: "Couldn't solve it" }
-];
-
-const difficultyLabels: Record<PerceivedDifficulty, string> = {
-  easy: 'Comfortable',
-  manageable: 'Manageable',
-  hard: 'A real struggle'
-};
-
-const helpTypeLabels: Record<HelpType, string> = {
-  small_hint: 'A nudge in the right direction',
-  pattern_identification: 'Which pattern / technique to use',
-  pseudocode: 'The approach spelled out in pseudocode',
-  full_code: 'The full solution code',
-  solution_video: 'A walkthrough video'
-};
+const outcomeOrder: Outcome[] = ['solved_independently', 'solved_with_hint', 'watched_solution', 'could_not_solve'];
 
 export function AttemptForm({ problemId, onSaved }: { problemId: string; onSaved: () => void }) {
   const [attemptedOn, setAttemptedOn] = useState(localDate());
@@ -34,12 +15,18 @@ export function AttemptForm({ problemId, onSaved }: { problemId: string; onSaved
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
-  const { difficulties: difficultyChoices, helpTypes: helpTypeChoices } = outcomeOptions[outcome];
+  const helpTypeChoices = outcomeOptions[outcome].helpTypes;
+  const difficultyChoices = difficultiesFor(outcome, helpType);
 
   function changeOutcome(next: Outcome) {
     setOutcome(next);
     setHelpType('');
     setDifficulty((current) => snapDifficultyForOutcome(next, current));
+  }
+
+  function changeHelpType(next: HelpType | '') {
+    setHelpType(next);
+    setDifficulty((current) => snapDifficultyForOutcome(outcome, current, next));
   }
 
   async function submit(event: FormEvent) {
@@ -55,7 +42,7 @@ export function AttemptForm({ problemId, onSaved }: { problemId: string; onSaved
         problemId,
         attemptedOn,
         outcome,
-        perceivedDifficulty: resolvePerceivedDifficulty(outcome, difficulty),
+        perceivedDifficulty: resolvePerceivedDifficulty(outcome, difficulty, helpType),
         helpType: helpTypeChoices ? (helpType as HelpType) : null,
         durationMinutes,
         notes: notes.trim()
@@ -73,26 +60,26 @@ export function AttemptForm({ problemId, onSaved }: { problemId: string; onSaved
       <label>Date <input type="date" value={attemptedOn} onChange={(event) => setAttemptedOn(event.target.value)} required /></label>
       <label>Outcome
         <select value={outcome} onChange={(event) => changeOutcome(event.target.value as Outcome)}>
-          {outcomes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+          {outcomeOrder.map((value) => <option key={value} value={value}>{outcomeLabels[value]}</option>)}
         </select>
       </label>
+      {helpTypeChoices && (
+        <label>What help did you get?
+          <select value={helpType} onChange={(event) => changeHelpType(event.target.value as HelpType)} required>
+            <option value="">Choose the help you used</option>
+            {helpTypeChoices.map((value) => <option key={value} value={value}>{helpTypeLabels[value]}</option>)}
+          </select>
+        </label>
+      )}
       {difficultyChoices && (
-        <label>How hard did it feel?
+        <label>How hard was it?
           <select value={difficulty} onChange={(event) => setDifficulty(event.target.value as PerceivedDifficulty)}>
             {difficultyChoices.map((value) => <option key={value} value={value}>{difficultyLabels[value]}</option>)}
           </select>
         </label>
       )}
-      {helpTypeChoices && (
-        <label>What did the help give you?
-          <select value={helpType} onChange={(event) => setHelpType(event.target.value as HelpType)} required>
-            <option value="">Select what you looked up</option>
-            {helpTypeChoices.map((value) => <option key={value} value={value}>{helpTypeLabels[value]}</option>)}
-          </select>
-        </label>
-      )}
-      <label>Time spent (minutes, optional) <input type="number" min="1" max="600" step="1" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
-      <label>Notes for next time (optional) <textarea maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
+      <label>Time spent in minutes (optional) <input type="number" min="1" max="600" step="1" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
+      <label>Notes for your next attempt (optional) <textarea maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
       <button type="submit">Save attempt</button>
     </form>
   );
