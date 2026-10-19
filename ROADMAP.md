@@ -39,16 +39,19 @@ up from there.
 | T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Todo |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Todo |
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Todo |
-| T5 | Competency engine: reinforcement problems on repeated failure | T4 | T7, T8 | Todo |
-| T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4 | T7, T8 | Todo |
+| T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Todo |
+| T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Todo |
+| T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Todo |
 | T7 | PWA: installable, offline, persistent storage | — | anything | Todo |
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Todo |
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Todo |
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Todo |
 
-Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T5 → T6**, with **T7**, **T8** and
-**T9** slotted in whenever a session is free. **T10** goes last. T3, T4 and T5 all
-edit `dailyPlan.ts`, so they run one after another, never in parallel.
+Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
+and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
+and T5 all change how the plan behaves, so they run one after another, never in
+parallel. (T11 was added after the first numbering, which is why it sits between
+T4 and T5 in the order.)
 
 ## Decisions already made (don't relitigate)
 
@@ -101,6 +104,49 @@ weakest-first, so a review 30 days overdue ranks the same as one a day overdue.
 The XP streak multiplier only counts *consecutive* days, so someone practising
 steadily three days a week never gets it. T4 and T6 close these gaps.
 
+### Two more gaps found in today's code
+
+- **Stuck on Easy.** The difficulty gate uses the mean review stage over *every*
+  problem in a topic. Medium needs a mean of 0.2 and Hard needs 0.5. In Arrays &
+  Hashing (9 problems) Medium needs 9 stage-points: three Easies each reviewed
+  twice, which takes 10+ days. Within the allowed range the plan also always
+  picks the *easiest* problem first. So in Trees (6 Easies) and Bit Manipulation
+  (5) a user does every Easy before seeing a Medium, and Hard mostly appears only
+  after a topic's Mediums run out. With the 250's extra Easies this gets worse.
+  T3 fixes it.
+- **Too much repetition of the same problems.** Mastery needs 5 strong attempts
+  of the same problem on separate days. Any partial attempt drops a problem back
+  to stage 1, even from stage 4. A strong recall that comes very late (common for
+  occasional users) earns no more than an on-time one. A 2-days-a-week user has
+  room for about 6 reviews a week but creates more than that, so the backlog
+  grows. Late reviews then get forgotten and reset, which means even more
+  repeats. T11 fixes it.
+
+### Plan quality targets (enforced by simulation tests)
+
+These turn "every user is represented", "they reach mastery without needless
+repetition" and "not stuck on Easy" into numbers. A session that can't meet a
+target records why in its log entry. It never loosens a target silently.
+
+| Target | Owner |
+|--------|-------|
+| A succeeding learner is offered their first Medium in a topic after at most **2 strong Easy** solves in that topic, whatever set is active (75, 150 or 250) and however many Easies the topic has. | T3 |
+| A succeeding learner is offered a Hard in a topic after at most **3 strong Medium** solves in that topic. | T3 |
+| Once Medium is unlocked, a succeeding learner's new problems in that topic are Medium or harder. Easies only come back as warm-ups (T5). | T3 |
+| A struggling learner's ceiling drops back again, and they're never pushed into a Hard while failing Mediums. | T3 |
+| Every persona gets ≥ 1 new problem per active day, and the plan never exceeds 4 items. | T4 |
+| A strong-every-time learner masters a problem in **≤ 5 attempts** at every cadence. A learner who's late on reviews but still recalls strongly needs *fewer* attempts than on time, never more. The simulation records the mean attempts-to-mastery per persona before and after T11. | T11 |
+| The same problem is never in the plan on two active days in a row unless its last attempt was weak. A weak problem returns at most 3 sessions in a row before backing off. | T11 |
+| The 2-days-a-week persona's due backlog stays bounded over 12 simulated weeks. The session records the measured bound in the test. | T11 |
+
+Simulation personas (shared by T3, T4 and T11 in `dailyPlanSimulation.test.ts`):
+- **fast**: always strong.
+- **typical**: mostly strong, some partial, fails some Hards.
+- **struggling**: weak on one topic, fine elsewhere.
+
+Each persona runs at three cadences: daily, 4 days a week and 2 days a week
+irregular. One more scenario is 3 weeks regular, then a 14-day gap, then resume.
+
 ## Ownership map (who may edit what)
 
 To keep two sessions from editing the same logic:
@@ -111,6 +157,7 @@ To keep two sessions from editing the same logic:
 | Problem-set setting + filtering of the problem list fed to the app | T2 |
 | `src/services/dailyPlan.ts` selection rules, new `skill.ts`, `topicGraph.ts` | T3 → T4 → T5, in that order |
 | New `src/services/cadence.ts` | T4 (T6 reads it and doesn't change it) |
+| `src/services/reviews.ts` stage and interval rules | T11 |
 | XP formula, streak multiplier, badges, map "cleared" star, `gamification*.ts`, Dexie v5 | T6 |
 | `public/`, manifest, service worker, `navigator.storage.persist()` | T7 |
 | `src/db/backup.ts` (beyond adding a settings key, see below) | T8 |
@@ -257,15 +304,20 @@ Advanced Graphs before Graphs makes sense.
   - Difficulty ceiling comes from topic skill, not diluted mean stage.
   - A topic whose prerequisites are below a skill threshold gets a **priority
     penalty**, not a hard lock. Users can still open anything from the map.
-  - Within a topic, order by `coreRank` (T1) before difficulty and catalog order,
-    so the 75 comes before the rest of the 150, which comes before the extra 100.
+  - **Target difficulty, not easiest-first.** Topic skill maps to a target
+    difficulty (Easy → Medium → Hard). Within a topic, pick problems *at* the
+    target first and fall back to easier ones only when none are left. Today's
+    easiest-first sort is what keeps users on Easy.
+  - Within the target difficulty, order by `coreRank` (T1) and then catalog
+    order, so the 75 comes before the rest of the 150, which comes before the
+    extra 100.
 - All thresholds go in `constants.ts`. Keep the existing struggling rules (the
   priority 0.5 relief and the ceiling using the real stage) or replace them with
   an equivalent that is explicitly tested.
-- Extend `dailyPlanSimulation.test.ts`:
+- Extend `dailyPlanSimulation.test.ts` with the shared personas (see
+  [Plan quality targets](#plan-quality-targets-enforced-by-simulation-tests)):
+  - Meet every T3 target in that table, for all three problem sets.
   - A simulated learner progresses through prerequisites in order.
-  - A learner reaches Medium in a topic after a few strong Easy solves,
-    **regardless of which problem set is active**.
   - A failing learner isn't flooded.
 
 **Not in scope:** cadence (T4), reinforcement problems (T5), topic-map visuals and
@@ -318,22 +370,59 @@ Today the plan doesn't know how often the user practises.
     problem and persists it as a normal `new` recommendation for today, so
     same-day replay stays stable.
 - Simulation tests (extend `dailyPlanSimulation.test.ts`) over 12 simulated
-  weeks for four personas: daily, 4 days/week, 2 days/week irregular, and 3 weeks
-  regular → 14-day gap → resume. Assert:
+  weeks for the shared personas and cadences. Assert the T4 rows of
+  [Plan quality targets](#plan-quality-targets-enforced-by-simulation-tests), plus:
   - Every persona gets at least one new problem on every active day.
   - The plan never exceeds 4 items.
   - The returnee's first plan is review-heavy.
   - The 2-day/week persona's most-overdue weak reviews are served before newer
     ones.
   - Core problems (nc75, then nc150) come first for the occasional persona.
-  - The due backlog of the 4-day/week persona stays bounded. Record the observed
-    bound in the test.
 
 **Not in scope:** reinforcement problems (T5); streak, XP and badges (T6, which
-reads `cadence.ts`); changing the spaced-repetition intervals.
+reads `cadence.ts`); changing stage or interval rules (T11).
 
 **Deliverable:** `cadence.ts` + plan rules + the persona simulations, plus the
 banner and "One more problem" UI.
+
+---
+
+## T11. Review load: reach mastery with fewer repeats
+
+**Why:** see [Two more gaps found in today's code](#two-more-gaps-found-in-todays-code).
+The goal is mastery with as few repeats as the evidence allows, for daily and
+occasional users alike.
+
+**Scope** (`src/services/reviews.ts`, pure, unit-tested; the attempt row is
+unchanged, so there's no schema change or migration):
+- **Late-recall credit.** A strong attempt on a review whose real gap (this
+  attempt's date minus `lastAttemptDate`) is ≥ 2× the scheduled interval
+  advances **2 stages** instead of 1, capped at stage 5. Remembering after a long
+  gap is stronger evidence, and this is what stops occasional users from paying
+  extra reviews for being late.
+- **Gentler demotion.**
+  - A partial attempt drops one stage (minimum 1) instead of resetting to 1. A
+    stage-4 problem that needed a hint goes back to 14 days, not 3.
+  - A weak attempt still resets to 0.
+- **Confident first solve.** The first attempt ever on a problem, solved
+  independently and felt *easy*, starts at stage 2 (review in 7 days instead of
+  3). That's one fewer repeat on problems the user clearly already knows.
+- Keep the same-day freeze (`alreadyAttemptedToday`) and the struggling backoff
+  exactly as they are.
+- Every rule depends only on the attempt sequence (quality, perceived
+  difficulty, dates), so T6's `stagesBeforeEach` replay can reproduce it. Note
+  that in the code comment.
+- Existing progress rows aren't rewritten. The new rules apply from each
+  problem's next attempt. Explain this in the PR.
+- Unit tests for each rule, plus the T11 rows of
+  [Plan quality targets](#plan-quality-targets-enforced-by-simulation-tests) in
+  the shared simulation.
+
+**Not in scope:** the interval ladder itself (`[1, 3, 7, 14, 30]` stays), plan
+selection (T3/T4), XP (T6).
+
+**Deliverable:** new stage rules with tests. The simulations show fewer attempts
+to mastery and a bounded backlog for the 2-days-a-week persona.
 
 ---
 
@@ -393,7 +482,7 @@ and occasional users alike.
     stage was ≥ 1, growing with stage. The prior stage is replayable from attempts
     alone, because stage transitions depend only on quality and the same-day flag.
     Add a pure `stagesBeforeEach(attempts)` reusing the `progressAfterAttempt`
-    rules.
+    rules (including T11's).
   - A **comeback bonus** on the strong attempt that ends a run of
     `STRUGGLE_THRESHOLD`+ weak attempts.
   - **Consistency multiplier = max(daily-streak tier, weekly-streak tier).**
@@ -593,6 +682,12 @@ Each session fills in its own entry in its PR.
 - Follow-ups:
 
 ### T4
+- Status / PR / date:
+- What shipped:
+- Decisions & deviations:
+- Follow-ups:
+
+### T11
 - Status / PR / date:
 - What shipped:
 - Decisions & deviations:
