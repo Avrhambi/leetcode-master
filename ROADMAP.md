@@ -1,9 +1,9 @@
 # Roadmap
 
-The work plan for taking the app from "working local tracker" to "installable,
-open-source practice coach on the NeetCode 250". Every task is sized for **one
-Claude Code session = one PR**, has a single owner area, and lists what it must
-*not* touch, so no two sessions do the same work.
+The work plan for taking **LeetCode Master** from "working local tracker" to
+"installable, open-source practice coach on the NeetCode 75 / 150 / 250". Every
+task is sized for **one Claude Code session = one PR**, has a single owner area,
+and lists what it must *not* touch, so no two sessions do the same work.
 
 ## How a session uses this file
 
@@ -18,7 +18,7 @@ Session protocol (every task):
 2. Branch off the latest `master` (or use the branch the session was given).
 3. Do **only** what your task's **Scope** lists. If you find something else that
    needs doing, add one line to the [Parking lot](#parking-lot) and leave it.
-   Anything listed under **Not in scope** belongs to another task.
+   Anything under **Not in scope** belongs to another task.
 4. `npm run verify` must pass. Any UI change is also checked in a browser
    (`npm run dev`), including the 720 px breakpoint and "the page never scrolls".
 5. In the **same PR**: set your row in the status board to `Done`, fill in your
@@ -34,41 +34,72 @@ up from there.
 
 | ID | Task | Depends on | Can run in parallel with | Status |
 |----|------|-----------|--------------------------|--------|
-| T0 | CI + dependency hygiene | — | T1, T6 | Todo |
-| T1 | Catalog → NeetCode 250 with neetcode.io links | — | T0, T6 | Todo |
-| T2 | Problem-set selector (150 / 250) | T1 | T3 | Todo |
+| T0 | CI + dependency hygiene | — | T1, T7 | Todo |
+| T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Todo |
+| T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Todo |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Todo |
-| T4 | Competency engine: reinforcement problems on repeated failure | T3 | T6, T7 | Todo |
-| T5 | Gamification aligned to the app's goals | T1, T2, T3 | T6, T7 | Todo |
-| T6 | PWA: installable, offline, persistent storage | — | anything | Todo |
-| T7 | Backup hardening | T2 | T4, T5, T6 | Todo |
-| T8 | Live demo on GitHub Pages | T0, T6 | T4, T5, T7 | Todo |
-| T9 | Open-source packaging: name, README, CONTRIBUTING, license | T1–T8 | — | Todo |
+| T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Todo |
+| T5 | Competency engine: reinforcement problems on repeated failure | T4 | T7, T8 | Todo |
+| T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4 | T7, T8 | Todo |
+| T7 | PWA: installable, offline, persistent storage | — | anything | Todo |
+| T8 | Backup hardening | T2 | T4, T5, T6, T7 | Todo |
+| T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Todo |
+| T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Todo |
 
-Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T5**, with **T6**, **T7** and **T8**
-slotted in whenever a session is free. **T9** goes last.
+Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T5 → T6**, with **T7**, **T8** and
+**T9** slotted in whenever a session is free. **T10** goes last. T3, T4 and T5 all
+edit `dailyPlan.ts`, so they run one after another, never in parallel.
 
 ## Decisions already made (don't relitigate)
 
+- **The app is called LeetCode Master** (repo `leetcode-master`). T10 applies the
+  name everywhere. The README carries a "not affiliated with LeetCode or NeetCode"
+  disclaimer.
 - **Problem ingestion = Option A (bundled, curated catalog).** That's what the app
   already does (`src/data/`). Option B (LeetCode GraphQL) and Option C (browser
   extension) are **rejected**. Both break the `CLAUDE.md` invariant of no external
   API, scraping or extension, and both depend on a third party that can break them
   at any time. No task builds them.
+- **Three problem sets, one catalog.** NeetCode 75 (the Blind 75 list as
+  neetcode.io presents it) ⊂ NeetCode 150 ⊂ NeetCode 250. There's one 250-row
+  catalog, and each row is flagged with the lists it belongs to. T1 confirms the
+  subset relation against neetcode.io and reports any exception instead of
+  guessing.
 - **Links go to neetcode.io.** Some NeetCode 150 problems (Meeting Rooms, Graph
   Valid Tree, Alien Dictionary, Walls and Gates, …) are LeetCode Premium. NeetCode
   hosts all of them for free. The LeetCode link stays as a secondary link.
 - **Problem IDs don't change.** `CatalogProblem.id` stays the LeetCode slug, so
   every existing `progress` and `attempts` row keeps working with no data migration.
-- **No Elo/IRT stored ratings.** "Skill" is a *derived*, deterministic number
-  replayed from the `attempts` history, the same way XP is (see T3). A single
-  user's 250 problems can't calibrate per-problem IRT parameters, and a stored
-  rating can drift.
+- **No Elo/IRT stored ratings.** "Skill" and "cadence" are *derived*,
+  deterministic values replayed from the `attempts` history, the same way XP is.
+  A single user's ~250 problems can't calibrate per-problem IRT parameters, and a
+  stored rating can drift.
 - **Data portability already exists** (JSON export/restore with `formatVersion`,
-  `src/db/backup.ts`). T7 only closes the gaps. It doesn't rebuild that feature.
-- **Not for commercial use.** T9 picks the license with the owner. A
+  `src/db/backup.ts`). T8 only closes the gaps. It doesn't rebuild that feature.
+- **Not for commercial use.** T10 picks the license with the owner. A
   non-commercial license isn't OSI "open source", so the README calls it
   *source-available*.
+
+## How the plan serves every kind of user
+
+This is the design goal behind T3–T6. Each task below has to keep these promises,
+and T4 adds the simulation tests that check them.
+
+| User | What they need | Handled by |
+|------|----------------|------------|
+| **Regular** (4+ active days every week) | Steady new material plus on-time reviews. A way to keep going when today's plan is done early. Rewards for consistency. | Today: review-first plan of 2–4 items. T4: "One more problem" once the plan is done. T6: daily and weekly streaks. |
+| **Occasional** (1–3 days a week, uneven) | Each short session spent on what matters most: the reviews most at risk of being forgotten, and core problems first. Not punished for a schedule that's actually fine. | T4: at-risk review ordering, narrower topic focus, core-list-first new problems. T6: weekly consistency counts as much as a daily streak. |
+| **Returning after a gap** (7+ days away) | A gentle re-entry, not a wall of overdue reviews or a reset. | T4: re-entry plan. The review queue still holds the full backlog without inflating the daily plan. T6: no badge or XP is ever lost. |
+| **Brand new** | Easy wins in foundation topics, no reviews yet. | Today: tier weighting. T3: prerequisite graph. |
+| **Stuck on a topic** | Not flooded with the same topic, but helped back up to it. | Today: struggling backoff. T5: warm-up problems. |
+
+**What exists today, honestly:** the plan size (2–4) depends only on how many
+reviews are due. The review queue lets anyone drain a backlog. The streak has one
+grace day a week. Nothing in the app knows *how often* a user practises, so an
+occasional user gets the same plan as a daily one. Overdue reviews are ordered
+weakest-first, so a review 30 days overdue ranks the same as one a day overdue.
+The XP streak multiplier only counts *consecutive* days, so someone practising
+steadily three days a week never gets it. T4 and T6 close these gaps.
 
 ## Ownership map (who may edit what)
 
@@ -78,13 +109,14 @@ To keep two sessions from editing the same logic:
 |------|---------------|
 | `src/data/neetcode*.json`, `catalog.ts`, `CatalogProblem` type | T1 |
 | Problem-set setting + filtering of the problem list fed to the app | T2 |
-| `src/services/dailyPlan.ts` selection rules, new `skill.ts`, `topicGraph.ts` | T3, then T4 |
-| XP formula, badges, map "cleared" star, `gamification*.ts`, Dexie v5 | T5 |
-| `public/`, manifest, service worker, `navigator.storage.persist()` | T6 |
-| `src/db/backup.ts` (beyond adding a settings key, see below) | T7 |
+| `src/services/dailyPlan.ts` selection rules, new `skill.ts`, `topicGraph.ts` | T3 → T4 → T5, in that order |
+| New `src/services/cadence.ts` | T4 (T6 reads it and doesn't change it) |
+| XP formula, streak multiplier, badges, map "cleared" star, `gamification*.ts`, Dexie v5 | T6 |
+| `public/`, manifest, service worker, `navigator.storage.persist()` | T7 |
+| `src/db/backup.ts` (beyond adding a settings key, see below) | T8 |
 | `.github/workflows/ci.yml`, `package.json` versions | T0 |
-| `.github/workflows/deploy.yml` | T8 |
-| `README.md`, `CONTRIBUTING.md`, `LICENSE`, product name | T9 |
+| `.github/workflows/deploy.yml` | T9 |
+| `README.md`, `CONTRIBUTING.md`, `LICENSE`, app name in UI/package/manifest | T10 |
 
 **Shared rule:** any task that adds a persisted `AppSettingKey` must also add it to
 `settingKeys` in `src/db/backup.ts` and to the `AppSettingKey` type. That's a
@@ -108,126 +140,204 @@ clone without the lockfile can build with whatever happens to be newest that day
   says tests run in pure Node.
 - Add `"engines": { "node": ">=22.12" }`.
 
-**Not in scope:** deploy (T8), README badges (T9), dependency upgrades.
+**Not in scope:** deploy (T9), README badges (T10), dependency upgrades, renaming
+the package (T10).
 
 **Deliverable:** green CI run on the PR itself. `npm ci && npm run verify` is clean
 locally.
 
 ---
 
-## T1. Catalog → NeetCode 250 with neetcode.io links
+## T1. Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links
 
-**Why:** LeetCode Premium blocks some current links. The owner also wants the full
-NeetCode 250.
+**Why:** LeetCode Premium blocks some current links. The owner wants the full
+NeetCode 250, with the NeetCode 75 and NeetCode 150 still identifiable inside it.
 
 **Scope**
 - Replace `src/data/neetcode150.json` with `src/data/neetcode250.json` (250 rows,
   NeetCode 250 order). Row shape:
-  `{ title, slug, neetcodeSlug, difficulty, topics, primaryTopic, inNeetcode150 }`.
-  `slug` is the **LeetCode** slug (the stable id). `neetcodeSlug` is NeetCode's own
-  slug, which often differs (e.g. `contains-duplicate` → `duplicate-integer`), so
-  it **can't be derived** and must come from the source list.
-- Source the list from neetcode.io/practice (reachable from the cloud
+  `{ title, slug, neetcodeSlug, difficulty, topics, primaryTopic, lists }`, where
+  `lists` is a subset of `["nc75", "nc150", "nc250"]`.
+  - `slug` is the **LeetCode** slug (the stable id).
+  - `neetcodeSlug` is NeetCode's own slug, which often differs (e.g.
+    `contains-duplicate` → `duplicate-integer`), so it **can't be derived** and
+    must come from the source list.
+- Source all three lists from neetcode.io/practice (reachable from the cloud
   environment). If it can't be fetched reliably, stop and ask the owner for an
   export instead of guessing slugs.
 - `CatalogProblem` gains `neetcodeUrl` (`https://neetcode.io/problems/<neetcodeSlug>`)
-  and `inNeetcode150`. `leetcodeUrl` stays. `neetcodeOrder` becomes the 250-list
-  order.
+  and `lists`. `leetcodeUrl` stays. `neetcodeOrder` becomes the 250-list order.
+  Add a tiny pure helper `coreRank(problem)`: 0 for nc75, 1 for nc150-only,
+  2 for the rest. T3, T4 and T6 all use it for "core first".
 - Bump `CATALOG_VERSION` (e.g. `neetcode-250-v1`). `seedCatalog` re-puts the
   problems. The `problems` store indexes don't change, so **no Dexie version bump**.
   Write that reasoning into the PR description.
 - Links: `ProblemDetail` and `DailyPlan` get a primary "Solve on NeetCode" link and
   a secondary "LeetCode" link (new tab, `rel="noreferrer"`). Update the
-  `DailyPlan` intro copy too.
-- `src/data/topicTiers.ts`: confirm every NeetCode 250 `primaryTopic` is mapped.
-  A new topic needs a tier. Keep the 18-topic map if the 250 uses the same 18.
-- New unit test `src/data/catalog.test.ts`: 250 rows; unique `id` and
-  `neetcodeSlug`; every one of the **current 150 ids is still present** and
-  flagged `inNeetcode150` (guards existing users' data); every `primaryTopic` is
-  in `TOPIC_TIERS` and in its own `topics`; difficulty enum is valid; URLs are
-  well-formed.
+  `DailyPlan` intro copy too. Show a small "75" / "150" tag on problems so the
+  user can see which list a problem comes from.
+- `src/data/topicTiers.ts`: confirm every `primaryTopic` is mapped. A new topic
+  needs a tier.
+- New unit test `src/data/catalog.test.ts`:
+  - 250 rows, about 150 tagged `nc150` and about 75 tagged `nc75`. Assert the
+    exact counts you found.
+  - nc75 ⊂ nc150 ⊂ nc250.
+  - Unique `id` and `neetcodeSlug`.
+  - Every one of the **current 150 ids is still present** and tagged `nc150`
+    (guards existing users' data).
+  - Every `primaryTopic` is in `TOPIC_TIERS` and in its own `topics`.
+  - Difficulty enum is valid, and URLs are well-formed.
 - User-visible "150" copy only: badge hints in `constants.ts` ("all 150",
   "75 of the 150") get catalog-neutral wording. Badge **thresholds and semantics
-  stay unchanged** (T5 owns them). Also update the README sentence about "the
+  stay unchanged** (T6 owns them). Also update the README sentence about "the
   150-problem catalog".
 - Check the topic map in a browser with the bigger per-topic counts.
 
-**Not in scope:** the 150/250 toggle (T2), plan ordering (T3), badge thresholds (T5).
+**Not in scope:** the 75/150/250 selector (T2), plan ordering (T3), badge
+thresholds (T6).
 
-**Deliverable:** the app seeds 250 problems. Every NeetCode link in the plan and
-detail views opens a free problem page. An existing v4 database keeps all its
-progress after the reseed (check it in a browser: log attempts on the old build,
-switch to the new build, reload).
+**Deliverable:** the app seeds 250 problems tagged by list. Every NeetCode link in
+the plan and detail views opens a free problem page. An existing v4 database keeps
+all its progress after the reseed (check it in a browser: log attempts on the old
+build, switch to the new build, reload).
 
 ---
 
-## T2. Problem-set selector (NeetCode 150 / NeetCode 250)
+## T2. Problem-set selector (NeetCode 75 / 150 / 250)
 
-**Why:** the 150 is the list most people commit to. The 250 is the extended
-version. Users should be able to choose their scope, and progress counters should
-match that choice.
+**Why:** some users only have time for the 75, most commit to the 150, and some
+want the extended 250. Users should choose their scope, and progress counters
+should match that choice.
 
 **Scope**
-- New setting `problemSet: 'nc150' | 'nc250'` (default `nc250`) in `settings`.
-  Follow the shared rule above for `backup.ts`.
-- Add a selector to `Settings`. It changes no stored progress. Out-of-set problems
-  keep their history and just aren't shown or recommended.
+- New setting `problemSet: 'nc75' | 'nc150' | 'nc250'` in `settings`. Follow the
+  shared rule above for `backup.ts`.
+  - Default for a fresh install: `nc150`.
+  - Default for an existing user with progress: `nc150` too. That's the set they
+    were already on, so nothing changes under their feet.
+- Show the choice in `Settings` and once on first launch (a one-line picker, not
+  a wizard). Changing it never touches stored progress. Out-of-set problems keep
+  their history and just aren't shown or recommended.
 - Filter the problem list **once**, where it's read from Dexie (one small pure
   helper in `src/services/`, unit-tested), so the daily plan, review queue, topic
-  map, mastery counts and badge inputs all see the same set. The review queue
-  still shows due reviews for out-of-set problems the user already attempted, so
-  retention never silently stops. Unit-test this.
+  map, mastery counts and badge inputs all see the same set.
+  - The review queue still shows due reviews for out-of-set problems the user
+    already attempted, so retention never silently stops. Unit-test this.
 - Progress labels like "x / N" use the active set's `N`.
 
-**Not in scope:** how the plan picks within a topic (T3), badge changes (T5).
+**Not in scope:** how the plan picks within a topic (T3), badge changes (T6).
 
-**Deliverable:** switching to 150 drops the extra 100 from the plan, map and
-counts. Switching back restores them. Both directions are verified in a browser.
+**Deliverable:** switching between 75, 150 and 250 changes the plan, map and
+counts accordingly, with history preserved. All directions are verified in a
+browser.
 
 ---
 
 ## T3. Competency engine: topic skill + prerequisite graph
 
 **Why:** the plan gates difficulty on mean review stage across *every* problem in a
-topic (`topicMastery` → `maxDifficultyFor` in `dailyPlan.ts`). Going from 150 to
-250 problems **dilutes** that mean: a user who's good at Trees would be held on
-Easy far longer, because there are more untouched Trees problems. Topics are also
-picked independently, so the plan can push Advanced Graphs before Graphs makes
-sense.
+topic (`topicMastery` → `maxDifficultyFor` in `dailyPlan.ts`). A bigger set
+**dilutes** that mean: on the 250 a user who's good at Trees would be held on Easy
+far longer, because there are more untouched Trees problems. On the 75 the gate
+opens too fast. Topics are also picked independently, so the plan can push
+Advanced Graphs before Graphs makes sense.
 
 **Scope**
 - `src/services/skill.ts` (pure, unit-tested). A per-topic skill in `[0, 1]`,
   replayed deterministically from the `attempts` history: an Elo-style update per
   attempt. The attempt quality is the "result" and the problem's difficulty is the
   "opponent rating". Same-day repeats are discounted, mirroring XP. It isn't
-  stored anywhere, so it can't drift.
+  stored anywhere, so it can't drift, and it doesn't depend on set size.
 - `src/services/topicGraph.ts` (pure data + helpers). Prerequisite edges between
-  the 18 topics, for example Two Pointers → Sliding Window, Arrays & Hashing →
-  Two Pointers, Trees → Tries, Trees → Backtracking, Graphs → Advanced Graphs,
-  1-D DP → 2-D DP, Trees → Heap. Add a test that the graph is acyclic and that
-  every topic in `TOPIC_TIERS` appears in it.
+  the topics, for example Arrays & Hashing → Two Pointers → Sliding Window,
+  Trees → Tries, Trees → Backtracking, Trees → Heap, Graphs → Advanced Graphs,
+  1-D DP → 2-D DP. Add a test that the graph is acyclic and that every topic in
+  `TOPIC_TIERS` appears in it.
 - `dailyPlan.ts`:
   - Difficulty ceiling comes from topic skill, not diluted mean stage.
   - A topic whose prerequisites are below a skill threshold gets a **priority
     penalty**, not a hard lock. Users can still open anything from the map.
-  - Within a topic, pick `inNeetcode150` problems before the extra 100 when
-    everything else is equal (core-first).
+  - Within a topic, order by `coreRank` (T1) before difficulty and catalog order,
+    so the 75 comes before the rest of the 150, which comes before the extra 100.
 - All thresholds go in `constants.ts`. Keep the existing struggling rules (the
   priority 0.5 relief and the ceiling using the real stage) or replace them with
   an equivalent that is explicitly tested.
-- Extend `dailyPlanSimulation.test.ts`: a simulated learner progresses through
-  prerequisites in order, reaches Medium in a topic after a few strong Easy solves
-  regardless of topic size, and a failing learner isn't flooded.
+- Extend `dailyPlanSimulation.test.ts`:
+  - A simulated learner progresses through prerequisites in order.
+  - A learner reaches Medium in a topic after a few strong Easy solves,
+    **regardless of which problem set is active**.
+  - A failing learner isn't flooded.
 
-**Not in scope:** injecting reinforcement problems (T4), topic-map visuals and
-stars (T5), any persisted field.
+**Not in scope:** cadence (T4), reinforcement problems (T5), topic-map visuals and
+stars (T6), any persisted field.
 
 **Deliverable:** pure modules + tests, with the plan driven by skill and the
 graph. No schema change.
 
 ---
 
-## T4. Competency engine: reinforcement problems on repeated failure
+## T4. Cadence-aware plan: regular, occasional and returning users
+
+**Why:** see [How the plan serves every kind of user](#how-the-plan-serves-every-kind-of-user).
+Today the plan doesn't know how often the user practises.
+
+**Scope**
+- `src/services/cadence.ts` (pure, unit-tested). Derived from the attempts' active
+  dates and a `today` string, never stored:
+  - `activeDaysLast28` and `daysSinceLastActive`.
+  - A profile:
+    - `new`: under 7 days of history.
+    - `returning`: `daysSinceLastActive` ≥ 7.
+    - `regular`: ≥ 16 of the last 28 days, i.e. 4+ a week.
+    - `occasional`: everything else.
+  - All thresholds go in `constants.ts`.
+- **At-risk review ordering** (shared by the daily plan and the review queue):
+  - Rank due reviews by *overdue ratio* = days overdue ÷ the interval that was
+    scheduled, which can be derived from `reviewStage`.
+  - Keep "weak first" as the primary key, then the ratio.
+  - A review 20 days late on a 7-day interval now outranks one a day late on a
+    30-day interval. This matters most for occasional users, who are always a
+    little late.
+- **Profile rules in the plan.** The plan size stays 2–4 and always includes at
+  least one new problem.
+  - `returning`: a **re-entry plan**.
+    - Reviews fill all but one slot, most-at-risk first. The one new slot comes
+      from a topic the user already has skill in.
+    - A one-line banner says "Welcome back — easing in with reviews".
+    - The rest of the backlog stays in the review queue. The plan is never
+      inflated.
+    - The profile clears itself once the user has practised again.
+  - `occasional`: spend scarce sessions on what matters most.
+    - New problems come strictly core-first (`coreRank`) across topics, not just
+      within a topic.
+    - The recency penalty on the current topic is weaker, so they stay in a topic
+      until its difficulty ceiling rises instead of hopping between topics every
+      session.
+  - `regular` (and anyone whose plan is fully logged with no reviews due): a
+    **"One more problem"** button. It asks the same selector for the next new
+    problem and persists it as a normal `new` recommendation for today, so
+    same-day replay stays stable.
+- Simulation tests (extend `dailyPlanSimulation.test.ts`) over 12 simulated
+  weeks for four personas: daily, 4 days/week, 2 days/week irregular, and 3 weeks
+  regular → 14-day gap → resume. Assert:
+  - Every persona gets at least one new problem on every active day.
+  - The plan never exceeds 4 items.
+  - The returnee's first plan is review-heavy.
+  - The 2-day/week persona's most-overdue weak reviews are served before newer
+    ones.
+  - Core problems (nc75, then nc150) come first for the occasional persona.
+  - The due backlog of the 4-day/week persona stays bounded. Record the observed
+    bound in the test.
+
+**Not in scope:** reinforcement problems (T5); streak, XP and badges (T6, which
+reads `cadence.ts`); changing the spaced-repetition intervals.
+
+**Deliverable:** `cadence.ts` + plan rules + the persona simulations, plus the
+banner and "One more problem" UI.
+
+---
+
+## T5. Competency engine: reinforcement problems on repeated failure
 
 **Why:** today a struggling problem only backs off its reviews (2/4/7 days).
 Nothing helps the user *build up* to it.
@@ -237,8 +347,8 @@ Nothing helps the user *build up* to it.
   `consecutiveWeak`), the plan includes one **reinforcement** item. Pick an
   easier, already-solved problem from the same topic first, then from a
   prerequisite topic (`topicGraph.ts`). Pick an unsolved Easy from the same topic
-  if nothing is solved yet. Use at most one per day, and it takes a plan slot (the
-  plan stays 2–4 items).
+  (core-first) if nothing is solved yet. Use at most one per day, and it takes a
+  plan slot (the plan stays 2–4 items and respects T4's profile rules).
 - Expose the reason on the in-memory `DailyPlanItem` (e.g.
   `reason: 'reinforce'`) and show it in the UI ("Warm-up for *X*"). **Don't** add
   a value to the persisted `RecommendationEvent.kind` enum. Store it as `new` or
@@ -248,26 +358,30 @@ Nothing helps the user *build up* to it.
   Easy warm-up, and the warm-up stops once the problem is no longer struggling.
 
 **Not in scope:** changes to the struggling backoff ladder, gamification for
-comebacks (T5).
+comebacks (T6).
 
 **Deliverable:** the warm-up item appears in the plan, with tests.
 
 ---
 
-## T5. Gamification aligned to the app's goals
+## T6. Gamification aligned to the app's goals and to every practice cadence
 
 **The app's goals:** (1) retain what you learned (spaced review), (2) fix weak
-topics instead of avoiding them, (3) log honestly, (4) practise steadily.
-Gamification should pay for exactly those things.
+topics instead of avoiding them, (3) log honestly, (4) practise *steadily* (not
+necessarily daily). Gamification should pay for exactly those things, for regular
+and occasional users alike.
 
 **Where it's misaligned today**
 - XP ignores whether an attempt was a successful *spaced recall*. A due review
   that proves retention earns the same as a first try on a new problem, even
   though retention is the product's core idea.
+- The streak and its XP multiplier count only *consecutive days*. A user doing a
+  steady 3 days a week never gets the multiplier and keeps "losing" a streak,
+  which punishes a schedule that's actually fine.
 - Volume badges ("attempt 75 / 100") reward breadth over retention, and their
-  numbers came from the 150-problem catalog.
+  numbers came from the 150-problem catalog. They don't fit the 75 or the 250.
 - `topic-cleared`, `all-mastered` and the map star need *every* problem in a
-  topic mastered (passed its 30-day review). With 250 problems that's practically
+  topic mastered (passed its 30-day review). On the 250 that's practically
   unreachable, so the main visual reward never lights up.
 - Turning a struggling problem around is the hardest and most valuable event in
   the app, and it earns nothing special.
@@ -282,51 +396,68 @@ Gamification should pay for exactly those things.
     rules.
   - A **comeback bonus** on the strong attempt that ends a run of
     `STRUGGLE_THRESHOLD`+ weak attempts.
-  - Weak attempts keep earning XP, so honest logging is never punished. Bonuses
-    are only **additive**, so the re-replay can only raise a user's XP.
+  - **Consistency multiplier = max(daily-streak tier, weekly-streak tier).**
+    - A *weekly streak* is consecutive calendar weeks with ≥ 3 active days.
+    - Both streaks are grace-free and replayable from attempt dates.
+    - Taking the max means a daily user never loses anything, and a steady
+      3-days-a-week user can reach the same tiers.
+  - Weak attempts keep earning XP, so honest logging is never punished. Every
+    change is **additive or a max()**, so the re-replay can only raise a user's
+    XP.
   - **Dexie v5** re-replays XP exactly like v4. Explain the migration impact in
     the PR. `replayXp` stays the single definition, so backup restore picks up the
     new formula for free.
+- **Streak display:** the bar shows the daily streak and the weekly streak ("6
+  weeks consistent"), so an occasional-but-steady user sees real progress.
 - **Badges** (additive, so no earned badge disappears):
   - Retention axis: "Retained 10 / 25 / 50" (problems at stage ≥ 3).
+  - Weekly consistency: "4 / 12 / 26 consistent weeks".
   - "Comeback" (first struggling problem turned strong).
+  - "Welcome back" (practised again after a 7+ day gap, using T4's `cadence.ts`).
+    It rewards returning instead of shaming the gap.
   - "Foundations solid" (every tier-1 topic at T3's skill threshold).
   - `topic-cleared` / `five-topics-cleared` / map star: redefine as "topic
-    proficient". Every **core** (`inNeetcode150`) problem in the topic at stage
-    ≥ 3, within the active problem set. Loosening a predicate only means badges
-    can arrive earlier, never be lost.
+    proficient". Every problem in the topic with `coreRank` ≤ the active set's
+    core (the nc75 problems when the set is 75, nc150 otherwise) is at stage ≥ 3.
+    Loosening a predicate only means badges can arrive earlier, never be lost.
+  - "List complete" badges for the 75, 150 and 250 (every problem in that list at
+    least solved).
   - Volume badges: keep the ids. Make the hints reference the active set.
   - Order the shelf retention → consistency → mastery → volume → level.
-- Update `BadgeShelf` / `GamificationBar` / `TopicMap` for the new badges and
-  star. Respect `prefers-reduced-motion`.
-- Tests: replay == live award for the new bonuses; v5 never lowers XP; new badge
-  predicates; monotonic merge still holds.
+- Update `BadgeShelf` / `GamificationBar` / `TopicMap` for the new badges, the
+  weekly streak and the star. Respect `prefers-reduced-motion`.
+- Tests:
+  - Replay equals the live award for the new bonuses and the max() multiplier.
+  - v5 never lowers XP.
+  - A 3-days/week persona reaches the top multiplier tier.
+  - New badge predicates work, and the monotonic merge still holds.
 
-**Not in scope:** plan selection (T3/T4), new persisted gamification numbers. XP
-stays the only one.
+**Not in scope:** plan selection (T3/T4/T5), new persisted gamification numbers.
+XP stays the only one.
 
-**Deliverable:** new XP rules + badges + map star, the v5 migration, tests, and a
-short "why each reward exists" comment block in `constants.ts`.
+**Deliverable:** new XP rules, weekly streak, badges, map star, the v5 migration,
+tests, and a short "why each reward exists" comment block in `constants.ts`.
 
 ---
 
-## T6. PWA: installable, offline, persistent storage
+## T7. PWA: installable, offline, persistent storage
 
 **Why:** the app is already serverless. Installing it and running it offline is
 mostly packaging. The more important part: browsers can **evict IndexedDB** for
 sites that aren't installed or persisted (Safari after about 7 days without a
-visit). For a local-first app, that's silent data loss.
+visit, which hits exactly the occasional and returning users from T4). For a
+local-first app, that's silent data loss.
 
 **Scope** (no new dependencies; a hand-written service worker is ~60 lines):
-- `public/manifest.webmanifest`: name, short name, `display: standalone`, theme
-  and background colours from `tokens.css`, icons 192 / 512 / maskable. Draw an
-  SVG mark and export the PNGs once via the pre-installed Playwright Chromium
-  (no new dependency), then commit them. Link the manifest and add the
-  `theme-color` meta in `index.html`.
+- `public/manifest.webmanifest`: name "LeetCode Master", short name, `display:
+  standalone`, theme and background colours from `tokens.css`, icons 192 / 512 /
+  maskable. Draw an SVG mark and export the PNGs once via the pre-installed
+  Playwright Chromium (no new dependency), then commit them. Link the manifest
+  and add the `theme-color` meta in `index.html`.
 - `public/sw.js`: precache `index.html` on install. Use cache-first for
   same-origin hashed assets and network-first with cache fallback for
   navigations. Clean up old caches on activate. Every path is **relative to the
-  registration scope** (`vite.config.ts` uses `base: './'`, and T8 serves the app
+  registration scope** (`vite.config.ts` uses `base: './'`, and T9 serves the app
   under `/leetcode-master/`).
 - Register the worker only in production builds (`import.meta.env.PROD`). When a
   new worker is waiting, show a small "Update available — Reload" control.
@@ -336,20 +467,20 @@ visit). For a local-first app, that's silent data loss.
 - Browser check: `npm run build && npx vite preview`, install, go offline,
   reload. The app works and data is intact.
 
-**Not in scope:** deploy (T8), backup reminders (T7).
+**Not in scope:** deploy (T9), backup reminders (T8), renaming other UI text (T10).
 
 **Deliverable:** a Lighthouse-installable build that works offline, plus a
 persistent-storage request.
 
 ---
 
-## T7. Backup hardening
+## T8. Backup hardening
 
 **Why:** export and restore exist. What's missing is the habit, and safety on the
 destructive path.
 
 **Scope**
-- Export filename gets the date: `<app>-backup-YYYY-MM-DD.json`.
+- Export filename gets the date: `leetcode-master-backup-YYYY-MM-DD.json`.
 - New setting `lastBackupOn` (shared rule above), written on a successful export.
   Settings shows "Last backup: N days ago". A quiet reminder appears in the side
   panel when there's progress and no backup in 14+ days (threshold in
@@ -370,7 +501,7 @@ devices; merging is a later idea), cloud sync of any kind.
 
 ---
 
-## T8. Live demo on GitHub Pages
+## T9. Live demo on GitHub Pages
 
 **Scope**
 - `.github/workflows/deploy.yml`: on push to `master`, run `npm ci && npm run
@@ -378,35 +509,42 @@ devices; merging is a later idea), cloud sync of any kind.
   Pages (Source: GitHub Actions) in repo settings. Ask them, because the session
   can't do it.
 - Confirm the relative `base` works under `https://<owner>.github.io/leetcode-master/`
-  and that T6's service worker and manifest resolve there (install + offline
+  and that T7's service worker and manifest resolve there (install + offline
   check on the live URL).
-- Record the live URL in this file's log for T9.
+- Record the live URL in this file's log for T10.
 
-**Not in scope:** custom domain, README (T9).
+**Not in scope:** custom domain, README (T10).
 
 **Deliverable:** a working public URL.
 
 ---
 
-## T9. Open-source packaging
+## T10. Open-source packaging
 
 **Scope**
-- **Name.** The repo is `leetcode-master`, `package.json` says `leetcode-tracker`,
-  the UI says "LeetCode Tracker" and `CLAUDE.md` says "PatternPilot". Ask the owner
-  to pick one name. Prefer one without "LeetCode"/"NeetCode" in it to avoid
-  trademark confusion. Apply it to the UI title, `<title>`, manifest, package name,
-  docs and the export filename. **Never rename the Dexie database name
-  `pattern-pilot`**, because that would orphan every user's data.
-- **README** for the community: the retention-decay problem, how the loop works,
-  a Mermaid architecture diagram of the local-first storage (UI → hooks →
-  pure services → Dexie → IndexedDB, plus backup and the service worker), a
-  screenshot or GIF, the live demo link (T8), install-as-app instructions, the
-  privacy statement (no server, no telemetry), and a disclaimer that it's not
-  affiliated with LeetCode or NeetCode and stores only titles and links, never
-  problem text.
-- **CONTRIBUTING.md**: setup, `npm run verify`, the commit and PR convention, how
-  to propose a catalog change (edit the JSON, and `catalog.test.ts` must pass),
-  how to propose a topic-graph edge or a threshold change (with a simulation test).
+- **Name: LeetCode Master** (already decided).
+  - Apply it to the UI header (currently "LeetCode Tracker"), `<title>`, the
+    `package.json` name (`leetcode-master`), the backup error message, the
+    `Settings` copy, and `CLAUDE.md` (currently "PatternPilot").
+  - **Never rename the Dexie database name `pattern-pilot`.** That would orphan
+    every user's data. Add a code comment saying so.
+- **README** for the community:
+  - The retention-decay problem and how the loop works.
+  - The three problem sets (75 / 150 / 250).
+  - How it adapts to regular, occasional and returning users.
+  - A Mermaid architecture diagram of the local-first storage (UI → hooks →
+    pure services → Dexie → IndexedDB, plus backup and the service worker).
+  - A screenshot or GIF, the live demo link (T9), and install-as-app
+    instructions.
+  - The privacy statement (no server, no telemetry).
+  - A disclaimer that it's not affiliated with LeetCode or NeetCode and stores
+    only titles and links, never problem text.
+- **CONTRIBUTING.md**:
+  - Setup, `npm run verify`, and the commit and PR convention.
+  - How to propose a catalog change: edit the JSON, and `catalog.test.ts` must
+    pass.
+  - How to propose a topic-graph edge or a threshold change, with a simulation
+    test.
 - **LICENSE**: ask the owner. For "not for commercial use", the candidates are
   PolyForm Noncommercial 1.0.0 or CC BY-NC 4.0; for open source, MIT. State in
   the README that a non-commercial license is "source-available".
@@ -480,11 +618,17 @@ Each session fills in its own entry in its PR.
 
 ### T8
 - Status / PR / date:
-- Live URL:
+- What shipped:
 - Decisions & deviations:
 - Follow-ups:
 
 ### T9
+- Status / PR / date:
+- Live URL:
+- Decisions & deviations:
+- Follow-ups:
+
+### T10
 - Status / PR / date:
 - What shipped:
 - Decisions & deviations:
