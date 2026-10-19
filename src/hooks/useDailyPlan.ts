@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { persistRecommendations } from '../db/recommendations';
 import { selectDailyPlan, type DailyPlanItem } from '../services/dailyPlan';
-import type { CatalogProblem, ProblemProgress } from '../types/models';
+import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
 
 export interface UseDailyPlanResult {
   // `undefined` while the plan cannot yet be computed (inputs still loading).
@@ -25,7 +25,9 @@ export interface UseDailyPlanResult {
 // set is short). The `dayRefresh` counter forces a fresh selection at midnight.
 export function useDailyPlan(
   problems: CatalogProblem[] | undefined,
-  progress: ProblemProgress[] | undefined
+  progress: ProblemProgress[] | undefined,
+  attempts: Attempt[] | undefined,
+  allProblems: CatalogProblem[] | undefined
 ): UseDailyPlanResult {
   const recommendationEvents = useLiveQuery(() => db.recommendationEvents.toArray(), []);
   const [dayRefresh, setDayRefresh] = useState(0);
@@ -37,8 +39,8 @@ export function useDailyPlan(
     return () => window.clearTimeout(timeout);
   }, [dayRefresh]);
 
-  const plan = problems && progress && recommendationEvents
-    ? selectDailyPlan({ problems, progress, recommendationEvents })
+  const plan = problems && progress && attempts && allProblems && recommendationEvents
+    ? selectDailyPlan({ problems, progress, recommendationEvents, attempts, skillProblems: allProblems })
     : undefined;
 
   useEffect(() => {

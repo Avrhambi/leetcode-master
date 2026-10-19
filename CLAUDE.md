@@ -35,6 +35,8 @@ Do not add a dependency without asking first, and explain why existing code can'
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),
   `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet`; the review queue is fed the unfiltered catalog),
+  `skill.ts` (per-topic skill replayed from `attempts`, never stored; sets the plan's difficulty target),
+  `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.

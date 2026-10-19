@@ -3,7 +3,38 @@ import { selectDailyPlan } from './dailyPlan';
 import { progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
 import { TOPIC_TIERS } from '../data/topicTiers';
-import type { ProblemProgress, RecommendationEvent } from '../types/models';
+import { problemsInSet } from './problemSet';
+import type { Attempt, CatalogProblem, ProblemList, ProblemProgress, Quality, RecommendationEvent } from '../types/models';
+
+function attemptRow(problem: CatalogProblem, quality: Quality, now: Date, day: number): Attempt {
+  return { id: `${problem.id}-${day}`, problemId: problem.id, attemptedOn: localDate(0, now), outcome: 'solved_independently', perceivedDifficulty: 'manageable', helpType: null, durationMinutes: null, notes: '', quality, createdAt: now.toISOString() };
+}
+
+// Generic runner for the T3 targets: one persona, one problem set, daily cadence.
+function run(days: number, set: ProblemList, qualityOf: (problem: CatalogProblem, day: number) => Quality) {
+  const problems = problemsInSet(catalog, set);
+  const progress = new Map<string, ProblemProgress>();
+  const events: RecommendationEvent[] = [];
+  const attempts: Attempt[] = [];
+  const newByTopic = new Map<string, { day: number; problem: CatalogProblem }[]>();
+  const qualitiesByTopic = new Map<string, { day: number; problem: CatalogProblem; quality: Quality }[]>();
+  for (let day = 0; day < days; day += 1) {
+    const now = new Date(2026, 6, 1 + day, 12);
+    const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, now });
+    for (const item of plan) {
+      const topic = item.problem.primaryTopic;
+      if (item.kind === 'new') newByTopic.set(topic, [...(newByTopic.get(topic) ?? []), { day, problem: item.problem }]);
+      const quality = qualityOf(item.problem, day);
+      qualitiesByTopic.set(topic, [...(qualitiesByTopic.get(topic) ?? []), { day, problem: item.problem, quality }]);
+      events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
+      attempts.push(attemptRow(item.problem, quality, now, day));
+      const next = progressAfterAttempt(progress.get(item.problem.id), quality, localDate(0, now), now.toISOString(), false, now);
+      progress.set(item.problem.id, { ...next, problemId: item.problem.id });
+    }
+  }
+  return { problems, newByTopic, qualitiesByTopic };
+}
+
 
 // Replays N simulated days over the real catalog, always solving each item
 // strongly so review stages (and topic mastery) advance the way they would for
@@ -11,13 +42,15 @@ import type { ProblemProgress, RecommendationEvent } from '../types/models';
 function simulate(days: number) {
   const progress = new Map<string, ProblemProgress>();
   const events: RecommendationEvent[] = [];
+  const attempts: Attempt[] = [];
   const perDay: { kind: string; topic: string }[][] = [];
   for (let day = 0; day < days; day += 1) {
     const now = new Date(2026, 6, 1 + day, 12);
-    const plan = selectDailyPlan({ problems: catalog, progress: [...progress.values()], recommendationEvents: events, now });
+    const plan = selectDailyPlan({ problems: catalog, progress: [...progress.values()], recommendationEvents: events, attempts, now });
     perDay.push(plan.map((item) => ({ kind: item.kind, topic: item.problem.primaryTopic })));
     for (const item of plan) {
       events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
+      attempts.push(attemptRow(item.problem, 'strong', now, day));
       const next = progressAfterAttempt(progress.get(item.problem.id), 'strong', localDate(0, now), now.toISOString(), false, now);
       progress.set(item.problem.id, { ...next, problemId: item.problem.id });
     }
@@ -73,12 +106,13 @@ describe('daily plan simulation over the real catalog', () => {
     const target = 'Two Pointers';
     const progress = new Map<string, ProblemProgress>();
     const events: RecommendationEvent[] = [];
+    const attempts: Attempt[] = [];
     const newTopics: string[] = [];
     const targetNewDifficulties: string[] = [];
     const targetReviewDays: number[] = [];
     for (let day = 0; day < 40; day += 1) {
       const now = new Date(2026, 6, 1 + day, 12);
-      const plan = selectDailyPlan({ problems: catalog, progress: [...progress.values()], recommendationEvents: events, now });
+      const plan = selectDailyPlan({ problems: catalog, progress: [...progress.values()], recommendationEvents: events, attempts, now });
       let targetReviewsToday = 0;
       for (const item of plan) {
         if (item.kind === 'new') newTopics.push(item.problem.primaryTopic);
@@ -86,6 +120,7 @@ describe('daily plan simulation over the real catalog', () => {
         if (item.kind === 'review' && item.problem.primaryTopic === target) targetReviewsToday += 1;
         events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
         const quality = item.problem.primaryTopic === target ? 'weak' : 'strong';
+        attempts.push(attemptRow(item.problem, quality, now, day));
         const next = progressAfterAttempt(progress.get(item.problem.id), quality, localDate(0, now), now.toISOString(), false, now);
         progress.set(item.problem.id, { ...next, problemId: item.problem.id });
       }
@@ -127,5 +162,59 @@ describe('daily plan simulation over the real catalog', () => {
     }
     const plan = selectDailyPlan({ problems: catalog, progress: [...progress.values()], recommendationEvents: [], now: new Date(2026, 6, 1, 12) });
     expect(plan.every((item) => item.problem.primaryTopic !== target || item.kind === 'review')).toBe(true);
+  });
+});
+
+describe('T3 difficulty targets (skill-driven, every problem set)', () => {
+  const sets: ProblemList[] = ['nc75', 'nc150', 'nc250'];
+
+  for (const set of sets) {
+    it(`${set}: offers Medium after at most 2 strong Easies and Hard after at most 3 strong Mediums, then stays at Medium+`, () => {
+      const { newByTopic, qualitiesByTopic, problems } = run(120, set, () => 'strong');
+      let sawMedium = 0;
+      let sawHard = 0;
+      for (const [topic, news] of newByTopic) {
+        const history = qualitiesByTopic.get(topic) ?? [];
+        const solved = (day: number, difficulty: string) => new Set(history.filter((h) => h.day < day && h.problem.difficulty === difficulty).map((h) => h.problem.id)).size;
+        const mediumsLeft = (day: number) => problems.filter((p) => p.primaryTopic === topic && p.difficulty === 'medium' && !news.some((n) => n.problem.id === p.id && n.day < day)).length;
+        for (const entry of news) {
+          const easies = solved(entry.day, 'easy');
+          const mediums = solved(entry.day, 'medium');
+          if (entry.problem.difficulty === 'easy' && easies >= 2) expect(mediumsLeft(entry.day), `${topic}: Easy offered after ${easies} strong Easies`).toBe(0);
+          if (entry.problem.difficulty === 'medium') sawMedium += 1;
+          if (entry.problem.difficulty === 'hard') {
+            sawHard += 1;
+            // Either Medium was unlocked first, or nothing easier was left to offer.
+            const easierLeft = problems.some((p) => p.primaryTopic === topic && p.difficulty !== 'hard' && !news.some((n) => n.problem.id === p.id && n.day < entry.day));
+            if (mediums === 0) expect(easierLeft, `${topic}: Hard offered with easier problems left`).toBe(false);
+          }
+        }
+        // Hard is offered only once Medium was unlocked, and not later than 3 strong Mediums after that.
+        const firstHard = news.find((n) => n.problem.difficulty === 'hard');
+        if (firstHard && problems.some((p) => p.primaryTopic === topic && p.difficulty === 'medium')) expect(solved(firstHard.day, 'medium')).toBeLessThanOrEqual(3);
+      }
+      expect(sawMedium).toBeGreaterThan(0);
+      expect(sawHard).toBeGreaterThan(0);
+    });
+  }
+
+  it('offers a first Medium after exactly two strong Easy solves in a topic with many Easies', () => {
+    const { newByTopic } = run(60, 'nc250', () => 'strong');
+    const trees = newByTopic.get('Arrays & Hashing') ?? [];
+    const firstMedium = trees.findIndex((entry) => entry.problem.difficulty === 'medium');
+    expect(firstMedium).toBeGreaterThan(-1);
+    expect(firstMedium).toBeLessThanOrEqual(2);
+  });
+
+  it('a struggling learner is never pushed into a Hard while failing Mediums', () => {
+    const { newByTopic } = run(80, 'nc250', (problem) => (problem.difficulty === 'easy' ? 'strong' : 'weak'));
+    for (const news of newByTopic.values()) expect(news.some((entry) => entry.problem.difficulty === 'hard')).toBe(false);
+  });
+
+  it('walks the prerequisite graph in order: Two Pointers is not started before Arrays & Hashing has momentum', () => {
+    const { newByTopic } = run(10, 'nc250', () => 'strong');
+    const first = (topic: string) => newByTopic.get(topic)?.[0]?.day ?? Infinity;
+    expect(first('Arrays & Hashing')).toBeLessThanOrEqual(first('Two Pointers'));
+    expect(first('Arrays & Hashing')).toBeLessThanOrEqual(first('Sliding Window'));
   });
 });

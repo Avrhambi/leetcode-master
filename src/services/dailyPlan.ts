@@ -1,5 +1,9 @@
-import type { CatalogProblem, ProblemProgress, Quality, RecommendationEvent } from '../types/models';
+import type { Attempt, CatalogProblem, ProblemProgress, Quality, RecommendationEvent } from '../types/models';
 import { tierWeight } from '../data/topicTiers';
+import { coreRank } from './coreRank';
+import { FAILING_TOPIC_PRIORITY_PENALTY, SKILL_MEDIUM_THRESHOLD } from './constants';
+import { targetDifficulty, topicSkills } from './skill';
+import { prerequisitePenalty } from './topicGraph';
 
 export interface DailyPlanItem {
   problem: CatalogProblem;
@@ -10,6 +14,11 @@ interface DailyPlanInput {
   problems: CatalogProblem[];
   progress: ProblemProgress[];
   recommendationEvents: RecommendationEvent[];
+  // Attempt history that topic skill is replayed from. `skillProblems` resolves
+  // attempts to topics (defaults to `problems`; pass the unfiltered catalog so
+  // out-of-set history still counts toward skill).
+  attempts?: Attempt[];
+  skillProblems?: CatalogProblem[];
   now?: Date;
 }
 
@@ -79,10 +88,12 @@ export function dueReviewQueue(problems: CatalogProblem[], progress: ProblemProg
     );
 }
 
-export function selectDailyPlan({ problems, progress, recommendationEvents, now = new Date() }: DailyPlanInput): DailyPlanItem[] {
+export function selectDailyPlan({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, now = new Date() }: DailyPlanInput): DailyPlanItem[] {
   const progressByProblem = new Map(progress.map((item) => [item.problemId, item]));
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const hiddenProblemIds = new Set(recommendationEvents.filter((event) => event.skippedUntil !== null && new Date(event.skippedUntil) > now).map((event) => event.problemId));
+
+  const skills = topicSkills(attempts, skillProblems);
 
   const dueReviews = dueReviewQueue(problems, progress, now).filter((entry) => !hiddenProblemIds.has(entry.problem.id));
 
@@ -106,20 +117,20 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, now 
     let target = plan.length + Math.max(0, newSlots - storedNew);
     if (target < 2) target = 2;
     if (target > 4) target = 4;
-    fillNewProblems(plan, target, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, now);
+    fillNewProblems(plan, target, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, now);
     return plan;
   }
 
   const plan: DailyPlanItem[] = dueReviews.slice(0, reviewSlots).map(({ problem }) => ({ problem, kind: 'review' as const }));
-  fillNewProblems(plan, plan.length + newSlots, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, now);
+  fillNewProblems(plan, plan.length + newSlots, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, now);
   return plan;
 }
 
-function fillNewProblems(plan: DailyPlanItem[], target: number, problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, problemById: Map<string, CatalogProblem>, now: Date): void {
+function fillNewProblems(plan: DailyPlanItem[], target: number, problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, now: Date): void {
   while (plan.length < target) {
     const usedProblemIds = new Set(plan.map((item) => item.problem.id));
     const usedTopics = new Set(plan.map((item) => item.problem.primaryTopic));
-    const nextProblem = selectNewProblem(problems, progressByProblem, events, hiddenProblemIds, usedProblemIds, usedTopics, problemById, now);
+    const nextProblem = selectNewProblem(problems, progressByProblem, events, hiddenProblemIds, usedProblemIds, usedTopics, problemById, skills, now);
     if (!nextProblem) break;
     plan.push({ problem: nextProblem, kind: 'new' });
   }
@@ -146,12 +157,7 @@ export function topicMastery(topic: string, problems: CatalogProblem[], progress
   return total / topicProblems.length;
 }
 
-function maxDifficultyFor(mastery: number): number {
-  const level = mastery >= 0.5 ? 'hard' : mastery >= 0.2 ? 'medium' : 'easy';
-  return DIFFICULTY_ORDER.indexOf(level);
-}
-
-function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, selectedProblemIds: Set<string>, selectedTopics: Set<string>, problemById: Map<string, CatalogProblem>, now: Date): CatalogProblem | undefined {
+function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, selectedProblemIds: Set<string>, selectedTopics: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, now: Date): CatalogProblem | undefined {
   const candidates = problems.filter((problem) => {
     const status = progressByProblem.get(problem.id)?.status;
     return !hiddenProblemIds.has(problem.id) && !selectedProblemIds.has(problem.id) && status !== 'solved' && status !== 'mastered';
@@ -159,6 +165,12 @@ function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<str
   const eligibleTopics = [...new Set(candidates.map((problem) => problem.primaryTopic))];
   if (eligibleTopics.length === 0) return undefined;
 
+  // A prerequisite only counts as unmet while it still has unsolved problems and
+  // the learner hasn't already tried and failed it: a topic with a weak last
+  // attempt is backed off from, so it must not also pull its dependents'
+  // priority down and keep flooding the plan with the topic being failed.
+  const failedTopics = new Set(problems.filter((problem) => progressByProblem.get(problem.id)?.lastQuality === 'weak').map((problem) => problem.primaryTopic));
+  const workingTopics = new Set(eligibleTopics.filter((topic) => !failedTopics.has(topic)));
   const today = localToday(now);
   const recentTopics = new Set(
     events
@@ -179,18 +191,23 @@ function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<str
     .map((topic) => {
       const mastery = topicMastery(topic, problems, progressByProblem, true);
       const recencyPenalty = recentTopics.has(topic) || selectedTopics.has(topic) ? 0.35 : 1;
-      const priority = tierWeight(topic) * (1 - mastery) * recencyPenalty + jitter(today + topic);
+      const failingPenalty = failedTopics.has(topic) && (skills.get(topic) ?? 0) < SKILL_MEDIUM_THRESHOLD ? FAILING_TOPIC_PRIORITY_PENALTY : 1;
+      const priority = tierWeight(topic) * (1 - mastery) * recencyPenalty * failingPenalty * prerequisitePenalty(topic, skills, workingTopics) + jitter(today + topic);
       return { topic, priority };
     })
     .sort((left, right) => right.priority - left.priority)[0]?.topic;
   if (!chosenTopic) return undefined;
 
-  const ceilingMastery = topicMastery(chosenTopic, problems, progressByProblem, false);
-  const maxDifficulty = maxDifficultyFor(ceilingMastery);
-  const topicProblems = candidates
+  // Aim at the difficulty the topic's skill supports, falling back to easier
+  // problems only when none are left at the target, and to harder ones only when
+  // nothing easier remains. Within a difficulty: NeetCode 75 first, then the
+  // rest of the 150, then the extra 100, in catalog order.
+  const target = DIFFICULTY_ORDER.indexOf(targetDifficulty(skills.get(chosenTopic) ?? 0));
+  const distance = (problem: CatalogProblem) => {
+    const level = DIFFICULTY_ORDER.indexOf(problem.difficulty);
+    return level <= target ? target - level : DIFFICULTY_ORDER.length + level - target;
+  };
+  return candidates
     .filter((problem) => problem.primaryTopic === chosenTopic)
-    .sort((left, right) => DIFFICULTY_ORDER.indexOf(left.difficulty) - DIFFICULTY_ORDER.indexOf(right.difficulty) || left.neetcodeOrder - right.neetcodeOrder);
-
-  const gated = topicProblems.filter((problem) => DIFFICULTY_ORDER.indexOf(problem.difficulty) <= maxDifficulty);
-  return gated[0] ?? topicProblems[0];
+    .sort((left, right) => distance(left) - distance(right) || coreRank(left) - coreRank(right) || left.neetcodeOrder - right.neetcodeOrder)[0];
 }

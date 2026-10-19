@@ -36,7 +36,7 @@ export default function App() {
   const problemSet = parseProblemSet(storedSet);
   const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet) : undefined), [allProblems, problemSet]);
 
-  const { plan, completedProblemIds } = useDailyPlan(problems, progress);
+  const { plan, completedProblemIds } = useDailyPlan(problems, progress, attempts, allProblems);
   const gamification = useGamification();
 
   const seed = () => {

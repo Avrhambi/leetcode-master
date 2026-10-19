@@ -98,3 +98,27 @@ export const BADGE_TOPICS_CLEARED = 5;
 // Levels that unlock the level badges.
 export const BADGE_LEVEL_MID = 5;
 export const BADGE_LEVEL_HIGH = 10;
+
+// Topic skill (see skill.ts): an Elo-style rating in [0, 1] replayed from the
+// `attempts` history. Each attempt's quality is the "result" and the problem's
+// difficulty is the "opponent rating". Nothing here is stored.
+export const SKILL_DIFFICULTY_RATING = { easy: 0.15, medium: 0.45, hard: 0.75 } as const;
+export const SKILL_QUALITY_RESULT = { strong: 1, partial: 0.5, weak: 0 } as const;
+// Step size of one attempt, and the width of the logistic expected-result curve.
+export const SKILL_K = 0.25;
+export const SKILL_SCALE = 0.15;
+// A repeat of the same problem on the same calendar day moves skill by this fraction (mirrors XP).
+export const SKILL_REPEAT_SAME_DAY_MULTIPLIER = 0.25;
+// Skill at which a topic's new problems target Medium / Hard. Two strong Easy
+// solves clear the first from a standing start; two or three strong Mediums
+// clear the second.
+export const SKILL_MEDIUM_THRESHOLD = 0.25;
+export const SKILL_HARD_THRESHOLD = 0.6;
+
+// A topic whose prerequisites sit below this skill has its new-problem priority
+// multiplied by PREREQ_PRIORITY_PENALTY. A penalty, never a lock.
+export const PREREQ_SKILL_THRESHOLD = SKILL_MEDIUM_THRESHOLD;
+export const PREREQ_PRIORITY_PENALTY = 0.5;
+// New-problem priority multiplier for a topic the learner last failed while its
+// skill is still below the Medium threshold: back off instead of flooding it.
+export const FAILING_TOPIC_PRIORITY_PENALTY = 0.6;

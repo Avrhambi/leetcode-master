@@ -37,7 +37,7 @@ up from there.
 | T0 | CI + dependency hygiene | — | T1, T7 | Done |
 | T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Done |
 | T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Done |
-| T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Todo |
+| T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Done |
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Todo |
 | T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Todo |
 | T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Todo |
@@ -676,10 +676,10 @@ Each session fills in its own entry in its PR.
 - Follow-ups: T6 should redefine the badge predicates against the set. The first-launch banner shows for existing users too; if the owner wants it hidden for anyone with progress, key it on attempts.
 
 ### T3
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done / pushed to `master` at the owner's request / 2026-10-19
+- What shipped: `src/services/skill.ts` (`topicSkills` replays per-topic skill in [0, 1] from `attempts`: Elo-style, quality is the result, difficulty rating the opponent, same-problem same-day repeats weighted 0.25; `targetDifficulty`). `src/services/topicGraph.ts` (`TOPIC_PREREQUISITES`, `prerequisitePenalty`). `dailyPlan.ts`: the mean-stage ceiling (`maxDifficultyFor`) is gone; new problems aim at the skill's target difficulty (target, then easier, then harder only if nothing easier is left), ordered by `coreRank` then catalog order. A topic with an unmet prerequisite gets a 0.5 priority penalty, never a lock. `selectDailyPlan` takes optional `attempts` and `skillProblems` (the unfiltered catalog, so out-of-set history still counts); `useDailyPlan` passes them. Thresholds in `constants.ts`. `topicMastery` stays for the map and for topic priority. Tests: `skill.test.ts` (skill curve, graph acyclic and covers every tiered topic) and new T3 sections in `dailyPlanSimulation.test.ts` for 75 / 150 / 250.
+- Decisions & deviations: **Thresholds:** Medium at skill 0.25 (two strong Easies from a standing start), Hard at 0.6 (at most three strong Mediums from the Medium threshold). **Failing learner:** a weak result drops skill sharply, so the ceiling falls back; this replaces the old "struggling uses real stage" rule. A topic whose last attempt was weak (skill still below Medium) takes a 0.6 priority penalty and stops counting as an unmet prerequisite for its dependents; without that the dependents were penalised and the plan stayed on the failing topic (the blind-spot test hit 0.255 against its 0.25 cap). **Fallback:** a topic with no Easy can still serve Medium or Hard from a standing start. **Personas:** only strong-always, struggling and prerequisite order are simulated, at daily cadence; the typical persona and the 4-day / 2-day / gap cadences are left to T4's tests. **QA:** `npm run verify` passes; the app loaded in Chromium at 1280 and 700 px with no page scroll and no page errors. Skill-driven plan choices were checked by the simulation tests, not by hand in the browser (today's stored plan replays on reload).
+- Follow-ups: T4 adds the remaining personas and cadences. `topicMastery`'s diluted mean still drives topic priority and the map; revisit if priority should follow skill.
 
 ### T4
 - Status / PR / date:
