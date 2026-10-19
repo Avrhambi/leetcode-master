@@ -2,8 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { persistRecommendations } from '../db/recommendations';
-import { selectDailyPlan, type DailyPlanItem } from '../services/dailyPlan';
+import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from '../services/dailyPlan';
+import { cadenceFor, type CadenceProfile } from '../services/cadence';
 import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
+
+function localDay(date = new Date()): string {
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+}
 
 export interface UseDailyPlanResult {
   // `undefined` while the plan cannot yet be computed (inputs still loading).
@@ -11,6 +16,11 @@ export interface UseDailyPlanResult {
   // Problem ids whose daily recommendation was completed today — drives the
   // "Solved" badge on the plan without touching the plan array itself.
   completedProblemIds: Set<string>;
+  // How often the user practises (drives the banner for a returning user).
+  profile: CadenceProfile;
+  // Present only when "One more problem" is on offer: every item is logged and
+  // the user is either regular or has no reviews left due.
+  addExtra: (() => Promise<void>) | undefined;
 }
 
 // Owns the adaptive daily plan: selection, the once-per-day persistence of the
@@ -39,9 +49,10 @@ export function useDailyPlan(
     return () => window.clearTimeout(timeout);
   }, [dayRefresh]);
 
-  const plan = problems && progress && attempts && allProblems && recommendationEvents
-    ? selectDailyPlan({ problems, progress, recommendationEvents, attempts, skillProblems: allProblems })
+  const planInput = problems && progress && attempts && allProblems && recommendationEvents
+    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems }
     : undefined;
+  const plan = planInput ? selectDailyPlan(planInput) : undefined;
 
   useEffect(() => {
     if (plan) void persistRecommendations(plan);
@@ -56,5 +67,14 @@ export function useDailyPlan(
       .map((event) => event.problemId)
   );
 
-  return { plan, completedProblemIds };
+  const profile = cadenceFor(attempts ?? [], localDay()).profile;
+  const allLogged = plan !== undefined && plan.length > 0 && plan.every((item) => completedProblemIds.has(item.problem.id));
+  const offerExtra = planInput !== undefined && plan !== undefined && allLogged
+    && (profile === 'regular' || dueReviewQueue(planInput.problems, planInput.progress).length === 0);
+  const addExtra = offerExtra ? async () => {
+    const extra = selectExtraProblem(planInput, plan);
+    if (extra) await persistRecommendations([{ problem: extra, kind: 'new' }]);
+  } : undefined;
+
+  return { plan, completedProblemIds, profile, addExtra };
 }

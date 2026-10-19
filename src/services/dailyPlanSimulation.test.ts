@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { selectDailyPlan } from './dailyPlan';
+import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from './dailyPlan';
+import { cadenceFor } from './cadence';
+import { coreRank } from './coreRank';
 import { progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
 import { TOPIC_TIERS } from '../data/topicTiers';
@@ -216,5 +218,130 @@ describe('T3 difficulty targets (skill-driven, every problem set)', () => {
     const first = (topic: string) => newByTopic.get(topic)?.[0]?.day ?? Infinity;
     expect(first('Arrays & Hashing')).toBeLessThanOrEqual(first('Two Pointers'));
     expect(first('Arrays & Hashing')).toBeLessThanOrEqual(first('Sliding Window'));
+  });
+});
+
+// ---- T4: cadence personas ---------------------------------------------------
+
+// Deterministic "typical learner": mostly strong, some partial, some weak, and
+// harder problems go worse.
+function typicalQuality(problem: CatalogProblem, day: number): Quality {
+  let hash = 7;
+  for (const char of `${problem.id}|${day}`) hash = (hash * 31 + char.charCodeAt(0)) % 1009;
+  const roll = hash % 10;
+  const weakCutoff = problem.difficulty === 'hard' ? 3 : problem.difficulty === 'medium' ? 1 : 0;
+  if (roll < weakCutoff) return 'weak';
+  return roll < weakCutoff + 2 ? 'partial' : 'strong';
+}
+
+const CADENCES: Record<string, (day: number) => boolean> = {
+  daily: () => true,
+  fourDaysAWeek: (day) => [0, 1, 3, 4].includes(day % 7),
+  // Two days a week, a different pair each week (irregular).
+  twoDaysAWeek: (day) => { const week = Math.floor(day / 7); const first = (week * 3) % 7; return day % 7 === first || day % 7 === (first + 3) % 7; },
+  // Three weeks daily, a 14-day gap, then daily again.
+  gapThenResume: (day) => day < 21 || day >= 35
+};
+
+interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: number }
+
+function runPersona(active: (day: number) => boolean, qualityOf: (problem: CatalogProblem, day: number) => Quality, days = 84) {
+  const problems = problemsInSet(catalog, 'nc250');
+  const progress = new Map<string, ProblemProgress>();
+  const events: RecommendationEvent[] = [];
+  const attempts: Attempt[] = [];
+  const records: DayRecord[] = [];
+  const backlog: number[] = [];
+  for (let day = 0; day < days; day += 1) {
+    const now = new Date(2026, 6, 1 + day, 12);
+    backlog.push(dueReviewQueue(problems, [...progress.values()], now).length);
+    if (!active(day)) continue;
+    const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, now });
+    records.push({ day, now, plan, dueBefore: backlog[day] });
+    for (const item of plan) {
+      const quality = qualityOf(item.problem, day);
+      events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
+      attempts.push(attemptRow(item.problem, quality, now, day));
+      const next = progressAfterAttempt(progress.get(item.problem.id), quality, localDate(0, now), now.toISOString(), false, now);
+      progress.set(item.problem.id, { ...next, problemId: item.problem.id });
+    }
+  }
+  return { records, attempts, backlog, progress, events, problems };
+}
+
+describe('T4 cadence personas (12 simulated weeks)', () => {
+  for (const [cadenceName, active] of Object.entries(CADENCES)) {
+    for (const [personaName, qualityOf] of [['fast', () => 'strong' as Quality], ['typical', typicalQuality]] as const) {
+      it(`${personaName} / ${cadenceName}: at least one new problem on every active day, never more than four items`, () => {
+        const { records } = runPersona(active, qualityOf);
+        expect(records.length).toBeGreaterThan(0);
+        for (const { day, plan } of records) {
+          expect(plan.length, `day ${day}`).toBeLessThanOrEqual(4);
+          expect(plan.length, `day ${day}`).toBeGreaterThanOrEqual(2);
+          expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
+        }
+      });
+    }
+  }
+
+  it('a returning user gets a review-heavy re-entry plan, with one new problem in a topic they know', () => {
+    const { records, attempts } = runPersona(CADENCES.gapThenResume, () => 'strong');
+    const comeback = records.find((record) => record.day === 35);
+    expect(comeback).toBeDefined();
+    const plan = comeback!.plan;
+    expect(cadenceFor(attempts.filter((a) => a.attemptedOn < localDate(0, comeback!.now)), localDate(0, comeback!.now)).profile).toBe('returning');
+    expect(comeback!.dueBefore).toBeGreaterThan(3);
+    const reviews = plan.filter((item) => item.kind === 'review');
+    const news = plan.filter((item) => item.kind === 'new');
+    expect(news).toHaveLength(1);
+    expect(reviews.length).toBe(3);
+    expect(plan.length).toBeLessThanOrEqual(4);
+    const knownTopics = new Set(attempts.map((attempt) => catalog.find((c) => c.id === attempt.problemId)?.primaryTopic));
+    expect(knownTopics.has(news[0].problem.primaryTopic)).toBe(true);
+    // The profile clears itself: the next active day is back to a normal plan.
+    const next = records.find((record) => record.day === 36)!;
+    expect(next.plan.filter((item) => item.kind === 'new').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('an occasional user (two days a week) gets NeetCode 75 problems first, across topics', () => {
+    const { records, attempts } = runPersona(CADENCES.twoDaysAWeek, () => 'strong');
+    let checked = 0;
+    for (const { now, plan } of records) {
+      const today = localDate(0, now);
+      if (cadenceFor(attempts, today).profile !== 'occasional') continue;
+      for (const item of plan) if (item.kind === 'new') { checked += 1; expect(coreRank(item.problem), `${item.problem.id} on ${today}`).toBe(0); }
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
+
+  it('a regular user (daily) is never put into the occasional or returning rules', () => {
+    const { records, attempts } = runPersona(CADENCES.daily, () => 'strong', 40);
+    const profiles = new Set(records.map(({ now }) => cadenceFor(attempts, localDate(0, now)).profile));
+    expect(profiles.has('regular')).toBe(true);
+    expect(profiles.has('occasional')).toBe(false);
+    expect(profiles.has('returning')).toBe(false);
+  });
+
+  it('one more problem: a fresh new problem on another topic, kept by the same-day replay', () => {
+    const { progress, events, attempts, problems } = runPersona(CADENCES.daily, () => 'strong', 20);
+    const now = new Date(2026, 6, 21, 12);
+    const input = { problems, progress: [...progress.values()], recommendationEvents: events, attempts, now };
+    const plan = selectDailyPlan(input);
+    const extra = selectExtraProblem(input, plan);
+    expect(extra).toBeDefined();
+    expect(plan.some((item) => item.problem.id === extra!.id)).toBe(false);
+    expect(plan.some((item) => item.problem.primaryTopic === extra!.primaryTopic)).toBe(false);
+    const stored = [...plan, { problem: extra!, kind: 'new' as const }].map((item) => ({ id: `s-${item.problem.id}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null }));
+    const replay = selectDailyPlan({ ...input, recommendationEvents: [...events, ...stored] });
+    expect(replay.map((item) => item.problem.id).sort()).toEqual([...plan.map((item) => item.problem.id), extra!.id].sort());
+  });
+
+  it('reports the due-review backlog for each cadence (baseline for T11)', () => {
+    const rows = Object.entries(CADENCES).map(([name, active]) => {
+      const { backlog } = runPersona(active, typicalQuality);
+      return `${name}: max ${Math.max(...backlog)}, end ${backlog[backlog.length - 1]}`;
+    });
+    console.log(`DUE BACKLOG over 12 weeks (typical learner) -> ${rows.join(' | ')}`);
+    expect(rows).toHaveLength(4);
   });
 });

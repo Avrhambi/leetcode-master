@@ -122,3 +122,22 @@ export const PREREQ_PRIORITY_PENALTY = 0.5;
 // New-problem priority multiplier for a topic the learner last failed while its
 // skill is still below the Medium threshold: back off instead of flooding it.
 export const FAILING_TOPIC_PRIORITY_PENALTY = 0.6;
+
+// Practice cadence (see cadence.ts): how often the user practises, derived from
+// the active dates in the `attempts` history. Never stored.
+//   new         under CADENCE_NEW_HISTORY_DAYS days since the first attempt (or none yet)
+//   returning   last active CADENCE_RETURNING_GAP_DAYS+ days ago
+//   regular     4+ active days a week on average over the last CADENCE_WINDOW_DAYS (or over the
+//               whole history while it is shorter, so a daily newcomer is regular within a week)
+//   occasional  everyone else
+export const CADENCE_WINDOW_DAYS = 28;
+export const CADENCE_REGULAR_DAYS_PER_WEEK = 4;
+export const CADENCE_RETURNING_GAP_DAYS = 7;
+export const CADENCE_NEW_HISTORY_DAYS = 7;
+// Review slots in a returning user's re-entry plan. The plan keeps exactly one
+// new-problem slot and the rest of the backlog stays in the review queue.
+export const RETURNING_MAX_REVIEW_SLOTS = 3;
+// An occasional user stays in a topic longer: the "recently served topic"
+// priority penalty is milder than the default 0.35, so scarce sessions go to
+// finishing a topic's ceiling instead of hopping between topics.
+export const OCCASIONAL_RECENT_TOPIC_PENALTY = 0.7;

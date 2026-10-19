@@ -36,7 +36,7 @@ export default function App() {
   const problemSet = parseProblemSet(storedSet);
   const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet) : undefined), [allProblems, problemSet]);
 
-  const { plan, completedProblemIds } = useDailyPlan(problems, progress, attempts, allProblems);
+  const { plan, completedProblemIds, profile, addExtra } = useDailyPlan(problems, progress, attempts, allProblems);
   const gamification = useGamification();
 
   const seed = () => {
@@ -78,6 +78,8 @@ export default function App() {
       settings={settings}
       planItems={plan ?? []}
       completedProblemIds={completedProblemIds}
+      profile={profile}
+      onAddExtra={addExtra}
       onSkip={(item) => skipRecommendation(item.problem.id, item.kind)}
     />
     {settingsOpen && <SettingsOverlay onClose={() => setSettingsOpen(false)} />}

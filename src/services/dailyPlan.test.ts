@@ -23,6 +23,21 @@ describe('due review queue', () => {
     ], now);
     expect(queue.map((entry) => entry.problem.id)).toEqual(['b', 'c', 'a']);
   });
+  it('serves the review most overdue for its own interval first, within a quality', () => {
+    // a: 3-day interval, 9 days late (ratio 3). b: 30-day interval, 49 days late (ratio 1.6) — b was due first by date.
+    const queue = dueReviewQueue(problems, [
+      progress('a', { lastAttemptDate: '2026-07-07', nextReviewDate: '2026-07-10', lastQuality: 'weak' }),
+      progress('b', { lastAttemptDate: '2026-05-01', nextReviewDate: '2026-05-31', lastQuality: 'weak' })
+    ], now);
+    expect(queue.map((entry) => entry.problem.id)).toEqual(['a', 'b']);
+  });
+  it('still serves a weak review before a strong one however late the strong one is', () => {
+    const queue = dueReviewQueue(problems, [
+      progress('a', { lastAttemptDate: '2026-06-01', nextReviewDate: '2026-06-02', lastQuality: 'strong' }),
+      progress('b', { lastAttemptDate: '2026-07-18', nextReviewDate: '2026-07-19', lastQuality: 'weak' })
+    ], now);
+    expect(queue.map((entry) => entry.problem.id)).toEqual(['b', 'a']);
+  });
   it('includes problems skipped from the daily challenge (queue is the review-everything surface)', () => {
     const queue = dueReviewQueue(problems, [progress('a', { nextReviewDate: '2026-07-01' })], now);
     expect(queue.map((entry) => entry.problem.id)).toEqual(['a']);

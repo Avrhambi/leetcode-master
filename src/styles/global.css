@@ -161,6 +161,9 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
    topic map — one screen, one colour language for progress. */
 .completed-challenge { padding: var(--space-md); color: var(--color-ink); background: var(--color-paper-3); border: var(--rule-hair) solid var(--mastery-3) !important; }
 .challenge-status { display: inline-block; margin-left: var(--space-xs); padding: 0.15rem 0.4rem; color: var(--mastery-ink-bright); background: var(--mastery-3); border-radius: var(--radius-none); font-size: var(--text-xs); font-weight: 700; }
+.daily-plan .welcome-back { color: var(--color-accent); font-size: var(--text-sm); }
+.daily-extra { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
+.daily-extra p { margin: 0; color: var(--color-neutral); font-size: var(--text-sm); }
 .daily-plan .attempt-form { margin-bottom: 0; }
 .struggling-badge { color: var(--color-error); font-weight: 700; }
 .attempt-notes { margin: var(--space-2xs) 0 0; color: var(--color-neutral); font-size: var(--text-sm); }

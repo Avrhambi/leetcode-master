@@ -35,6 +35,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),
   `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet`; the review queue is fed the unfiltered catalog),
+  `cadence.ts` (practice profile — new/returning/regular/occasional — derived from attempt dates, never stored; only days before today count so the day's plan shape is stable),
   `skill.ts` (per-topic skill replayed from `attempts`, never stored; sets the plan's difficulty target),
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the

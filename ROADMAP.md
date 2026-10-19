@@ -38,7 +38,7 @@ up from there.
 | T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Done |
 | T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Done |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Done |
-| T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Todo |
+| T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Done |
 | T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Todo |
 | T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Todo |
 | T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Todo |
@@ -682,10 +682,22 @@ Each session fills in its own entry in its PR.
 - Follow-ups: T4 adds the remaining personas and cadences. `topicMastery`'s diluted mean still drives topic priority and the map; revisit if priority should follow skill.
 
 ### T4
-- Status / PR / date:
+- Status / PR / date: Done · 2026-10-19 · pushed from `claude/leetcode-master-roadmap-znri4s`
 - What shipped:
+  - `cadence.ts` (+ tests): profile `new` / `returning` / `regular` / `occasional` derived from attempt dates. Only days *before* today count, so the plan's shape doesn't change when the first attempt of the day is logged.
+  - `dueReviewQueue` ranks within a quality by overdue ratio (days overdue ÷ the interval it was scheduled for). The daily plan and the review queue panel both use it.
+  - Returning: re-entry plan (up to 3 reviews + exactly 1 new problem, from a topic with skill) and a "Welcome back" banner. The backlog stays in the review queue.
+  - Occasional: new problems strictly core-first across topics (nc75, then the rest of nc150, then the rest), and a milder recent-topic penalty (0.7 vs 0.35).
+  - Regular, or anyone with a fully logged plan and nothing due: a "One more problem" button (`selectExtraProblem`), stored as an ordinary `new` recommendation.
+  - Persona simulations (fast and typical learners × daily / 4 days a week / 2 days a week / 3 weeks + 14-day gap, 12 weeks each) in `dailyPlanSimulation.test.ts`.
 - Decisions & deviations:
+  - "Regular" is 4+ days a week on average over `min(28 days, history)`, i.e. 16 of 28 days once there's a month of history. The fixed 16-of-28 rule made a *daily* newcomer count as occasional for two weeks (it broke the T3 difficulty targets in simulation), so it was replaced.
+  - No schema change, no new persisted field. `DailyPlanItem` and `RecommendationEvent.kind` are unchanged.
+  - The "never more than four items" target is for the automatic plan. "One more problem" is an explicit user action and may take it to 5+.
+  - The T4 backlog assertion became a baseline report (printed by the last persona test), because T11 owns the bound.
 - Follow-ups:
+  - **Baseline for T11.** Due-review backlog after 12 simulated weeks, typical learner: daily max 66 (end 66), 4 days/week max 40 (end 40), 2 days/week max 20 (end 16), gap-then-resume max 46 (end 46). The backlog grows without bound for a daily user, so T11's "backlog stays bounded" target needs real work, not just late-recall credit.
+  - QA note: Dexie live queries refresh one at a time, so a page that's open while history is written briefly plans from half-updated data. The same-day replay hides it in normal use.
 
 ### T11
 - Status / PR / date:

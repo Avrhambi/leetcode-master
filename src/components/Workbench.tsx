@@ -8,6 +8,7 @@ import { SidePanel, type Panel } from './SidePanel';
 import { ProblemDetail } from './ProblemDetail';
 import { DailyPlan } from './DailyPlan';
 import { Overlay } from './Overlay';
+import type { CadenceProfile } from '../services/cadence';
 import type { AppSetting, Attempt, CatalogProblem, ProblemProgress, ProgressStatus } from '../types/models';
 
 interface WorkbenchProps {
@@ -21,6 +22,8 @@ interface WorkbenchProps {
   settings: AppSetting[];
   planItems: DailyPlanItem[];
   completedProblemIds: Set<string>;
+  profile: CadenceProfile;
+  onAddExtra: (() => Promise<void>) | undefined;
   onSkip: (item: DailyPlanItem) => Promise<void>;
 }
 
@@ -46,7 +49,7 @@ function graceStateFrom(settings: AppSetting[]): StreakGraceState {
 // The single screen: XP strip, a search box, the tiered topic map (with the
 // bare-minimum stats above it and a side panel for a topic's problems, the
 // search results, or one problem's detail), today's plan, badge shelf.
-export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, planItems, completedProblemIds, onSkip }: WorkbenchProps) {
+export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, planItems, completedProblemIds, profile, onAddExtra, onSkip }: WorkbenchProps) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -186,6 +189,8 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
       <DailyPlan
         items={planItems}
         completedProblemIds={completedProblemIds}
+        profile={profile}
+        onAddExtra={onAddExtra}
         onSkip={onSkip}
         onOpenProblem={(problem) => {
           setChallengeOpen(false);
