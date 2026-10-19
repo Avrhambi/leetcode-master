@@ -89,6 +89,9 @@ Do not add a dependency without asking first, and explain why existing code can'
 
 ## Automation
 
+`.github/workflows/ci.yml` runs `npm ci` then `npm run verify` on every pull request and on pushes to
+`master`, using Node 22.12.
+
 `.claude/settings.json` runs `.claude/hooks/lint-edited.py` after every Edit/Write: eslint
 on **just the edited file**, then `tsc -b` across the project (TypeScript can't check one
 file in isolation). Non-`.ts`/`.tsx` edits skip both and exit immediately. If the payload

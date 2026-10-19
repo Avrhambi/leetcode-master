@@ -34,7 +34,7 @@ up from there.
 
 | ID | Task | Depends on | Can run in parallel with | Status |
 |----|------|-----------|--------------------------|--------|
-| T0 | CI + dependency hygiene | — | T1, T7 | Todo |
+| T0 | CI + dependency hygiene | — | T1, T7 | Done |
 | T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Todo |
 | T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Todo |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Todo |
@@ -658,10 +658,10 @@ your task ID. Don't implement them.
 Each session fills in its own entry in its PR.
 
 ### T0
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done / pushed straight to `master` at the owner's request / 2026-10-19
+- What shipped: `.github/workflows/ci.yml` (PR + push to `master`: Node 22.12, `npm ci`, `npm run verify`). Every `"latest"` in `package.json` is now a caret range at the version the lockfile already resolved (no upgrades). `@vitejs/plugin-react` moved to `devDependencies`. `jsdom` removed as a direct dev dependency. `engines.node >=22.12` added. Lockfile regenerated with `--package-lock-only`; no resolved versions changed.
+- Decisions & deviations: `jsdom` still appears in the lockfile as an optional peer of `vitest`; it is not installed as a direct dependency. The workflow could not be run before the push, so its first green run on GitHub is the remaining check.
+- Follow-ups: confirm the first Actions run on `master` is green.
 
 ### T1
 - Status / PR / date:
