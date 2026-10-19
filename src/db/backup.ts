@@ -54,7 +54,7 @@ function isGamificationState(value: unknown): value is GamificationState {
 
 export function validateBackupPayload(value: unknown): BackupPayload {
   if (!isRecord(value) || (value.formatVersion !== 1 && value.formatVersion !== 2 && value.formatVersion !== 3) || !isString(value.exportedAt) || !Array.isArray(value.progress) || !Array.isArray(value.attempts) || !Array.isArray(value.recommendationEvents) || !Array.isArray(value.settings) || !value.progress.every(isProgress) || !value.attempts.every(isAttempt) || !value.recommendationEvents.every(isRecommendationEvent) || !value.settings.every(isSetting) || (value.gamification !== undefined && !isGamificationState(value.gamification)) || (value.catalogVersion !== undefined && !isString(value.catalogVersion)) || (value.appVersion !== undefined && !isString(value.appVersion))) {
-    throw new Error('This file is not a valid LeetCode Tracker backup.');
+    throw new Error('This file is not a valid LeetCode Master backup.');
   }
   return value as unknown as BackupPayload;
 }

@@ -82,7 +82,7 @@ export function Settings() {
   };
 
   return <section className="settings"><div className="section-heading"><div><p className="eyebrow">Your data</p><h2>Settings</h2></div></div>
-    <p className="settings-note">LeetCode Tracker is local-first. Your practice history stays in this browser.</p>
+    <p className="settings-note">LeetCode Master is local-first. Your practice history stays in this browser.</p>
     <article><h3>Problem set</h3><p>Choose how much of the catalog to practise. Your history is kept when you switch; problems outside the set are hidden and not recommended, but any already due for review stay in the review queue.</p><ProblemSetPicker value={parseProblemSet(storedSet?.value)} counts={counts} onChange={(set) => void saveProblemSet(set)} /></article>
     <article><h3>Storage</h3><p role="status">{persistenceText} Export a backup regularly. {lastBackupLabel(lastBackup?.value, localDate())}.</p></article>
     <article><h3>Export backup</h3><p>Download all local study data as JSON.</p><button type="button" onClick={() => void exportBackup()}>Export JSON</button></article>
