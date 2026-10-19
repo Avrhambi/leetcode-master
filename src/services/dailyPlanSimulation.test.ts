@@ -7,6 +7,7 @@ import { progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
 import { TOPIC_TIERS } from '../data/topicTiers';
 import { problemsInSet } from './problemSet';
+import { minutesEstimator, planMinutes } from './sessionTime';
 import type { Attempt, CatalogProblem, PerceivedDifficulty, ProblemList, ProblemProgress, Quality, RecommendationEvent } from '../types/models';
 
 function attemptRow(problem: CatalogProblem, quality: Quality, now: Date, day: number): Attempt {
@@ -249,7 +250,7 @@ interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: 
 // Strong solves of an Easy feel easy; everything else feels manageable.
 const perceivedFor = (problem: CatalogProblem, quality: Quality): PerceivedDifficulty => (quality === 'strong' && problem.difficulty === 'easy' ? 'easy' : 'manageable');
 
-function runPersona(active: (day: number) => boolean, qualityOf: (problem: CatalogProblem, day: number) => Quality, days = 84) {
+function runPersona(active: (day: number) => boolean, qualityOf: (problem: CatalogProblem, day: number) => Quality, days = 84, sessionMinutes: number | null = null) {
   const problems = problemsInSet(catalog, 'nc250');
   const progress = new Map<string, ProblemProgress>();
   const events: RecommendationEvent[] = [];
@@ -260,7 +261,7 @@ function runPersona(active: (day: number) => boolean, qualityOf: (problem: Catal
     const now = new Date(2026, 6, 1 + day, 12);
     backlog.push(dueReviewQueue(problems, [...progress.values()], now).length);
     if (!active(day)) continue;
-    const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, now });
+    const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, sessionMinutes, now });
     records.push({ day, now, plan, dueBefore: backlog[day] });
     for (const item of plan) {
       const quality = qualityOf(item.problem, day);
@@ -475,5 +476,29 @@ describe('T5 reinforcement (warm-up for a repeatedly failed problem)', () => {
     log(medium, 'strong', 12);
     expect(progress.get(medium.id)?.struggling).toBe(false);
     expect(warmUpsFor(13)).toHaveLength(0);
+  });
+});
+
+describe('time budget keeps the backlog bounded over a year', () => {
+  // Measured (default minutes, no logged durations): backlog max 20 / 15 / 16 at 30 min
+  // and 19 / 22 / 15 at 45 min (daily / 4 days / 2 days a week); 75 / 50 / 34 and
+  // 84 / 51 / 39 problems solved in the year.
+  it('typical learner on a 30 or 45 minute budget: plans fit the budget, keep a new problem, and the due backlog stays at or under 30', { timeout: 120000 }, () => {
+    const rows: string[] = [];
+    const minutes = minutesEstimator([], catalog, '2026-01-01');
+    for (const budget of [30, 45]) {
+      for (const name of ['daily', 'fourDaysAWeek', 'twoDaysAWeek']) {
+        const { backlog, records, progress } = runPersona(CADENCES[name], typicalQuality, 364, budget);
+        for (const { day, plan, dueBefore } of records) {
+          if (plan.length > 1) expect(planMinutes(plan, minutes), `${budget}/${name} day ${day}`).toBeLessThanOrEqual(budget);
+          expect(plan.length, `${budget}/${name} day ${day}`).toBeLessThanOrEqual(4);
+          if (dueBefore < REVIEW_OVERLOAD_DUE) expect(plan.some((item) => item.kind === 'new'), `${budget}/${name} day ${day}`).toBe(true);
+        }
+        const solved = [...progress.values()].filter((row) => row.status === 'solved' || row.status === 'mastered').length;
+        rows.push(`${budget} min / ${name}: backlog max ${Math.max(...backlog)}, ${solved} solved in a year`);
+        expect(Math.max(...backlog), `${budget}/${name}`).toBeLessThanOrEqual(30);
+      }
+    }
+    console.log(`BUDGET REPORT\n${rows.join('\n')}`);
   });
 });

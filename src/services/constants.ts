@@ -228,6 +228,20 @@ export const REVIEW_OVERLOAD_SLOTS = 4;
 // finishing a topic's ceiling instead of hopping between topics.
 export const OCCASIONAL_RECENT_TOPIC_PENALTY = 0.7;
 
+// Session time (see sessionTime.ts). Expected minutes per plan item before the
+// user has logged their own durations: a review re-solves a problem already
+// seen, so it is quicker than a first solve. Once SESSION_CALIBRATION_MIN_SAMPLES
+// durations are logged for a (new / review, difficulty) pair, the median of the
+// last SESSION_CALIBRATION_WINDOW replaces the default.
+export const SESSION_DEFAULT_MINUTES = {
+  new: { easy: 20, medium: 35, hard: 50 },
+  review: { easy: 10, medium: 20, hard: 30 }
+} as const;
+export const SESSION_CALIBRATION_MIN_SAMPLES = 3;
+export const SESSION_CALIBRATION_WINDOW = 10;
+// The time budgets on offer ("I have 30 / 45 / 60 minutes"). No budget is the default.
+export const SESSION_BUDGET_OPTIONS = [30, 45, 60] as const;
+
 // Days without a backup before the side panel quietly suggests one. With no
 // backup on record the clock starts at the first attempt, so a new user is not
 // nagged on day one.

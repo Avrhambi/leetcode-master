@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dueReviewQueue, selectDailyPlan } from './dailyPlan';
+import { dueReviewQueue, reviewsUntilNewProblems, selectDailyPlan } from './dailyPlan';
+import { minutesEstimator, planMinutes } from './sessionTime';
 import { catalog } from '../data/catalog';
 import type { CatalogProblem, ProblemProgress, RecommendationEvent } from '../types/models';
 
@@ -141,5 +142,51 @@ describe('daily plan selection', () => {
     const stored = plan.map((item) => event(item.problem.id, item.kind, now.toISOString()));
     const later = selectDailyPlan({ problems: catalog, progress: due(10), recommendationEvents: stored, now });
     expect(later.map((item) => item.problem.id)).toEqual(plan.map((item) => item.problem.id));
+  });
+});
+
+describe('time budget', () => {
+  const minutes = minutesEstimator([], catalog, '2026-07-19');
+  const due = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'strong' }));
+
+  it('trims a fresh plan to the budget, keeping its new problem', () => {
+    const open = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: [], now });
+    const budgeted = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: [], sessionMinutes: 30, now });
+    expect(planMinutes(open, minutes)).toBeGreaterThan(30);
+    expect(planMinutes(budgeted, minutes)).toBeLessThanOrEqual(30);
+    expect(budgeted.some((item) => item.kind === 'new')).toBe(true);
+    expect(budgeted.filter((item) => item.kind === 'new').every((item) => open.some((other) => other.problem.id === item.problem.id))).toBe(true);
+  });
+  it('is the same plan as before when no budget is set', () => {
+    const input = { problems: catalog, progress: due(4), recommendationEvents: [], now };
+    expect(selectDailyPlan({ ...input, sessionMinutes: null })).toEqual(selectDailyPlan(input));
+  });
+  it('does not top a stored plan up past the budget, and never drops a stored item', () => {
+    const plan = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: [], sessionMinutes: 30, now });
+    const stored = plan.map((item) => event(item.problem.id, item.kind, now.toISOString()));
+    const ids = (items: { problem: { id: string } }[]) => items.map((item) => item.problem.id).sort();
+    expect(ids(selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: stored, sessionMinutes: 30, now }))).toEqual(ids(plan));
+    // A stored "one more problem" stays even though it takes the plan over budget.
+    const extra = catalog.find((problem) => problem.difficulty === 'hard' && !plan.some((item) => item.problem.id === problem.id))!;
+    const withExtra = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: [...stored, event(extra.id, 'new', now.toISOString())], sessionMinutes: 30, now });
+    expect(withExtra.map((item) => item.problem.id)).toContain(extra.id);
+  });
+  it('counts the reviews left to clear before new problems come back', () => {
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(11), recommendationEvents: [], now })).toBe(0);
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(12), recommendationEvents: [], now })).toBe(1);
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(15), recommendationEvents: [], now })).toBe(4);
+    const skipped = event(catalog[0].id, 'review', now.toISOString(), new Date(2026, 6, 20, 12).toISOString());
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(15), recommendationEvents: [skipped], now })).toBe(3);
+  });
+  it('re-plans the rest of the day after the budget changes, keeping what was logged', () => {
+    const before = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: [], now });
+    const morning = new Date(2026, 6, 19, 9).toISOString();
+    const stored = before.map((item, index) => ({ ...event(item.problem.id, item.kind, morning), completedAt: index === 0 ? morning : null }));
+    const resetAt = new Date(2026, 6, 19, 11).toISOString();
+    const after = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: stored, sessionMinutes: 30, planResetAt: resetAt, now });
+    expect(after.map((item) => item.problem.id)).toContain(before[0].problem.id);
+    expect(after.length).toBeLessThan(before.length);
+    // Without a reset the stored plan is replayed as before.
+    expect(selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: stored, sessionMinutes: 30, now })).toHaveLength(before.length);
   });
 });
