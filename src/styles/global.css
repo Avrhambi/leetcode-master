@@ -173,6 +173,12 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .completed-challenge { padding: var(--space-md); color: var(--color-ink); background: var(--color-paper-3); border: var(--rule-hair) solid var(--mastery-3) !important; }
 .challenge-status { display: inline-block; margin-left: var(--space-xs); padding: 0.15rem 0.4rem; color: var(--mastery-ink-bright); background: var(--mastery-3); border-radius: var(--radius-none); font-size: var(--text-xs); font-weight: 700; }
 .daily-plan .welcome-back { color: var(--color-accent); font-size: var(--text-sm); }
+.session-budget { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); margin-top: var(--space-sm); color: var(--color-neutral); font-size: var(--text-sm); }
+.daily-plan .session-budget button { padding: var(--space-2xs) var(--space-sm); }
+.daily-plan .session-budget button[aria-pressed="true"] { color: var(--color-accent-ink); background: var(--color-accent); border-color: var(--color-accent); }
+.daily-plan .plan-time { color: var(--color-ink); font-size: var(--text-sm); }
+.daily-plan .review-note, .problem-detail .review-note { color: var(--color-ink); white-space: pre-wrap; }
+.review-note span { color: var(--color-accent); }
 .daily-extra { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
 .daily-extra p { margin: 0; color: var(--color-neutral); font-size: var(--text-sm); }
 .daily-plan .attempt-form { margin-bottom: 0; }

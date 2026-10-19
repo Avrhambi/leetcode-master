@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { persistRecommendations } from '../db/recommendations';
-import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from '../services/dailyPlan';
+import { dueReviewQueue, reviewsUntilNewProblems, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from '../services/dailyPlan';
+import { itemMinutes, minutesEstimator, parseSessionBudget, type SessionBudget } from '../services/sessionTime';
 import { cadenceFor, type CadenceProfile } from '../services/cadence';
 import { REVIEW_OVERLOAD_DUE } from '../services/constants';
 import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
@@ -22,6 +23,12 @@ export interface UseDailyPlanResult {
   // Present only when "One more problem" is on offer: every item is logged and
   // the user is either regular or has no reviews left due.
   addExtra: (() => Promise<void>) | undefined;
+  // Expected minutes for one plan item (calibrated from durations logged before today).
+  minutesOf: (item: DailyPlanItem) => number;
+  // Due reviews still to clear before new problems come back (0 when not paused).
+  reviewsUntilNew: number;
+  // The stored time budget (`null` = none).
+  budget: SessionBudget | null;
 }
 
 // Owns the adaptive daily plan: selection, the once-per-day persistence of the
@@ -40,7 +47,16 @@ export function useDailyPlan(
   attempts: Attempt[] | undefined,
   allProblems: CatalogProblem[] | undefined
 ): UseDailyPlanResult {
-  const recommendationEvents = useLiveQuery(() => db.recommendationEvents.toArray(), []);
+  // Events, the budget and its reset time are read in one live query so a plan
+  // is never computed from a mix of old and new values.
+  const snapshot = useLiveQuery(async () => ({
+    recommendationEvents: await db.recommendationEvents.toArray(),
+    budget: parseSessionBudget((await db.settings.get('sessionMinutes'))?.value),
+    planResetAt: (await db.settings.get('planResetAt'))?.value ?? null
+  }), []);
+  const recommendationEvents = snapshot?.recommendationEvents;
+  const sessionMinutes = snapshot?.budget ?? null;
+  const planResetAt = snapshot?.planResetAt ?? null;
   const [dayRefresh, setDayRefresh] = useState(0);
 
   useEffect(() => {
@@ -51,14 +67,14 @@ export function useDailyPlan(
   }, [dayRefresh]);
 
   const planInput = problems && progress && attempts && allProblems && recommendationEvents
-    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems }
+    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems, sessionMinutes, planResetAt }
     : undefined;
   const plan = planInput ? selectDailyPlan(planInput) : undefined;
 
   useEffect(() => {
-    if (plan) void persistRecommendations(plan);
+    if (plan) void persistRecommendations(plan, new Date(), planResetAt);
     // `dayRefresh` is a dep so the plan is re-persisted after a midnight rollover.
-  }, [plan, dayRefresh]);
+  }, [plan, dayRefresh, planResetAt]);
 
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
@@ -76,8 +92,12 @@ export function useDailyPlan(
     && dueCount < REVIEW_OVERLOAD_DUE && (profile === 'regular' || dueCount === 0);
   const addExtra = offerExtra ? async () => {
     const extra = selectExtraProblem(planInput, plan);
-    if (extra) await persistRecommendations([{ problem: extra, kind: 'new' }]);
+    if (extra) await persistRecommendations([{ problem: extra, kind: 'new' }], new Date(), planResetAt);
   } : undefined;
 
-  return { plan, completedProblemIds, profile, addExtra };
+  const estimate = minutesEstimator(attempts ?? [], allProblems ?? [], localDay());
+  const minutesOf = (item: DailyPlanItem) => itemMinutes(item, estimate);
+  const reviewsUntilNew = planInput ? reviewsUntilNewProblems(planInput) : 0;
+
+  return { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, budget: sessionMinutes };
 }

@@ -13,6 +13,7 @@ import { seedCatalog } from './db/seedCatalog';
 import { useDailyPlan } from './hooks/useDailyPlan';
 import { useGamification } from './hooks/useGamification';
 import { parseProblemSet, problemsInSet, PROBLEM_SETS } from './services/problemSet';
+import { saveSessionBudget } from './db/sessionBudget';
 import { streakEndingOn, weeklyStreakEndingOn } from './services/streak';
 import type { ProblemList } from './types/models';
 
@@ -37,7 +38,7 @@ export default function App() {
   const problemSet = parseProblemSet(storedSet);
   const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet) : undefined), [allProblems, problemSet]);
 
-  const { plan, completedProblemIds, profile, addExtra } = useDailyPlan(problems, progress, attempts, allProblems);
+  const { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, budget: sessionBudget } = useDailyPlan(problems, progress, attempts, allProblems);
   const gamification = useGamification();
 
   const seed = () => {
@@ -86,6 +87,10 @@ export default function App() {
       completedProblemIds={completedProblemIds}
       profile={profile}
       onAddExtra={addExtra}
+      minutesOf={minutesOf}
+      reviewsUntilNew={reviewsUntilNew}
+      sessionBudget={sessionBudget}
+      onBudgetChange={saveSessionBudget}
       onSkip={(item) => skipRecommendation(item.problem.id, item.kind)}
     />
     {settingsOpen && <SettingsOverlay onClose={() => setSettingsOpen(false)} />}
