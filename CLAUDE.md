@@ -104,6 +104,8 @@ Do not add a dependency without asking first, and explain why existing code can'
 
 ## Automation
 
+`.github/workflows/deploy.yml` runs `npm ci` + `npm run verify` on every push to `master`, then publishes `dist/` to GitHub Pages (needs Settings → Pages → Source: GitHub Actions).
+
 `.github/workflows/ci.yml` runs `npm ci` then `npm run verify` on Node 22.12. It is currently disabled
 (manual `workflow_dispatch` only); restore the `pull_request` and `push` triggers to re-enable it.
 
