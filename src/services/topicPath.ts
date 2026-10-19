@@ -16,6 +16,18 @@ import type { TopicTier } from '../data/topicTiers';
 export const VIEW_W = 200;
 export const VIEW_H = 100;
 
+// The two route shapes. `wide` is the desktop map: 3 legs of 6, scaled to fit its
+// box. `portrait` is the phone map: 6 legs of 3 in a tall, narrow viewBox drawn
+// at the box's full width (it scrolls vertically inside its own box), because
+// the wide shape squeezed into a phone's width shrinks the labels to ~4px.
+// `waves` is how many sine periods a leg spans: a full period puts every node of
+// a 3-node leg on the centre line, so the portrait legs use half a period to keep
+// the trail curving. It is negative so the middle node rises toward its own label
+// (above) instead of dipping into the edge nodes' labels (below).
+export interface PathShape { viewW: number; viewH: number; legs: number; waves: number }
+export const WIDE_SHAPE: PathShape = { viewW: VIEW_W, viewH: VIEW_H, legs: 3, waves: 1 };
+export const PORTRAIT_SHAPE: PathShape = { viewW: 100, viewH: 180, legs: 6, waves: -0.5 };
+
 export interface PathNode {
   topic: string;
   tier: TopicTier;
@@ -45,7 +57,6 @@ export interface PathNode {
 // curriculum stays legible in a wide, short box. Nodes ride a sine wave across
 // each leg so the path reads as a hand-drawn route rather than a row of dots —
 // this is the whole point of leaving the grid behind.
-const LEGS = 3;
 const AMPLITUDE = 4.5;
 const MARGIN_X = 12;
 // Labels alternate above and below their node, and the wave can push a node a
@@ -54,31 +65,32 @@ const MARGIN_X = 12;
 const MARGIN_TOP = 12 + AMPLITUDE;
 const MARGIN_BOTTOM = 12 + AMPLITUDE;
 
-export function layoutPath(topics: { topic: string; tier: TopicTier }[]): PathNode[] {
+export function layoutPath(topics: { topic: string; tier: TopicTier }[], shape: PathShape = WIDE_SHAPE): PathNode[] {
   const count = topics.length;
   if (count === 0) return [];
 
-  const perLeg = Math.ceil(count / LEGS);
-  const legHeight = (VIEW_H - MARGIN_TOP - MARGIN_BOTTOM) / Math.max(1, LEGS - 1);
+  const { viewW, viewH, legs, waves } = shape;
+  const perLeg = Math.ceil(count / legs);
+  const legHeight = (viewH - MARGIN_TOP - MARGIN_BOTTOM) / Math.max(1, legs - 1);
 
   return topics.map((entry, index) => {
     const leg = Math.floor(index / perLeg);
     const withinLeg = index % perLeg;
     // How many nodes this leg actually holds (the last leg may be short).
     const legCount = Math.min(perLeg, count - leg * perLeg);
-    const span = VIEW_W - MARGIN_X * 2;
+    const span = viewW - MARGIN_X * 2;
     // A single-node leg sits at the start of its direction rather than dividing
     // by zero.
     const t = legCount === 1 ? 0 : withinLeg / (legCount - 1);
     // Serpentine: odd legs run right-to-left, so the trail is continuous.
     const forward = leg % 2 === 0;
     const x = MARGIN_X + (forward ? t : 1 - t) * span;
-    const y = MARGIN_TOP + leg * legHeight + Math.sin(t * Math.PI * 2) * AMPLITUDE;
+    const y = MARGIN_TOP + leg * legHeight + Math.sin(t * Math.PI * 2 * waves) * AMPLITUDE;
 
     // A label centred on an edge node overflows the viewBox; anchor it inward.
     // EDGE_BAND is how close to a margin counts as "at the edge".
     const EDGE_BAND = span * 0.12;
-    const anchor: PathNode['anchor'] = x <= MARGIN_X + EDGE_BAND ? 'start' : x >= VIEW_W - MARGIN_X - EDGE_BAND ? 'end' : 'middle';
+    const anchor: PathNode['anchor'] = x <= MARGIN_X + EDGE_BAND ? 'start' : x >= viewW - MARGIN_X - EDGE_BAND ? 'end' : 'middle';
     const labelDx = anchor === 'start' ? 1.5 : anchor === 'end' ? -1.5 : 0;
 
     return {

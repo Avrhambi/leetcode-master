@@ -1,6 +1,16 @@
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { TopicMasteryCell } from '../services/mastery';
 import { TIER_LABELS, topicTier, type TopicTier } from '../data/topicTiers';
-import { layoutPath, trackPath, VIEW_H, VIEW_W, type PathNode } from '../services/topicPath';
+import { layoutPath, PORTRAIT_SHAPE, trackPath, WIDE_SHAPE, type PathNode } from '../services/topicPath';
+
+// Phones get the portrait route (same breakpoint as the rest of the layout).
+const PHONE_QUERY = '(max-width: 45rem)';
+function subscribePhone(onChange: () => void): () => void {
+  const query = window.matchMedia(PHONE_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+const isPhone = () => window.matchMedia(PHONE_QUERY).matches;
 
 interface TopicMapProps {
   cells: TopicMasteryCell[];
@@ -68,7 +78,8 @@ function Node({ node, cell, struggling, selected, onSelect }: {
     }}
   >
     {/* Hit area — comfortably larger than the drawn node. */}
-    <circle className="path-node-hit" cx={node.x} cy={node.y} r={radius + 4} />
+    {/* Generous invisible hit area: on a phone the scaled map makes the visible ring ~20px. */}
+    <circle className="path-node-hit" cx={node.x} cy={node.y} r={radius + 7} />
     <circle className="path-node-track" cx={node.x} cy={node.y} r={radius + 1.4} />
     {/* The progress ring: stroke-dasharray draws the mastered fraction, rotated
         to start at 12 o'clock. */}
@@ -92,7 +103,9 @@ function Node({ node, cell, struggling, selected, onSelect }: {
 }
 
 export function TopicMap({ cells, strugglingTopics, selectedTopic, onSelectTopic }: TopicMapProps) {
-  if (cells.length === 0) return null;
+  const portrait = useSyncExternalStore(subscribePhone, isPhone, () => false);
+  const shape = portrait ? PORTRAIT_SHAPE : WIDE_SHAPE;
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Walk the topics tier by tier, keeping catalog order inside each tier — the
   // same ordering the previous bands used, now expressed as one continuous route.
@@ -101,7 +114,7 @@ export function TopicMap({ cells, strugglingTopics, selectedTopic, onSelectTopic
     for (const cell of cells) if (topicTier(cell.topic) === tier) ordered.push({ topic: cell.topic, tier });
   }
 
-  const nodes = layoutPath(ordered);
+  const nodes = layoutPath(ordered, shape);
   const cellByTopic = new Map(cells.map((cell) => [cell.topic, cell]));
   const track = trackPath(nodes);
 
@@ -116,6 +129,17 @@ export function TopicMap({ cells, strugglingTopics, selectedTopic, onSelectTopic
   const progress = nodes.length < 2 ? 0 : Math.max(0, lastTouched) / (nodes.length - 1);
   const clearedTopics = cells.filter((cell) => cell.proficient).length;
 
+  // The portrait route is taller than its box and scrolls; open it at the
+  // furthest stop the user has reached rather than always at the top.
+  const focusY = nodes[Math.max(0, lastTouched)]?.y ?? 0;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!portrait || !canvas) return;
+    canvas.scrollTop = Math.max(0, (focusY / shape.viewH) * canvas.scrollHeight - canvas.clientHeight / 2);
+  }, [portrait, focusY, shape.viewH]);
+
+  if (cells.length === 0) return null;
+
   return <section className="topic-map" aria-labelledby="topic-map-heading">
     <div className="topic-map-head">
       <p className="eyebrow" id="topic-map-heading">The route</p>
@@ -123,11 +147,11 @@ export function TopicMap({ cells, strugglingTopics, selectedTopic, onSelectTopic
         <b>{clearedTopics}</b> of <b>{cells.length}</b> topics proficient · follow the trail, pick a stop to see its problems
       </p>
     </div>
-    <div className="topic-map-canvas">
+    <div className={`topic-map-canvas${portrait ? ' portrait' : ''}`} ref={canvasRef}>
       <svg
-        viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+        viewBox={`0 0 ${shape.viewW} ${shape.viewH}`}
         preserveAspectRatio="xMidYMid meet"
-        className="topic-path"
+        className={`topic-path${portrait ? ' portrait' : ''}`}
         role="group"
         aria-label="Topic route"
       >
@@ -144,7 +168,7 @@ export function TopicMap({ cells, strugglingTopics, selectedTopic, onSelectTopic
           // Opposite the node's own label. Clamp the y so a gate on a low leg
           // cannot slip past the viewBox bottom edge, and share the node's
           // horizontal anchor so an edge-node gate does not overflow either.
-          const gateY = node.labelBelow ? node.y - 8.5 : Math.min(node.y + 10.5, VIEW_H - 2.5);
+          const gateY = node.labelBelow ? node.y - 8.5 : Math.min(node.y + 10.5, shape.viewH - 2.5);
           return (
             <text
               key={`gate-${node.tier}`}
