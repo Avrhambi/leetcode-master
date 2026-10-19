@@ -183,6 +183,7 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .badge-difficulty.easy { color: var(--color-success); }
 .badge-difficulty.medium { color: var(--color-warning); }
 .badge-difficulty.hard { color: var(--color-error); }
+.badge-list { color: var(--color-accent); }
 /* Not started → Weak → Mid → Mastered is a ladder, so it gets the same monotone
    --mastery-* ramp the topic map uses; amber-then-green would read as bad/good
    and speak the same concept in a second colour language on one screen. */

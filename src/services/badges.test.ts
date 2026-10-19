@@ -4,7 +4,7 @@ import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
 
 const problem = (id: string, primaryTopic: string): CatalogProblem => ({
   id, title: id, slug: id, leetcodeUrl: `https://leetcode.com/problems/${id}/`,
-  difficulty: 'easy', topics: [primaryTopic], primaryTopic, neetcodeOrder: 0
+  difficulty: 'easy', topics: [primaryTopic], primaryTopic, neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 0
 });
 
 const prog = (problemId: string, status: ProblemProgress['status']): ProblemProgress => ({

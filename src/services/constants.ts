@@ -74,10 +74,10 @@ export const BADGES = [
   // Mastery
   { id: 'topic-cleared', label: 'Topic cleared', hint: 'Reach mastered on every problem in one topic.' },
   { id: 'five-topics-cleared', label: 'Five topics cleared', hint: 'Reach mastered on every problem in five topics.' },
-  { id: 'all-mastered', label: 'All mastered', hint: 'Reach mastered on all 150 problems.' },
+  { id: 'all-mastered', label: 'All mastered', hint: 'Reach mastered on every problem in the catalog.' },
   // Volume
-  { id: 'half-catalog', label: 'Halfway', hint: 'Attempt 75 of the 150 problems.' },
-  { id: 'century', label: 'Century', hint: 'Attempt 100 of the 150 problems.' },
+  { id: 'half-catalog', label: 'Halfway', hint: 'Attempt 75 problems from the catalog.' },
+  { id: 'century', label: 'Century', hint: 'Attempt 100 problems from the catalog.' },
   // Level
   { id: 'level-5', label: 'Level 5', hint: 'Reach level 5.' },
   { id: 'level-10', label: 'Level 10', hint: 'Reach level 10.' }

@@ -1,5 +1,6 @@
 import type { CatalogProblem, ProblemProgress, ProgressStatus } from '../types/models';
 import { STATUS_HINTS, STATUS_LABELS } from '../services/statusLabels';
+import { listTag } from '../services/coreRank';
 import { dueReviewQueue } from '../services/dailyPlan';
 
 // The panel opened beside the topic map, and the full-screen problem view.
@@ -43,6 +44,7 @@ function ProblemRow({ problem, status, showTopic, onSelect }: {
     </div>
     <div className="problem-meta">
       <span className={`badge badge-difficulty ${problem.difficulty}`}>{problem.difficulty}</span>
+      {listTag(problem) && <span className="badge badge-list" title={`In the NeetCode ${listTag(problem)}`}>{listTag(problem)}</span>}
       <span className={`badge badge-status status-${status}`} title={STATUS_HINTS[status]}>{STATUS_LABELS[status]}</span>
     </div>
   </li>;

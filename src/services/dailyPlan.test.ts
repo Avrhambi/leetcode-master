@@ -4,10 +4,10 @@ import { catalog } from '../data/catalog';
 import type { CatalogProblem, ProblemProgress, RecommendationEvent } from '../types/models';
 
 const problems: CatalogProblem[] = [
-  { id: 'a', title: 'A', slug: 'a', leetcodeUrl: 'https://leetcode.com/problems/a/', difficulty: 'easy', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeOrder: 1 },
-  { id: 'b', title: 'B', slug: 'b', leetcodeUrl: 'https://leetcode.com/problems/b/', difficulty: 'medium', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeOrder: 2 },
-  { id: 'c', title: 'C', slug: 'c', leetcodeUrl: 'https://leetcode.com/problems/c/', difficulty: 'hard', topics: ['Trees'], primaryTopic: 'Trees', neetcodeOrder: 3 },
-  { id: 'd', title: 'D', slug: 'd', leetcodeUrl: 'https://leetcode.com/problems/d/', difficulty: 'easy', topics: ['Trees'], primaryTopic: 'Trees', neetcodeOrder: 4 }
+  { id: 'a', title: 'A', slug: 'a', leetcodeUrl: 'https://leetcode.com/problems/a/', difficulty: 'easy', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 1 },
+  { id: 'b', title: 'B', slug: 'b', leetcodeUrl: 'https://leetcode.com/problems/b/', difficulty: 'medium', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 2 },
+  { id: 'c', title: 'C', slug: 'c', leetcodeUrl: 'https://leetcode.com/problems/c/', difficulty: 'hard', topics: ['Trees'], primaryTopic: 'Trees', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 3 },
+  { id: 'd', title: 'D', slug: 'd', leetcodeUrl: 'https://leetcode.com/problems/d/', difficulty: 'easy', topics: ['Trees'], primaryTopic: 'Trees', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 4 }
 ];
 const now = new Date(2026, 6, 19, 12);
 const progress = (problemId: string, changes: Partial<ProblemProgress>): ProblemProgress => ({ problemId, status: 'attempted', reviewStage: 0, nextReviewDate: null, lastAttemptDate: null, lastQuality: null, strongAttemptCount: 0, consecutiveWeak: 0, struggling: false, updatedAt: '', ...changes });

@@ -1,6 +1,6 @@
 # PatternPilot
 
-Local-first NeetCode 150 practice tracker. React 19 + TypeScript + Vite, Dexie/IndexedDB,
+Local-first NeetCode 250 practice tracker (NeetCode 75 / 150 flagged inside it). React 19 + TypeScript + Vite, Dexie/IndexedDB,
 plain CSS. No server, no auth, no network calls — all data lives in the browser.
 
 ## Commands
@@ -41,7 +41,8 @@ Do not add a dependency without asking first, and explain why existing code can'
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
   is JSON export/restore with `formatVersion` validation; `seedCatalog.ts` seeds the
   bundled catalog on first launch.
-- `src/data/` — `catalog.ts` + `neetcode150.json`: the 150-problem catalog (metadata +
+- `src/data/` — `catalog.ts` + `neetcode250.json`: the 250-problem catalog, each row flagged
+  `lists` ⊆ `nc75`/`nc150`/`nc250` (metadata +
   links only, **never problem text**). `topicTiers.ts` maps each topic to a curriculum
   tier. The `[INEFFECTIVE_DYNAMIC_IMPORT]` build warning for `catalog.ts` is known and benign.
 - `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers).

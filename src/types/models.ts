@@ -5,7 +5,8 @@ export type HelpType = 'small_hint' | 'pattern_identification' | 'pseudocode' | 
 export type Quality = 'strong' | 'partial' | 'weak';
 export type ProgressStatus = 'not_started' | 'attempted' | 'solved' | 'mastered';
 
-export interface CatalogProblem { id: string; title: string; slug: string; leetcodeUrl: string; difficulty: Difficulty; topics: string[]; primaryTopic: string; neetcodeOrder: number; }
+export type ProblemList = 'nc75' | 'nc150' | 'nc250';
+export interface CatalogProblem { id: string; title: string; slug: string; leetcodeUrl: string; difficulty: Difficulty; topics: string[]; primaryTopic: string; neetcodeOrder: number; neetcodeUrl: string; lists: ProblemList[]; }
 export interface ProblemProgress { problemId: string; status: ProgressStatus; reviewStage: 0 | 1 | 2 | 3 | 4 | 5; nextReviewDate: string | null; lastAttemptDate: string | null; lastQuality: Quality | null; strongAttemptCount: number; consecutiveWeak: number; struggling: boolean; updatedAt: string; }
 export interface Attempt { id: string; problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; quality: Quality; createdAt: string; }
 export interface RecommendationEvent { id: string; problemId: string; kind: 'new' | 'review'; recommendedAt: string; skippedUntil: string | null; completedAt?: string | null; }

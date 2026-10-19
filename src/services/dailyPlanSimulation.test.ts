@@ -58,7 +58,8 @@ describe('daily plan simulation over the real catalog', () => {
   });
 
   it('progresses to tier-2 and tier-3 topics once foundations are worked through', () => {
-    const { perDay } = simulate(90);
+    // 150 days: the 250 catalog has ~100 more tier-1 problems than the old 150, so tier 3 arrives later.
+    const { perDay } = simulate(150);
     const tiers = new Set(perDay.flat().filter((item) => item.kind === 'new').map((item) => TOPIC_TIERS[item.topic]));
     expect(tiers.has(2)).toBe(true);
     expect(tiers.has(3)).toBe(true);

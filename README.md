@@ -79,7 +79,7 @@ npm run verify   # lint, typecheck, tests, production build
 ```
 
 Requires Node.js 22.12+. Stack: React 19 + TypeScript + Vite, Dexie/IndexedDB,
-plain CSS. The 150-problem catalog is bundled — first launch seeds it and you're
+plain CSS. The NeetCode 250 catalog (with the 75 and 150 lists flagged inside it) is bundled — first launch seeds it and you're
 ready to go.
 
 See [`CLAUDE.md`](CLAUDE.md) for the architecture notes, invariants, and

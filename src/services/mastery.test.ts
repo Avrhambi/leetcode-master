@@ -3,9 +3,9 @@ import { masteryByTopic, strugglingProblems, topicTrajectory } from './mastery';
 import type { Attempt, CatalogProblem, ProblemProgress, Quality } from '../types/models';
 
 const problems: CatalogProblem[] = [
-  { id: 'a', title: 'A', slug: 'a', leetcodeUrl: '', difficulty: 'easy', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeOrder: 1 },
-  { id: 'b', title: 'B', slug: 'b', leetcodeUrl: '', difficulty: 'medium', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeOrder: 2 },
-  { id: 'c', title: 'C', slug: 'c', leetcodeUrl: '', difficulty: 'easy', topics: ['Trees'], primaryTopic: 'Trees', neetcodeOrder: 3 }
+  { id: 'a', title: 'A', slug: 'a', leetcodeUrl: '', difficulty: 'easy', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 1 },
+  { id: 'b', title: 'B', slug: 'b', leetcodeUrl: '', difficulty: 'medium', topics: ['Arrays'], primaryTopic: 'Arrays', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 2 },
+  { id: 'c', title: 'C', slug: 'c', leetcodeUrl: '', difficulty: 'easy', topics: ['Trees'], primaryTopic: 'Trees', neetcodeUrl: '', lists: ['nc250'], neetcodeOrder: 3 }
 ];
 
 let seq = 0;

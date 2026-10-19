@@ -35,7 +35,7 @@ up from there.
 | ID | Task | Depends on | Can run in parallel with | Status |
 |----|------|-----------|--------------------------|--------|
 | T0 | CI + dependency hygiene | — | T1, T7 | Done |
-| T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Todo |
+| T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Done |
 | T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Todo |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Todo |
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Todo |
@@ -664,10 +664,10 @@ Each session fills in its own entry in its PR.
 - Follow-ups: restore the `pull_request` and `push: branches: [master]` triggers in `ci.yml` to re-enable CI.
 
 ### T1
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done / pushed to `master` at the owner's request / 2026-10-19
+- What shipped: `src/data/neetcode250.json` replaces `neetcode150.json` (250 rows in neetcode.io order; `lists` flags: 75 `nc75`, 150 `nc150`, 250 `nc250`; `neetcodeSlug` per row). `CatalogProblem` gains `neetcodeUrl` and `lists`; `CATALOG_VERSION` = `neetcode-250-v1`. New `src/services/coreRank.ts` (`coreRank`: 0 = nc75, 1 = nc150 only, 2 = rest; `listTag`: "75" / "150" / null). `ProblemDetail` and `DailyPlan` show "Solve on NeetCode" plus a secondary "LeetCode" link (new tab, `rel="noreferrer"`) and a 75/150 tag (the side-panel rows carry the tag too); `DailyPlan` intro copy updated. Badge hints in `constants.ts` and the README catalog sentence made catalog-neutral. New `src/data/catalog.test.ts`: 250 / 150 / 75 counts, subset nesting, unique ids / urls / order, all 150 legacy ids still present and tagged `nc150`, every `primaryTopic` tiered and in `topics`, difficulty enum and URL shape, `coreRank` / `listTag`.
+- Decisions & deviations: **Source:** neetcode.io/practice is an Angular app, so I read the problem table out of its published JS bundle (parsed as data, not executed). It has `neetcode250` / `neetcode150` / `blind75` flags and `ncLink` per problem: exactly 250 / 150 / 75, nc75 ⊂ nc150 ⊂ nc250, no duplicate slugs. All 150 legacy ids are in it, tagged `nc150`. **Topic exceptions (not guessed):** neetcode.io files `generate-parentheses` under Backtracking and `reconstruct-itinerary` under Advanced Graphs; the old catalog had Stack and Graphs. I kept the existing `primaryTopic` for both so existing users' topic grouping doesn't shift; revisit if the owner wants neetcode.io's grouping. **No Dexie bump:** `problems` indexes are unchanged and `seedCatalog` re-`put`s on a `CATALOG_VERSION` change, so rows are rewritten in place; progress and attempts are keyed by the unchanged LeetCode slug. **Plan side effect:** until T2 adds the selector, the daily plan draws from all 250. `dailyPlanSimulation` "progresses to tier-2 and tier-3" horizon went 90 → 150 days (tier 3 arrives after 120-150 days now); no plan rule changed, T3/T4 own that behaviour. **QA:** old build (v4, 150 problems, one attempt written) → new build on the same origin: 250 problems, progress and attempt intact, Dexie still v4. Plan and detail links point to neetcode.io (`rel="noreferrer"`, `_blank`). Page never scrolls at 1280 and 700 px (map, daily-challenge modal, topic panel, problem detail). Problem pages weren't opened on neetcode.io; the slugs come from its own table.
+- Follow-ups: T2 should filter by `lists`. T3 / T4 / T6 use `coreRank`. Cosmetic: the `badge-list` tag uses the accent colour; T6 may restyle it.
 
 ### T2
 - Status / PR / date:
