@@ -648,6 +648,16 @@ minutes.
 
 ---
 
+## Phone layout fix (2026-10-19, owner request)
+- What shipped:
+  - The shell no longer overflows a phone. `main` has an explicit `minmax(0, 1fr)` column; before, the badge strip's max-content width made the app ~614 px wide on a 390 px screen, clipped on the right.
+  - Phone header: title + Settings on one row, XP and badge strips full width.
+  - Compact stats; an open side panel replaces the map; an open problem hides the stats and search.
+  - 44 px tap targets on touch screens (links, triggers, problem titles); larger invisible hit area on route stops.
+  - Portrait route on phones (`PORTRAIT_SHAPE` in `topicPath.ts`): labels went from ~4-6 px to ~10 px, stops from ~20 px to ~35 px. It scrolls inside its canvas and opens at the furthest stop reached.
+- QA (Chromium, production build): 320, 390, 768 and 1280 px wide. No page scroll and no element past the screen edge except the badge strip, which scrolls in its own box. No touch target under 32 px on phones. Every route stop reachable and tappable (Bit Manipulation, last stop, opens its panel). Desktop route unchanged. Tests: portrait layout bounds, the curve, and a label-collision check for both shapes.
+- Not covered: a phone held sideways (e.g. 844×390). It is wider than the breakpoint, so it gets the desktop layout, and the header and stats leave almost no room for the map. Not tested on a real phone, Safari or Firefox.
+
 ## Parking lot
 
 Ideas noticed during sessions that aren't in any task. Add one line each, with

@@ -81,8 +81,12 @@ Do not add a dependency without asking first, and explain why existing code can'
 - **The page never scrolls.** The shell is a fixed `100dvh` grid with `overflow:
   hidden` on `html`/`body`; anything that can grow scrolls inside its own box (the
   side panel, the full-screen problem view, a modal body). The topic map instead
-  *scales*: it is an SVG on a fixed viewBox, so it fits any box by construction and
-  needs no per-width tuning. Verify layout changes in a browser — `npm run verify`
+  *scales*: it is an SVG on a fixed viewBox, so it fits any box by construction. The
+  one exception is phones (≤ 720 px): the wide route shrinks to unreadable there, so
+  `TopicMap` switches to `PORTRAIT_SHAPE` (6 legs of 3), drawn at full width and
+  scrolling vertically inside its own canvas. Also on phones, `main` keeps an explicit
+  `minmax(0, 1fr)` column (an auto column grew to the badge strip's width), an open
+  side panel replaces the map, and an open problem hides the stats and search. Verify layout changes in a browser — `npm run verify`
   cannot see overflow, and "the page doesn't scroll" can pass while content is
   crushed, overlapping, or (for the map) scaled into illegibility.
 - **All animation sits behind `prefers-reduced-motion`.** The global rule in `global.css`
