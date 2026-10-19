@@ -11,6 +11,13 @@ export const STRUGGLE_THRESHOLD = 3;
 // every single day forever.
 export const STRUGGLE_BACKOFF_DAYS = [2, 4, 7] as const;
 
+// Reinforcement (warm-up) rules: a problem with this many consecutive weak
+// attempts (or flagged `struggling`) gets one easier warm-up in the daily plan.
+// A solved warm-up candidate must have rested this many days since its last
+// attempt, so it is not served two days in a row.
+export const REINFORCE_CONSECUTIVE_WEAK = 2;
+export const REINFORCE_MIN_GAP_DAYS = 2;
+
 // Review stage rules (see progressAfterAttempt). A strong recall at least
 // LATE_RECALL_GAP_RATIO x later than scheduled advances LATE_RECALL_STAGE_JUMP
 // stages. A first-ever independent solve that felt easy starts at

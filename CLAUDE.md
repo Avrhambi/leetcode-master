@@ -38,6 +38,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `cadence.ts` (practice profile — new/returning/regular/occasional — derived from attempt dates, never stored; only days before today count so the day's plan shape is stable),
   `skill.ts` (per-topic skill replayed from `attempts`, never stored; sets the plan's difficulty target),
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
+  `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.

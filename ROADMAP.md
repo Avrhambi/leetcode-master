@@ -40,7 +40,7 @@ up from there.
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Done |
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Done |
 | T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Done |
-| T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Todo |
+| T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Done |
 | T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Todo |
 | T7 | PWA: installable, offline, persistent storage | — | anything | Todo |
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Todo |
@@ -706,10 +706,10 @@ Each session fills in its own entry in its PR.
 - Follow-ups: T6's `stagesBeforeEach` replay must use these rules (it needs `perceivedDifficulty` and `attemptedOn` per attempt).
 
 ### T5
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done · 2026-10-19 · branch `claude/leetcode-master-roadmap-znri4s`
+- What shipped: new pure `src/services/reinforcement.ts` (`reinforcementTargets`, `selectReinforcement`, `warmUpTargetFor`) with `reinforcement.test.ts`; thresholds `REINFORCE_CONSECUTIVE_WEAK` (2) and `REINFORCE_MIN_GAP_DAYS` (2) in `constants.ts`. `DailyPlanItem` gains in-memory `reason?: 'reinforce'` and `reinforces?: CatalogProblem`. A problem that is `struggling` or has 2+ `consecutiveWeak` gets one warm-up per day: a solved easier problem in the same topic (hardest first), else a solved problem from a prerequisite topic (`topicGraph.ts`), else an unsolved same-topic Easy (core-first). `DailyPlan.tsx` shows "Warm-up · <title>" and "Builds toward <target>". A simulation case in `dailyPlanSimulation.test.ts` covers 3 failures on a Medium → same-topic Easy warm-up → none once the Medium is solved.
+- Decisions & deviations: **Slot rule:** the warm-up takes a new-problem slot when there are two (one new problem always remains), is added on top while the plan has room, and replaces the last review when the plan is already at 4. So the plan stays 2–4 items with ≥ 1 new problem, and the warm-up is not counted as a due review. **Stored as `new` or `review`:** a solved warm-up is stored as `review`, an unsolved Easy as `new`; no change to `RecommendationEvent.kind`, the schema or backups. **Reason is recomputed, so approximate on replay:** a stored item is labelled a warm-up when it is not a still-due review and relates to a struggling problem (easier same-topic, or a prerequisite-topic problem no harder, or a same-topic Easy); at most one item is labelled. A real easier same-topic review that has already been logged (so no longer due) can therefore be labelled a warm-up while a problem is struggling. Same-day replay keeps the stored items; when the target recovers mid-day the label goes and the plan may top up one new problem. **Rest rule:** a solved candidate attempted yesterday or today is skipped so it is not served two days running. **Only in-set problems** are candidates; skipped (24 h) problems are excluded. **QA** (Chromium, 1280 and 700 px): seeded a struggling 3Sum and a solved Valid Palindrome; the plan showed "Warm-up · Valid Palindrome / Builds toward 3Sum" (kept after reload), page never scrolled, no page errors.
+- Follow-ups: T6 may want a "comeback" reward when a struggling problem is finally solved. The "returning" cap of exactly one new problem can see two when the warm-up is an unsolved Easy (rare: nothing solved in that topic or its prerequisites).
 
 ### T6
 - Status / PR / date:

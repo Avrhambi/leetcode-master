@@ -5,10 +5,16 @@ import { cadenceFor, daysBetween, type CadenceProfile } from './cadence';
 import { FAILING_TOPIC_PRIORITY_PENALTY, OCCASIONAL_RECENT_TOPIC_PENALTY, RETURNING_MAX_REVIEW_SLOTS, SKILL_MEDIUM_THRESHOLD } from './constants';
 import { targetDifficulty, topicSkills } from './skill';
 import { prerequisitePenalty } from './topicGraph';
+import { selectReinforcement, warmUpTargetFor } from './reinforcement';
 
 export interface DailyPlanItem {
   problem: CatalogProblem;
   kind: 'new' | 'review';
+  // In-memory only (never persisted; `kind` stays new/review so backups stay
+  // compatible): `reinforce` marks the day's warm-up for the struggling problem
+  // in `reinforces`. Recomputed from progress on every plan, including replays.
+  reason?: 'reinforce';
+  reinforces?: CatalogProblem;
 }
 
 interface DailyPlanInput {
@@ -24,6 +30,7 @@ interface DailyPlanInput {
 }
 
 const MAX_REVIEW_STAGE = 5;
+const MAX_PLAN_ITEMS = 4;
 const QUALITY_RANK: Record<Quality, number> = { weak: 0, partial: 1, strong: 2 };
 const DIFFICULTY_ORDER = ['easy', 'medium', 'hard'] as const;
 
@@ -119,7 +126,7 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
 
   const dueReviews = dueReviewQueue(problems, progress, now).filter((entry) => !hiddenProblemIds.has(entry.problem.id));
 
-  const { reviewSlots, newSlots } = planSlots(dueReviews.length, profile);
+  const { newSlots } = planSlots(dueReviews.length, profile);
 
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayRecommendations = recommendationEvents.filter((event) => new Date(event.recommendedAt) >= startOfToday && event.skippedUntil === null);
@@ -135,7 +142,18 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
       .filter((item): item is DailyPlanItem => item.problem !== undefined)
       .sort((left, right) => left.kind.localeCompare(right.kind) || left.problem.neetcodeOrder - right.problem.neetcodeOrder);
 
-    const storedNew = plan.filter((item) => item.kind === 'new').length;
+    const dueIds = new Set(dueReviews.map((entry) => entry.problem.id));
+    for (const item of plan) {
+      const target = warmUpTargetFor(item.problem, item.kind, problems, progressByProblem, dueIds);
+      if (target) {
+        item.reason = 'reinforce';
+        item.reinforces = target;
+        break;
+      }
+    }
+
+    // The warm-up already holds a new-problem slot (see the fresh-plan branch).
+    const storedNew = plan.filter((item) => item.kind === 'new' || item.reason === 'reinforce').length;
     let target = plan.length + Math.max(0, newSlots - storedNew);
     if (target < 2) target = 2;
     if (target > 4) target = 4;
@@ -143,8 +161,21 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
     return plan;
   }
 
-  const plan: DailyPlanItem[] = dueReviews.slice(0, reviewSlots).map(({ problem }) => ({ problem, kind: 'review' as const }));
-  fillNewProblems(plan, plan.length + newSlots, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now);
+  // One warm-up for a struggling problem takes a slot of the plan: from the new
+  // slots when there are two (one new problem always remains), otherwise on top
+  // of the plan while it has room, otherwise in place of the last review.
+  const warmUp = selectReinforcement(problems, progressByProblem, hiddenProblemIds, localToday(now));
+  const queue = warmUp ? dueReviews.filter((entry) => entry.problem.id !== warmUp.problem.id) : dueReviews;
+  const slots = planSlots(queue.length, profile);
+  let reviewCount = slots.reviewSlots;
+  let newCount = slots.newSlots;
+  if (warmUp) {
+    if (newCount >= 2) newCount -= 1;
+    else if (reviewCount + newCount >= MAX_PLAN_ITEMS) reviewCount -= 1;
+  }
+  const plan: DailyPlanItem[] = queue.slice(0, reviewCount).map(({ problem }) => ({ problem, kind: 'review' as const }));
+  if (warmUp) plan.push({ problem: warmUp.problem, kind: warmUp.kind, reason: 'reinforce', reinforces: warmUp.target });
+  fillNewProblems(plan, plan.length + newCount, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now);
   return plan;
 }
 

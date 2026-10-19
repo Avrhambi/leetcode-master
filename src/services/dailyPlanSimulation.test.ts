@@ -420,3 +420,43 @@ describe('T11 review load (12 simulated weeks)', () => {
 });
 // Measured max over 12 weeks (typical, two days a week) is 21; baseline before T11 was 20, with no problem reaching mastery.
 const BACKLOG_BOUND_TWO_DAYS = 25;
+
+describe('T5 reinforcement (warm-up for a repeatedly failed problem)', () => {
+  // Real catalog, daily cadence. The learner has solved a few Easies in the
+  // topic, then fails one Medium three times in a row, then finally solves it.
+  const topic = 'Two Pointers';
+  const topicProblems = catalog.filter((problem) => problem.primaryTopic === topic);
+  const medium = topicProblems.find((problem) => problem.difficulty === 'medium') as CatalogProblem;
+  const easies = topicProblems.filter((problem) => problem.difficulty === 'easy');
+
+  it('serves a same-topic Easy warm-up after 3 failures, and stops once the Medium is no longer struggling', () => {
+    const problems = catalog;
+    const progress = new Map<string, ProblemProgress>();
+    const events: RecommendationEvent[] = [];
+    const attempts: Attempt[] = [];
+    const log = (item: CatalogProblem, quality: Quality, day: number) => {
+      const now = new Date(2026, 6, 1 + day, 12);
+      attempts.push(attemptRow(item, quality, now, day));
+      progress.set(item.id, { ...progressAfterAttempt(progress.get(item.id), quality, localDate(0, now), now.toISOString(), false, now), problemId: item.id });
+    };
+    easies.slice(0, 2).forEach((easy, index) => log(easy, 'strong', index));
+    for (let day = 3; day <= 5; day += 1) log(medium, 'weak', day);
+    expect(progress.get(medium.id)?.struggling).toBe(true);
+
+    const warmUpsFor = (day: number) => {
+      const now = new Date(2026, 6, 1 + day, 12);
+      return selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, now }).filter((item) => item.reason === 'reinforce');
+    };
+    // Day 12: both Easies have rested for days. Exactly one warm-up, an Easy in the same topic.
+    const [warmUp, ...rest] = warmUpsFor(12);
+    expect(rest).toHaveLength(0);
+    expect(warmUp.problem.primaryTopic).toBe(topic);
+    expect(warmUp.problem.difficulty).toBe('easy');
+    expect(warmUp.reinforces?.id).toBe(medium.id);
+
+    // The learner solves the Medium strongly: it stops struggling, the warm-up stops.
+    log(medium, 'strong', 12);
+    expect(progress.get(medium.id)?.struggling).toBe(false);
+    expect(warmUpsFor(13)).toHaveLength(0);
+  });
+});
