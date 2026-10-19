@@ -30,7 +30,7 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Key files
 
 - `src/services/` — pure, **deterministic, unit-tested** rules. No I/O. `reviews.ts`
-  (quality + review stage), `dailyPlan.ts` (adaptive plan selection), `mastery.ts`,
+  (quality + review stage; late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection), `mastery.ts`,
   `streak.ts` (grace days), `gamification.ts` (XP/levels), `badges.ts`,
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),

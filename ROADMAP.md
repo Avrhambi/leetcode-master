@@ -39,7 +39,7 @@ up from there.
 | T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Done |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Done |
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Done |
-| T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Todo |
+| T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Done |
 | T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Todo |
 | T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Todo |
 | T7 | PWA: installable, offline, persistent storage | — | anything | Todo |
@@ -700,10 +700,10 @@ Each session fills in its own entry in its PR.
   - QA note: Dexie live queries refresh one at a time, so a page that's open while history is written briefly plans from half-updated data. The same-day replay hides it in normal use.
 
 ### T11
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done · 2026-10-19 · pushed to `master` at the owner's request
+- What shipped: `progressAfterAttempt` (`reviews.ts`) has three new stage rules, thresholds in `constants.ts`: **late-recall credit** (a strong attempt at least 2× the scheduled interval after `lastAttemptDate` advances 2 stages, capped at 5; the scheduled interval is `nextReviewDate - lastAttemptDate`, so it also holds for the struggling backoff); **gentler demotion** (partial = one stage down, minimum 1; weak still resets to 0); **confident first solve** (first attempt ever, strong and felt `easy` → stage 2, review in 7 days). The function takes a new optional last argument `perceivedDifficulty`; `saveAttempt` passes it. The same-day freeze and the struggling backoff are untouched. Unit tests for every rule in `reviews.test.ts`; T11 simulation section in `dailyPlanSimulation.test.ts`.
+- Decisions & deviations: **No migration:** existing `progress` rows are not rewritten; the new rules apply from each problem's next attempt. **Replay (T6):** every rule is a function of the attempt sequence (quality, perceived difficulty, dates), noted in the code comment. **"Not in the plan on two active days in a row"** is tested as two *consecutive calendar days*: a 3-day review of a partial attempt legitimately lands on the next active day of a 4-days-a-week user. **Measured (12 weeks, 250 set; before → after):** typical learner backlog max: daily 66 → 39; 4 days/week 40 → 27; 2 days/week 20 → 21 (flat: that persona practises only ~24 days, so there is little to compress; bound asserted at 25); gap-then-resume 46 → 32. Mean attempts to mastery, fast learner: daily 5.00 → 4.00, 4 days/week 5.00 → 4.00, 2 days/week 5.00 → 3.86, gap 5.00 → 3.35. The typical learner went from 0 mastered problems to 2–19 (3.4–4.4 attempts). A strong-every-time learner never needs more than 5 attempts at any cadence, and the 2-days persona needs no more than the daily one. **Backlog caveat:** the daily persona's backlog no longer grows without bound (39 vs 66) but plateaus near 35–40; that isn't an asserted target. **QA:** `npm run verify` passes; in Chromium (1280 and 700 px) a first solve logged as "Comfortable" wrote `reviewStage: 2`, next review +7 days, and the page never scrolled. Run once on the same weak-return test: the weak-problem "at most 3 in a row" check failed on the old code (4) and passes now.
+- Follow-ups: T6's `stagesBeforeEach` replay must use these rules (it needs `perceivedDifficulty` and `attemptedOn` per attempt).
 
 ### T5
 - Status / PR / date:

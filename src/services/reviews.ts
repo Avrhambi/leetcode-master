@@ -1,5 +1,5 @@
 import type { Outcome, PerceivedDifficulty, ProblemProgress, ProgressStatus, Quality } from '../types/models';
-import { STRUGGLE_BACKOFF_DAYS, STRUGGLE_THRESHOLD } from './constants';
+import { CONFIDENT_FIRST_SOLVE_STAGE, LATE_RECALL_GAP_RATIO, LATE_RECALL_STAGE_JUMP, STRUGGLE_BACKOFF_DAYS, STRUGGLE_THRESHOLD } from './constants';
 
 export function qualityFor(outcome: Outcome, perceivedDifficulty: PerceivedDifficulty): Quality {
   if (outcome === 'solved_independently') return perceivedDifficulty === 'hard' ? 'partial' : 'strong';
@@ -17,6 +17,23 @@ export function reviewDate(stage: ProblemProgress['reviewStage'], today = new Da
   return days === null ? null : localDate(days, today);
 }
 
+// Whole calendar days from `from` to `to` (both `YYYY-MM-DD`).
+function daysBetween(from: string, to: string): number {
+  const [fy, fm, fd] = from.split('-').map(Number);
+  const [ty, tm, td] = to.split('-').map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
+
+// True when a strong recall came at least LATE_RECALL_GAP_RATIO times later than
+// the review was scheduled for. The scheduled interval is read from the stored
+// dates (`nextReviewDate - lastAttemptDate`), so it also holds for the struggling backoff.
+function isLateRecall(existing: ProblemProgress | undefined, attemptedOn: string): boolean {
+  if (!existing?.lastAttemptDate || !existing.nextReviewDate) return false;
+  const scheduled = daysBetween(existing.lastAttemptDate, existing.nextReviewDate);
+  const actual = daysBetween(existing.lastAttemptDate, attemptedOn);
+  return scheduled > 0 && actual >= scheduled * LATE_RECALL_GAP_RATIO;
+}
+
 // Days until the next review, backing off once a problem is `struggling` so a
 // persistent blind spot is not served every single day. `consecutiveWeak` is the
 // count *including* this attempt.
@@ -27,6 +44,16 @@ function weakReviewDate(consecutiveWeak: number, today: Date): string {
 }
 
 // Advance a problem's review state after an attempt.
+//
+// Stage rules (all functions of the attempt sequence — quality, perceived
+// difficulty, dates — so a replay of `attempts` can reproduce them, which T6's
+// `stagesBeforeEach` relies on):
+//   strong   +1 stage; +2 when recalled at least 2x later than scheduled (late
+//            recall is stronger evidence than an on-time one); capped at 5.
+//   partial  -1 stage (minimum 1), so a hint at stage 4 returns in 14 days, not 3.
+//   weak     reset to 0.
+//   first attempt ever, solved independently and felt easy: starts at stage 2.
+// Existing progress rows are not rewritten; the rules apply from each problem's next attempt.
 //
 // `alreadyAttemptedToday` is true when an attempt for this problem already exists
 // on `attemptedOn` (any entry point — daily plan or catalog). In that case the
@@ -41,13 +68,18 @@ export function progressAfterAttempt(
   attemptedOn: string,
   updatedAt: string,
   alreadyAttemptedToday = false,
-  today = new Date()
+  today = new Date(),
+  perceivedDifficulty: PerceivedDifficulty | null = null
 ): ProblemProgress {
   const previousStage = existing?.reviewStage ?? 0;
   const consecutiveWeak = quality === 'weak' ? (existing?.consecutiveWeak ?? 0) + 1 : 0;
   const struggling = quality === 'strong' ? false : consecutiveWeak >= STRUGGLE_THRESHOLD || (existing?.struggling ?? false);
 
-  const advancedStage = (quality === 'strong' ? Math.min(previousStage + 1, 5) : quality === 'partial' ? 1 : 0) as ProblemProgress['reviewStage'];
+  const firstAttempt = !existing || (existing.lastQuality === null && existing.lastAttemptDate === null);
+  const strongJump = firstAttempt && perceivedDifficulty === 'easy'
+    ? CONFIDENT_FIRST_SOLVE_STAGE
+    : previousStage + (isLateRecall(existing, attemptedOn) ? LATE_RECALL_STAGE_JUMP : 1);
+  const advancedStage = (quality === 'strong' ? Math.min(strongJump, 5) : quality === 'partial' ? Math.max(previousStage - 1, 1) : 0) as ProblemProgress['reviewStage'];
   const reviewStage = alreadyAttemptedToday ? previousStage : advancedStage;
   const nextReviewDate = alreadyAttemptedToday
     ? (existing?.nextReviewDate ?? null)

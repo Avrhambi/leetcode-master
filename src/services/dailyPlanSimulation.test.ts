@@ -6,7 +6,7 @@ import { progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
 import { TOPIC_TIERS } from '../data/topicTiers';
 import { problemsInSet } from './problemSet';
-import type { Attempt, CatalogProblem, ProblemList, ProblemProgress, Quality, RecommendationEvent } from '../types/models';
+import type { Attempt, CatalogProblem, PerceivedDifficulty, ProblemList, ProblemProgress, Quality, RecommendationEvent } from '../types/models';
 
 function attemptRow(problem: CatalogProblem, quality: Quality, now: Date, day: number): Attempt {
   return { id: `${problem.id}-${day}`, problemId: problem.id, attemptedOn: localDate(0, now), outcome: 'solved_independently', perceivedDifficulty: 'manageable', helpType: null, durationMinutes: null, notes: '', quality, createdAt: now.toISOString() };
@@ -245,6 +245,9 @@ const CADENCES: Record<string, (day: number) => boolean> = {
 
 interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: number }
 
+// Strong solves of an Easy feel easy; everything else feels manageable.
+const perceivedFor = (problem: CatalogProblem, quality: Quality): PerceivedDifficulty => (quality === 'strong' && problem.difficulty === 'easy' ? 'easy' : 'manageable');
+
 function runPersona(active: (day: number) => boolean, qualityOf: (problem: CatalogProblem, day: number) => Quality, days = 84) {
   const problems = problemsInSet(catalog, 'nc250');
   const progress = new Map<string, ProblemProgress>();
@@ -262,7 +265,7 @@ function runPersona(active: (day: number) => boolean, qualityOf: (problem: Catal
       const quality = qualityOf(item.problem, day);
       events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
       attempts.push(attemptRow(item.problem, quality, now, day));
-      const next = progressAfterAttempt(progress.get(item.problem.id), quality, localDate(0, now), now.toISOString(), false, now);
+      const next = progressAfterAttempt(progress.get(item.problem.id), quality, localDate(0, now), now.toISOString(), false, now, perceivedFor(item.problem, quality));
       progress.set(item.problem.id, { ...next, problemId: item.problem.id });
     }
   }
@@ -335,13 +338,85 @@ describe('T4 cadence personas (12 simulated weeks)', () => {
     const replay = selectDailyPlan({ ...input, recommendationEvents: [...events, ...stored] });
     expect(replay.map((item) => item.problem.id).sort()).toEqual([...plan.map((item) => item.problem.id), extra!.id].sort());
   });
+});
 
-  it('reports the due-review backlog for each cadence (baseline for T11)', () => {
-    const rows = Object.entries(CADENCES).map(([name, active]) => {
-      const { backlog } = runPersona(active, typicalQuality);
-      return `${name}: max ${Math.max(...backlog)}, end ${backlog[backlog.length - 1]}`;
-    });
-    console.log(`DUE BACKLOG over 12 weeks (typical learner) -> ${rows.join(' | ')}`);
-    expect(rows).toHaveLength(4);
+// ---- T11: review load -------------------------------------------------------
+
+// Persona qualities: `fast` is always strong, `typical` is the deterministic mixed learner.
+const PERSONAS: [string, (problem: CatalogProblem, day: number) => Quality][] = [['fast', () => 'strong'], ['typical', typicalQuality]];
+
+function meanAttemptsToMastery(attempts: Attempt[], progress: Map<string, ProblemProgress>): { mean: number; mastered: number } {
+  const counts = [...progress.values()].filter((p) => p.reviewStage === 5).map((p) => attempts.filter((a) => a.problemId === p.problemId).length);
+  return { mean: counts.length ? counts.reduce((a, b) => a + b, 0) / counts.length : 0, mastered: counts.length };
+}
+
+describe('T11 review load (12 simulated weeks)', () => {
+  it('a strong-every-time learner masters a problem in at most 5 attempts at every cadence', () => {
+    for (const [name, active] of Object.entries(CADENCES)) {
+      const { attempts, progress } = runPersona(active, () => 'strong');
+      const perProblem = new Map<string, number>();
+      for (const attempt of attempts) perProblem.set(attempt.problemId, (perProblem.get(attempt.problemId) ?? 0) + 1);
+      for (const p of progress.values()) if (p.reviewStage === 5) expect(perProblem.get(p.problemId), `${name}: ${p.problemId}`).toBeLessThanOrEqual(5);
+      expect(meanAttemptsToMastery(attempts, progress).mastered, name).toBeGreaterThan(0);
+    }
+  });
+
+  it('being late on reviews but recalling strongly needs fewer attempts than on time, never more', () => {
+    const daily = runPersona(CADENCES.daily, () => 'strong');
+    const twice = runPersona(CADENCES.twoDaysAWeek, () => 'strong');
+    expect(meanAttemptsToMastery(twice.attempts, twice.progress).mean).toBeLessThanOrEqual(meanAttemptsToMastery(daily.attempts, daily.progress).mean);
+  });
+
+  it('the same problem is not in the plan on two consecutive calendar days unless its last attempt was weak', () => {
+    for (const [name, active] of Object.entries(CADENCES)) {
+      for (const [personaName, qualityOf] of PERSONAS) {
+        const { records } = runPersona(active, qualityOf);
+        for (let i = 1; i < records.length; i += 1) {
+          // Back-to-back days only: a 3-day review of a partial attempt may fall on the next active day of a 4-days-a-week user.
+          if (records[i].day - records[i - 1].day !== 1) continue;
+          const yesterday = new Map(records[i - 1].plan.map((item) => [item.problem.id, qualityOf(item.problem, records[i - 1].day)]));
+          for (const item of records[i].plan) {
+            const previous = yesterday.get(item.problem.id);
+            if (previous !== undefined) expect(previous, `${personaName}/${name} day ${records[i].day}: ${item.problem.id}`).toBe('weak');
+          }
+        }
+      }
+    }
+  });
+
+  it('a weak problem returns at most 3 sessions in a row before backing off', () => {
+    const struggling = (problem: CatalogProblem): Quality => (problem.primaryTopic === 'Two Pointers' ? 'weak' : 'strong');
+    for (const active of [CADENCES.daily, CADENCES.fourDaysAWeek]) {
+      const { records } = runPersona(active, struggling);
+      const run = new Map<string, number>();
+      let longest = 0;
+      for (const { plan } of records) {
+        const inPlan = new Set(plan.map((item) => item.problem.id));
+        for (const id of [...run.keys()]) if (!inPlan.has(id)) run.delete(id);
+        for (const id of inPlan) {
+          if (catalog.find((c) => c.id === id)?.primaryTopic !== 'Two Pointers') continue;
+          run.set(id, (run.get(id) ?? 0) + 1);
+          longest = Math.max(longest, run.get(id)!);
+        }
+      }
+      expect(longest).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('reports attempts-to-mastery and the due-review backlog per cadence, and bounds the two-days-a-week backlog', () => {
+    const rows: string[] = [];
+    let twiceMax = 0;
+    for (const [personaName, qualityOf] of PERSONAS) {
+      for (const [name, active] of Object.entries(CADENCES)) {
+        const { backlog, attempts, progress } = runPersona(active, qualityOf);
+        const { mean, mastered } = meanAttemptsToMastery(attempts, progress);
+        if (personaName === 'typical' && name === 'twoDaysAWeek') twiceMax = Math.max(...backlog);
+        rows.push(`${personaName}/${name}: backlog max ${Math.max(...backlog)} end ${backlog[backlog.length - 1]}, attempts-to-mastery ${mean.toFixed(2)} (${mastered} mastered)`);
+      }
+    }
+    console.log(`T11 REPORT\n${rows.join('\n')}`);
+    expect(twiceMax).toBeLessThanOrEqual(BACKLOG_BOUND_TWO_DAYS);
   });
 });
+// Measured max over 12 weeks (typical, two days a week) is 21; baseline before T11 was 20, with no problem reaching mastery.
+const BACKLOG_BOUND_TWO_DAYS = 25;

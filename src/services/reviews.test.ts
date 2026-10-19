@@ -26,10 +26,10 @@ describe('review progress', () => {
     expect(reviewDate(4, today)).toBe('2026-08-18');
     expect(reviewDate(5, today)).toBeNull();
   });
-  it('resets weak attempts and promotes partial attempts', () => {
+  it('resets weak attempts and drops partial attempts one stage', () => {
     const existing = progress({ status: 'mastered', reviewStage: 5, lastQuality: 'strong', strongAttemptCount: 3 });
     expect(progressAfterAttempt(existing, 'weak', '2026-07-19', 'now', false, today)).toMatchObject({ status: 'attempted', reviewStage: 0, nextReviewDate: '2026-07-20', strongAttemptCount: 3, consecutiveWeak: 1 });
-    expect(progressAfterAttempt(existing, 'partial', '2026-07-19', 'now', false, today)).toMatchObject({ status: 'solved', reviewStage: 1, nextReviewDate: '2026-07-22' });
+    expect(progressAfterAttempt(existing, 'partial', '2026-07-19', 'now', false, today)).toMatchObject({ status: 'solved', reviewStage: 4, nextReviewDate: '2026-08-18' });
   });
   it('caps strong attempts at mastery', () => {
     const existing = progress({ status: 'solved', reviewStage: 4, nextReviewDate: '2026-08-18', lastQuality: 'strong', strongAttemptCount: 2 });
@@ -103,6 +103,48 @@ describe('review progress', () => {
       const partial = progressAfterAttempt(struggling, 'partial', '2026-07-19', 'now', false, today);
       expect(partial.consecutiveWeak).toBe(0);
       expect(partial.struggling).toBe(true);
+    });
+  });
+
+  describe('T11 stage rules', () => {
+    // Stage 2 reviewed on 07-01, scheduled for 07-08 (7-day interval).
+    const scheduled = progress({ status: 'solved', reviewStage: 2, lastAttemptDate: '2026-07-01', nextReviewDate: '2026-07-08', lastQuality: 'strong', strongAttemptCount: 2 });
+
+    it('a strong recall on time advances one stage', () => {
+      expect(progressAfterAttempt(scheduled, 'strong', '2026-07-08', 'now', false, today).reviewStage).toBe(3);
+    });
+    it('a strong recall at least 2x the scheduled interval late advances two stages', () => {
+      expect(progressAfterAttempt(scheduled, 'strong', '2026-07-15', 'now', false, today)).toMatchObject({ reviewStage: 4, nextReviewDate: '2026-08-18' });
+      expect(progressAfterAttempt(scheduled, 'strong', '2026-07-14', 'now', false, today).reviewStage).toBe(3); // 13 days < 14
+    });
+    it('late-recall credit is capped at stage 5 and gives mastered', () => {
+      const four = progress({ ...scheduled, reviewStage: 4, lastAttemptDate: '2026-06-01', nextReviewDate: '2026-07-01' });
+      expect(progressAfterAttempt(four, 'strong', '2026-08-01', 'now', false, today)).toMatchObject({ reviewStage: 5, status: 'mastered', nextReviewDate: null });
+    });
+    it('late recall needs a scheduled interval; weak and partial attempts get no credit', () => {
+      expect(progressAfterAttempt(progress({ reviewStage: 2 }), 'strong', '2026-07-19', 'now', false, today).reviewStage).toBe(3);
+      expect(progressAfterAttempt(scheduled, 'partial', '2026-07-30', 'now', false, today).reviewStage).toBe(1);
+      expect(progressAfterAttempt(scheduled, 'weak', '2026-07-30', 'now', false, today).reviewStage).toBe(0);
+    });
+    it('the same-day freeze still wins over late-recall credit', () => {
+      expect(progressAfterAttempt(scheduled, 'strong', '2026-07-30', 'now', true, today).reviewStage).toBe(2);
+    });
+    it('a partial attempt drops one stage, never below 1', () => {
+      expect(progressAfterAttempt(progress({ reviewStage: 3 }), 'partial', '2026-07-19', 'now', false, today)).toMatchObject({ reviewStage: 2, nextReviewDate: '2026-07-26' });
+      expect(progressAfterAttempt(progress({ reviewStage: 1 }), 'partial', '2026-07-19', 'now', false, today).reviewStage).toBe(1);
+      expect(progressAfterAttempt(undefined, 'partial', '2026-07-19', 'now', false, today).reviewStage).toBe(1);
+    });
+    it('a confident first solve starts at stage 2 and reviews in 7 days', () => {
+      expect(progressAfterAttempt(undefined, 'strong', '2026-07-19', 'now', false, today, 'easy')).toMatchObject({ reviewStage: 2, status: 'solved', nextReviewDate: '2026-07-26' });
+    });
+    it('only a first, easy, strong solve counts as confident', () => {
+      expect(progressAfterAttempt(undefined, 'strong', '2026-07-19', 'now', false, today, 'manageable').reviewStage).toBe(1);
+      expect(progressAfterAttempt(undefined, 'strong', '2026-07-19', 'now', false, today).reviewStage).toBe(1);
+      expect(progressAfterAttempt(undefined, 'partial', '2026-07-19', 'now', false, today, 'easy').reviewStage).toBe(1);
+      const later = progress({ status: 'solved', reviewStage: 1, lastAttemptDate: '2026-07-18', nextReviewDate: '2026-07-21', lastQuality: 'strong' });
+      expect(progressAfterAttempt(later, 'strong', '2026-07-19', 'now', false, today, 'easy').reviewStage).toBe(2);
+      const afterWeak = progress({ reviewStage: 0, lastAttemptDate: '2026-07-18', nextReviewDate: '2026-07-19', lastQuality: 'weak', consecutiveWeak: 1 });
+      expect(progressAfterAttempt(afterWeak, 'strong', '2026-07-19', 'now', false, today, 'easy').reviewStage).toBe(1);
     });
   });
 });

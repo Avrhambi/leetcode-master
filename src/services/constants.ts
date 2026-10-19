@@ -11,6 +11,14 @@ export const STRUGGLE_THRESHOLD = 3;
 // every single day forever.
 export const STRUGGLE_BACKOFF_DAYS = [2, 4, 7] as const;
 
+// Review stage rules (see progressAfterAttempt). A strong recall at least
+// LATE_RECALL_GAP_RATIO x later than scheduled advances LATE_RECALL_STAGE_JUMP
+// stages. A first-ever independent solve that felt easy starts at
+// CONFIDENT_FIRST_SOLVE_STAGE (review in 7 days instead of 3).
+export const LATE_RECALL_GAP_RATIO = 2;
+export const LATE_RECALL_STAGE_JUMP = 2;
+export const CONFIDENT_FIRST_SOLVE_STAGE = 2;
+
 // Streak grace: a returning user does not lose the streak on the first missed
 // day. One grace day is granted per rolling 7 active days.
 export const STREAK_GRACE_PER_WEEK = 1;

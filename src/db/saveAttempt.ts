@@ -30,7 +30,7 @@ export async function saveAttempt(input: AttemptInput): Promise<void> {
     // stage was already advanced today; a second pass is reinforcement only.
     const alreadyAttemptedToday = (await db.attempts.where('problemId').equals(input.problemId).and((row) => row.attemptedOn === input.attemptedOn).count()) > 0;
     await db.attempts.add(attempt);
-    await db.progress.put({ ...progressAfterAttempt(existing, attempt.quality, input.attemptedOn, createdAt, alreadyAttemptedToday), problemId: input.problemId });
+    await db.progress.put({ ...progressAfterAttempt(existing, attempt.quality, input.attemptedOn, createdAt, alreadyAttemptedToday, now, input.perceivedDifficulty), problemId: input.problemId });
 
     // Read the full attempt set once (now including the row just added) — it feeds
     // both the XP streak multiplier and the badge/streak checks below.
