@@ -99,6 +99,9 @@ It does not build or run tests — do that yourself via `npm run verify` before 
 
 ## Delivery
 
+Planned work lives in `ROADMAP.md`: one task per session/PR, with a status board, an
+ownership map and a session log that each PR updates.
+
 Atomic PRs off `master`, one workstream each, never commit direct to `master`. Each PR
 passes `npm run verify`. Commit messages: `<module>: <what and why>`, one logical change
 per commit.
