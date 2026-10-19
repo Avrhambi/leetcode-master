@@ -3,14 +3,22 @@
 const CACHE = 'lcm-v1';
 const scope = self.registration.scope;
 
+// Precache the shell and every asset index.html references, so the app works
+// offline after a single visit (the first page load is not seen by the worker).
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll([scope, new URL('index.html', scope).href])));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    const indexUrl = new URL('index.html', scope).href;
+    const html = await (await fetch(indexUrl, { cache: 'reload' })).text();
+    const assets = [...html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)].map((match) => new URL(match[1], scope).href);
+    await cache.addAll([scope, indexUrl, ...assets]);
+  })());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith('lcm-') && key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
@@ -26,8 +34,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          void caches.open(CACHE).then((cache) => cache.put(request, copy));
+          if (response.ok) {
+            const copy = response.clone();
+            void caches.open(CACHE).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(() => caches.match(request).then((hit) => hit || caches.match(new URL('index.html', scope).href)))

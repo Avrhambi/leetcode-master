@@ -1,4 +1,5 @@
 let waiting: ServiceWorker | null = null;
+let reloadOnTakeover = false;
 const listeners = new Set<(ready: boolean) => void>();
 
 const setWaiting = (worker: ServiceWorker | null) => {
@@ -14,24 +15,30 @@ export function onUpdateReady(listener: (ready: boolean) => void): () => void {
 
 export function applyUpdate() {
   if (!waiting) return;
-  navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true });
+  if (!reloadOnTakeover) {
+    reloadOnTakeover = true;
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+  }
   waiting.postMessage('SKIP_WAITING');
 }
 
 export function registerServiceWorker() {
   if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
-  window.addEventListener('load', () => {
+  const register = () => {
     navigator.serviceWorker.register('sw.js').then((registration) => {
       const watch = (worker: ServiceWorker | null) => {
         if (!worker) return;
         worker.addEventListener('statechange', () => {
           if (worker.state === 'installed' && navigator.serviceWorker.controller) setWaiting(worker);
+          if (worker.state === 'redundant' && waiting === worker) setWaiting(null);
         });
       };
       if (registration.waiting && navigator.serviceWorker.controller) setWaiting(registration.waiting);
       registration.addEventListener('updatefound', () => watch(registration.installing));
     }).catch(() => { /* offline support is optional; the app works without it */ });
-  });
+  };
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
 }
 
 /** Asks the browser not to evict IndexedDB. Resolves to the persisted state, or null if unsupported. */
