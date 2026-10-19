@@ -13,6 +13,9 @@ import type { AppSetting, Attempt, CatalogProblem, ProblemProgress, ProgressStat
 interface WorkbenchProps {
   attempts: Attempt[];
   problems: CatalogProblem[];
+  // Unfiltered catalog — only the review queue reads it, so out-of-set problems
+  // the user already attempted keep coming due.
+  allProblems: CatalogProblem[];
   progress: ProblemProgress[];
   progressByProblem: Map<string, ProgressStatus>;
   settings: AppSetting[];
@@ -43,7 +46,7 @@ function graceStateFrom(settings: AppSetting[]): StreakGraceState {
 // The single screen: XP strip, a search box, the tiered topic map (with the
 // bare-minimum stats above it and a side panel for a topic's problems, the
 // search results, or one problem's detail), today's plan, badge shelf.
-export function Workbench({ attempts, problems, progress, progressByProblem, settings, planItems, completedProblemIds, onSkip }: WorkbenchProps) {
+export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, planItems, completedProblemIds, onSkip }: WorkbenchProps) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -150,7 +153,7 @@ export function Workbench({ attempts, problems, progress, progressByProblem, set
           {(() => {
             const fromReview = panel.back?.kind === 'review';
             const nextInReview = fromReview
-              ? dueReviewQueue(problems, progress).find((entry) => entry.problem.id !== panel.problem.id)?.problem ?? null
+              ? dueReviewQueue(allProblems, progress).find((entry) => entry.problem.id !== panel.problem.id)?.problem ?? null
               : null;
             return <ProblemDetail
               problem={panel.problem}
@@ -171,6 +174,7 @@ export function Workbench({ attempts, problems, progress, progressByProblem, set
           {panel && <SidePanel
             panel={panel}
             problems={problems}
+            allProblems={allProblems}
             progress={progress}
             progressByProblem={progressByProblem}
             onSelectProblem={(problem, back) => setPanel({ kind: 'problem', problem, back })}

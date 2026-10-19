@@ -36,7 +36,7 @@ up from there.
 |----|------|-----------|--------------------------|--------|
 | T0 | CI + dependency hygiene | — | T1, T7 | Done |
 | T1 | Catalog → NeetCode 250 with NeetCode 75 / 150 flags and neetcode.io links | — | T0, T7 | Done |
-| T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Todo |
+| T2 | Problem-set selector (75 / 150 / 250) | T1 | T3 | Done |
 | T3 | Competency engine: topic skill + prerequisite graph | T1 | T2 | Todo |
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Todo |
 | T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Todo |
@@ -670,10 +670,10 @@ Each session fills in its own entry in its PR.
 - Follow-ups: T2 should filter by `lists`. T3 / T4 / T6 use `coreRank`. Cosmetic: the `badge-list` tag uses the accent colour; T6 may restyle it.
 
 ### T2
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done / pushed to `master` at the owner's request / 2026-10-19
+- What shipped: `problemSet` setting (`nc75` | `nc150` | `nc250`; added to `AppSettingKey` and `settingKeys` in `backup.ts`). New `src/services/problemSet.ts` (`parseProblemSet`, `problemsInSet`, labels, `DEFAULT_PROBLEM_SET = nc150`) with `problemSet.test.ts`; `src/db/problemSet.ts` (`saveProblemSet`); shared `ProblemSetPicker` used by a one-line first-launch banner in the header (shown until a choice is stored) and by a "Problem set" card in Settings. `App.tsx` filters the catalog once (`problems`) and feeds that to the plan, map, mastery, search and "x / N" counts; the unfiltered `allProblems` goes only to `dueReviewQueue` (Workbench + SidePanel review panel). `saveAttempt` computes badge inputs over the active set.
+- Decisions & deviations: **Default** is `nc150` for fresh installs and existing users alike (the set they were on). Existing users with no stored choice also see the banner once; picking, or Settings, stores it. **Out-of-set reviews:** they stay in the review queue and the "N for review" count (both read all progress/problems), but the daily plan is built from the active set only, so they are not recommended in the plan. **Badges:** `saveAttempt` passes in-set problems, so predicates like `all-mastered` now key on the active set (a loosening: badges can only arrive earlier, none is ever lost; T6 owns the redefinition). **No Dexie bump:** the setting is a plain `settings` row. **QA** (Chromium, 1280 and 700 px): banner on first launch, map totals 75 / 150 / 250 after each switch, page never scrolls (map, Settings overlay), an attempt logged on a 250-only problem stayed in IndexedDB (1 attempt, 1 progress row) and the problem hid at 75 and reappeared at 250. The "N for review" count for an out-of-set due review was covered by a unit test, not a browser run.
+- Follow-ups: T6 should redefine the badge predicates against the set. The first-launch banner shows for existing users too; if the owner wants it hidden for anyone with progress, key it on attempts.
 
 ### T3
 - Status / PR / date:

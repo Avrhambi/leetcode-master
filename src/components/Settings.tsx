@@ -1,4 +1,10 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/database';
+import { saveProblemSet } from '../db/problemSet';
+import { ProblemSetPicker } from './ProblemSetPicker';
+import { parseProblemSet, problemsInSet, PROBLEM_SETS } from '../services/problemSet';
+import type { ProblemList } from '../types/models';
 import { createBackupPayload, resetAndReseed, restoreBackup } from '../db/backup';
 
 type Action = 'export' | 'restore' | 'reset' | null;
@@ -9,6 +15,9 @@ export function Settings() {
   const [failedAction, setFailedAction] = useState<Action>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const storedSet = useLiveQuery(() => db.settings.get('problemSet'), []);
+  const catalogRows = useLiveQuery(() => db.problems.toArray(), []);
+  const counts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, catalogRows ? problemsInSet(catalogRows, set).length : 0])) as Record<ProblemList, number>;
 
   const succeed = (text: string) => {
     setFailedAction(null);
@@ -47,6 +56,7 @@ export function Settings() {
 
   return <section className="settings"><div className="section-heading"><div><p className="eyebrow">Your data</p><h2>Settings</h2></div></div>
     <p className="settings-note">LeetCode Tracker is local-first. Your practice history stays in this browser.</p>
+    <article><h3>Problem set</h3><p>Choose how much of the catalog to practise. Your history is kept when you switch; problems outside the set are hidden and not recommended, but any already due for review stay in the review queue.</p><ProblemSetPicker value={parseProblemSet(storedSet?.value)} counts={counts} onChange={(set) => void saveProblemSet(set)} /></article>
     <article><h3>Export backup</h3><p>Download all local study data as JSON.</p><button type="button" onClick={() => void exportBackup()}>Export JSON</button></article>
     <article><h3>Restore backup</h3><p>Replace local study data with a JSON backup file (up to 5 MB).</p><input aria-label="Backup JSON file" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0] ?? null; setLastFile(file); if (file) void importBackup(file); }} /></article>
     <article><h3>Reset all data</h3><p>Type <code>RESET</code> to erase study data and reseed the catalog.</p><label>Confirmation<input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label><button type="button" disabled={confirmation !== 'RESET'} onClick={() => void reset()}>Reset all data</button></article>

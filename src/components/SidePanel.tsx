@@ -24,6 +24,7 @@ export type Panel =
 interface SidePanelProps {
   panel: Panel;
   problems: CatalogProblem[];
+  allProblems: CatalogProblem[];
   progress: ProblemProgress[];
   progressByProblem: Map<string, ProgressStatus>;
   onSelectProblem: (problem: CatalogProblem, back: Panel) => void;
@@ -50,14 +51,14 @@ function ProblemRow({ problem, status, showTopic, onSelect }: {
   </li>;
 }
 
-export function SidePanel({ panel, problems, progress, progressByProblem, onSelectProblem, onClose }: SidePanelProps) {
+export function SidePanel({ panel, problems, allProblems, progress, progressByProblem, onSelectProblem, onClose }: SidePanelProps) {
   // `problem` never reaches here — Workbench renders it full-screen instead.
   if (panel.kind === 'problem') return null;
 
   const statusOf = (problem: CatalogProblem) => progressByProblem.get(problem.id) ?? 'not_started';
 
   if (panel.kind === 'review') {
-    const queue = dueReviewQueue(problems, progress);
+    const queue = dueReviewQueue(allProblems, progress);
     return <aside className="topic-panel" aria-label="Review queue">
       <div className="topic-panel-head">
         <div>

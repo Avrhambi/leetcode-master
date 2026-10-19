@@ -23,6 +23,10 @@ describe('validateBackupPayload', () => {
     const withStreak = { ...v2Backup, settings: [{ key: 'streakGraceRemaining', value: '1' }, { key: 'streakGraceRefreshedOn', value: '2026-07-19' }] };
     expect(validateBackupPayload(withStreak)).toEqual(withStreak);
   });
+  it('accepts the problemSet settings key', () => {
+    const withSet = { ...v2Backup, settings: [{ key: 'problemSet', value: 'nc75' }] };
+    expect(validateBackupPayload(withSet)).toEqual(withSet);
+  });
   it('still accepts a v2 backup that carries no gamification row', () => {
     expect(validateBackupPayload(v2Backup)).toEqual(v2Backup);
     expect('gamification' in validateBackupPayload(v2Backup)).toBe(false);

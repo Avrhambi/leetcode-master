@@ -34,6 +34,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `streak.ts` (grace days), `gamification.ts` (XP/levels), `badges.ts`,
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),
+  `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet`; the review queue is fed the unfiltered catalog),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
@@ -77,6 +78,10 @@ Do not add a dependency without asking first, and explain why existing code can'
   crushed, overlapping, or (for the map) scaled into illegibility.
 - **All animation sits behind `prefers-reduced-motion`.** The global rule in `global.css`
   clamps durations; showy gamification animations additionally get `animation: none`.
+
+- **The problem set is filtered once, in `App.tsx`.** `problems` (in-set) feeds the plan, map, mastery,
+  search and counts; `allProblems` feeds only the review queue so out-of-set history keeps coming due.
+  Switching sets never touches stored progress.
 
 ## Conventions
 

@@ -4,6 +4,7 @@ import { badgesEarned } from '../services/badges';
 import { currentStreak, type StreakGraceState } from '../services/streak';
 import { STREAK_GRACE_PER_WEEK } from '../services/constants';
 import { levelForXp } from '../services/gamification';
+import { parseProblemSet, problemsInSet } from '../services/problemSet';
 import { awardAttemptXp, readGamification, recordBadges } from './gamification';
 import type { Attempt, HelpType, Outcome, PerceivedDifficulty } from '../types/models';
 import { db } from './database';
@@ -49,7 +50,7 @@ export async function saveAttempt(input: AttemptInput): Promise<void> {
     // recordBadges unions into the stored set, so this only ever adds.
     const { streak } = currentStreak(new Set(attempts.map((row) => row.attemptedOn)), graceStateFrom(settings), now);
     const level = levelForXp((await readGamification()).xp);
-    await recordBadges(badgesEarned({ progress, attempts, problems, currentStreakDays: streak, level }), now);
+    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, parseProblemSet(settings.find((row) => row.key === 'problemSet')?.value)), currentStreakDays: streak, level }), now);
     // Recording an attempt from either entry point (daily plan or catalog)
     // completes any matching open daily recommendation for this problem today.
     const openEvents = await db.recommendationEvents.where('problemId').equals(input.problemId).toArray();
