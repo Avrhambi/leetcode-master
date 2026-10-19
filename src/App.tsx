@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { BadgeShelf } from './components/BadgeShelf';
 import { ProblemSetPicker } from './components/ProblemSetPicker';
 import { GamificationBar } from './components/GamificationBar';
+import { UpdateNotice } from './components/UpdateNotice';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { Workbench } from './components/Workbench';
 import { db } from './db/database';
@@ -69,6 +70,7 @@ export default function App() {
         <span>Which list are you working through?</span>
         <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} />
       </div>}
+      <UpdateNotice />
       <button type="button" className="settings-toggle" onClick={() => setSettingsOpen(true)}>Settings</button>
     </header>
     <Workbench

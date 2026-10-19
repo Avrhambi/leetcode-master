@@ -42,7 +42,7 @@ up from there.
 | T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Done |
 | T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Done |
 | T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Done |
-| T7 | PWA: installable, offline, persistent storage | — | anything | Todo |
+| T7 | PWA: installable, offline, persistent storage | — | anything | Done |
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Todo |
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Todo |
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Todo |
@@ -732,10 +732,11 @@ Each session fills in its own entry in its PR.
 - Follow-ups: the header still says "LeetCode Tracker" (T10). `restoreBackup` always rebuilds XP from the attempts, so a restored backup picks up the new formula; its badges come from the payload and top up on the next attempt. The daily-streak tiers still count only consecutive days (unchanged by design: the weekly tier is the max() alternative).
 
 ### T7
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done · 2026-10-19 · branch `claude/leetcode-master-roadmap-znri4s`, merged to `master` at the owner's request
+- What shipped: `public/` (manifest, SVG mark + 192/512/maskable PNGs exported once via Playwright Chromium, hand-written `sw.js`); `src/pwa.ts` (production-only registration, waiting-worker tracking, `navigator.storage.persist()` once at startup); `UpdateNotice` ("Update available — Reload") in the header; Settings "Storage" status line; `index.html` manifest/theme-color/icon links; eslint globals for `public/sw.js`.
+- Decisions & deviations: `sw.js` precaches the scope root and `index.html`, then cache-first for other same-origin GETs (hashed assets are immutable) and network-first for navigations; all URLs derive from `registration.scope` so T9's subpath works. Theme colour is the hex of `--color-paper`. No new dependencies.
+- QA: `npm run verify` green. Preview build in Chromium: worker controls the page, manifest loads, offline reload renders the app with IndexedDB data intact, Settings shows storage status, no page overflow at 1280 px and 700 px, no console errors. Not run: Lighthouse, real-device install.
+- Follow-ups: T8 may add a backup reminder using the storage status; bump `CACHE` in `public/sw.js` only if precache contents change.
 
 ### T8
 - Status / PR / date:

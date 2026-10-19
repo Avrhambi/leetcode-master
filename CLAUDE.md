@@ -50,6 +50,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `lists` ⊆ `nc75`/`nc150`/`nc250` (metadata +
   links only, **never problem text**). `topicTiers.ts` maps each topic to a curriculum
   tier. The `[INEFFECTIVE_DYNAMIC_IMPORT]` build warning for `catalog.ts` is known and benign.
+- `public/` + `src/pwa.ts` — manifest, icons and hand-written `sw.js` (all paths relative to the registration scope); the worker is registered only in production builds. `requestPersistentStorage` runs once at startup; Settings shows the result.
 - `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers).
 - `src/components/` — one file per screen/panel. Plain React, no state library beyond
   Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings and the
