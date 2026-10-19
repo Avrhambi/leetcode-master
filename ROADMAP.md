@@ -44,7 +44,7 @@ up from there.
 | T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Done |
 | T7 | PWA: installable, offline, persistent storage | — | anything | Done |
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Done |
-| T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Todo |
+| T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Done |
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Todo |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
@@ -746,10 +746,10 @@ Each session fills in its own entry in its PR.
 - Follow-ups: restoring an old backup brings back its older `lastBackupOn`, so the reminder may reappear; acceptable for now.
 
 ### T9
-- Status / PR / date:
-- Live URL:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done, 2026-10-19
+- Live URL: https://avrhambi.github.io/leetcode-master/ (expected; goes live after the owner enables Pages and the first deploy runs. Not yet checked on the live host.)
+- Decisions & deviations: `deploy.yml` runs `npm ci && npm run verify` then the official upload-pages-artifact / deploy-pages actions, on push to `master` plus manual dispatch. `ci.yml` stays manual-only. QA was done locally against `dist/` served under `/leetcode-master/`: service worker scope, manifest and all three icons resolve, offline reload works, no 4xx, page doesn't scroll. No config change was needed: the relative `base` already works under a subpath.
+- Follow-ups: Owner must set repo Settings → Pages → Source: GitHub Actions, then confirm install + offline on the live URL. T10 should link it.
 
 ### T10
 - Status / PR / date:
