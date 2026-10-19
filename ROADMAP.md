@@ -46,12 +46,25 @@ up from there.
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Done |
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Done |
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Done |
+| T12 | Session time: plan estimate, time budget, "your note" before a review | T11 | T14, T15 | Done |
+| T13 | Light review: "recalled the approach" instead of a full re-solve | T12 | — | Planned |
+| T14 | Finish forecast + weekly practice-days goal | T12 | T15 | Planned |
+| T15 | End-of-session wrap-up screen | T12 | T14 | Planned |
+| T16 | Goal plans: interview deadline, "skip Easies" for experienced users | T12, T14 | — | Planned |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
 and T5 all change how the plan behaves, so they run one after another, never in
 parallel. (T11 was added after the first numbering, which is why it sits between
 T4 and T5 in the order.)
+
+**Second wave (T12–T16), from the usage review of 2026-10-19.** The simulation's
+typical user spends ~65–75 min a session and ~88% of plan items are reviews.
+That review ranked fixes by impact for the effort: time control first (T12), then
+the biggest time saving (T13), then motivation and goals (T14–T16). T13 changes
+what counts as a successful review, so it ships only after a simulation shows
+retention holds. T13 and T16 change plan selection, so they run one after
+another, never in parallel.
 
 ## Decisions already made (don't relitigate)
 
@@ -165,6 +178,7 @@ To keep two sessions from editing the same logic:
 | `.github/workflows/ci.yml`, `package.json` versions | T0 |
 | `.github/workflows/deploy.yml` | T9 |
 | `README.md`, `CONTRIBUTING.md`, `LICENSE`, app name in UI/package/manifest | T10 |
+| `src/services/sessionTime.ts`, `db/sessionBudget.ts`, budget + estimate UI in `DailyPlan.tsx` | T12 (T13, T15 read it) |
 
 **Shared rule:** any task that adds a persisted `AppSettingKey` must also add it to
 `settingKeys` in `src/db/backup.ts` and to the `AppSettingKey` type. That's a
@@ -658,12 +672,53 @@ minutes.
 - QA (Chromium, production build): 320, 390, 768 and 1280 px wide. No page scroll and no element past the screen edge except the badge strip, which scrolls in its own box. No touch target under 32 px on phones. Every route stop reachable and tappable (Bit Manipulation, last stop, opens its panel). Desktop route unchanged. Tests: portrait layout bounds, the curve, and a label-collision check for both shapes.
 - Not covered: a phone held sideways (e.g. 844×390). It is wider than the breakpoint, so it gets the desktop layout, and the header and stats leave almost no room for the map. Not tested on a real phone, Safari or Firefox.
 
+## T12. Session time: plan estimate, time budget, "your note" before a review
+
+Done; see the session log.
+
+## T13. Light review
+
+**Problem:** every review asks for a full re-solve (~10–30 min), and reviews are
+~88% of plan items. **Scope:** offer "I recalled the approach" (3–5 min) on a
+review, with a full re-solve only if that recall fails. Model it as an `Attempt`
+the review rules in `reviews.ts` can replay (XP must still be reconstructible from
+`attempts`). **Gate:** before shipping, extend `dailyPlanSimulation.test.ts` with
+a recall-decay model and show attempts-to-mastery and the backlog bound don't get
+worse. If they do, ship it only for stage ≥ 3 reviews. **Not in scope:** changing
+the overload rule.
+
+## T14. Finish forecast + weekly practice-days goal
+
+**Scope:** (1) "At this pace you finish the NeetCode 75 in about N weeks",
+from the user's own new-problems-per-active-week rate (pure, in `services/`, no
+wall-clock reads). (2) An optional "N days a week" goal stored as a setting, with
+progress shown next to the existing weekly streak. Reuse `streak.ts`; don't add
+a second weekly-streak definition.
+
+## T15. End-of-session wrap-up
+
+**Scope:** when every plan item is logged, show "Done for today": items done,
+minutes logged, XP earned today, the next review date. The "One more problem"
+button stays, below it. Display only; no new stored state.
+
+## T16. Goal plans
+
+**Scope:** (1) an interview date that picks the set and pace to fit the time
+left, shows the hours that will take up front, and favours tier-1 topics; (2)
+"skip Easies" for experienced users, through `problemsInSet` so the plan, map
+and counts follow automatically. Switching never touches stored progress.
+**Not in scope:** role-based lists (frontend / backend / data). There is no
+verified data on which problems each role gets, and the app can't fetch any.
+See the parking lot.
+
 ## Parking lot
 
 Ideas noticed during sessions that aren't in any task. Add one line each, with
 your task ID. Don't implement them.
 
-- *(empty)*
+- (T12) Role-based plans (frontend / backend / data). Only as an owner-reviewed suggestion list, labelled "picked because these topics are common for the role", never presented as fact.
+- (T12) Under review overload, one new Easy every other day, or a separate "missed reviews" pile. A quick trial of adding new problems during overload grew the yearly backlog to 117, so any version must re-run the year-long backlog test.
+- (T12) Changing the budget after logging something re-plans only new problems; due reviews that dropped out stay in the review queue rather than coming back into the plan. Revisit if users find that confusing.
 
 ## Session log
 
@@ -777,3 +832,19 @@ Each session fills in its own entry in its PR.
 - What shipped: name applied to header, `<title>`, `package.json`/lockfile, backup error text (and its tests), Settings copy and `CLAUDE.md`; comment on the `pattern-pilot` Dexie name. New README (loop, 75/150/250, cadences, Mermaid architecture, screenshot at `docs/screenshot.png`, live demo, install, privacy, disclaimer, badges), `CONTRIBUTING.md`, `LICENSE`, issue templates (bug, catalog fix) and PR template.
 - Decisions & deviations: owner chose **MIT** (so the README does not call the project source-available; the "not for commercial use" note in Decisions is superseded). LICENSE copyright holder is the GitHub handle `Avrhambi`; change it if a legal name is preferred. The CI badge points at `ci.yml`, which is manual-only, so it shows no status until CI is re-enabled; a Deploy badge is included too.
 - Follow-ups: owner confirms the copyright holder name and that the live URL is up.
+
+### T12
+- Status / PR / date: Done, 2026-10-19
+- What shipped:
+  - **Time estimate.** The plan shows "About N min" (and how much is left once something is logged), and each item shows ~minutes. The defaults are in `constants.ts` (new 20/35/50, review 10/20/30 for easy/medium/hard). After 3+ logged durations for a (new/review, difficulty) pair, the estimate switches to the median of the user's last 10. Only attempts before today count, so the estimate doesn't change mid-day.
+  - **Time budget.** "Time today: Any / 30 / 45 / 60 min", stored as the `sessionMinutes` setting. A fresh plan is trimmed in priority order: the first new problem, the top review, the warm-up, then the remaining items. Leftover minutes pull in more due reviews, still capped at four items. The first item is always kept, so a plan is never empty; it can be a single problem over budget, and the plan says so. Same-day top-ups stop at the budget. Stored items, including "One more problem", are never dropped. Changing the budget stamps `planResetAt`, and the rest of the day is re-planned around what was already logged.
+  - **Overload message** now says how many more reviews to clear before new problems come back.
+  - **"Your note"** (the latest non-empty attempt note) is shown on review items in the plan and above the attempt form.
+- Measured (`dailyPlanSimulation.test.ts`, typical learner, one year, default minutes): no budget, ~4 items a day and 173 problems touched. 30 min: backlog max 20 / 15 / 16 (daily / 4 days / 2 days a week), 75 / 50 / 34 problems solved. 45 min: backlog max 19 / 22 / 15, 84 / 51 / 39 solved. Everything stays under the year-long bound of 30. Every non-overload day keeps a new problem.
+- Decisions & deviations:
+  - New problem before the top review: the review-first order solved only 44 problems a year at 30 min (backlog max 9). New-first keeps the "one new unless overloaded" rule and nearly doubles throughput, while the overload rule still bounds the backlog.
+  - Re-planning uses a reset timestamp, not deleting today's rows. The deleting version raced in the browser: a render still holding the old plan wrote it back after the delete.
+  - The budget, events and reset time are read in one live query.
+  - No schema change. Two new setting keys were added to `settingKeys`. `formatVersion` stays 3; an older app would reject a backup that contains them.
+- QA: Chromium, dev build, 1280 and 390 px. Plan shows ~65 min and 4 items; picking 30 min re-plans it to 1 item with the over-budget note; "Any" restores 4. Notes render on review items. No page scroll at either width.
+- Follow-ups: T13–T16 above; the parking-lot lines.

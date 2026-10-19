@@ -40,13 +40,18 @@ Do not add a dependency without asking first, and explain why existing code can'
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
   `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
+  `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
+  `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
   is JSON export/restore with `formatVersion` validation (current 3; 1 and 2 still restore; restore is parse → confirm → replace, and keeps rows for ids outside the catalog); `seedCatalog.ts` seeds the
-  bundled catalog on first launch.
+  bundled catalog on first launch. `sessionBudget.ts` saves the time budget and stamps
+  `planResetAt` (the same-day replay ignores today's unlogged recommendations made before
+  it). Never re-plan by deleting today's recommendation rows, because a render still holding the old
+  plan re-persists it.
 - `src/data/` — `catalog.ts` + `neetcode250.json`: the 250-problem catalog, each row flagged
   `lists` ⊆ `nc75`/`nc150`/`nc250` (metadata +
   links only, **never problem text**). `topicTiers.ts` maps each topic to a curriculum
