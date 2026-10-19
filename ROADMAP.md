@@ -51,6 +51,11 @@ up from there.
 | T14 | Finish forecast + weekly practice-days goal | T12 | T15 | Planned |
 | T15 | End-of-session wrap-up screen | T12 | T14 | Planned |
 | T16 | Goal plans: interview deadline, "skip Easies" for experienced users | T12, T14 | — | Planned |
+| T17 | Built-in attempt timer (fills the duration automatically) | T12 | T19, T20, T21 | Planned |
+| T18 | Quick log from the plan: three outcome buttons on each item | T17 | T20, T21 | Planned |
+| T19 | "Why this problem today?" line on each plan item | T12 | T17, T20, T21 | Planned |
+| T20 | Import prior history: mark problems you already know | T2 | T17, T19, T21 | Planned |
+| T21 | Calendar reminder: download a recurring .ics event | — | anything | Planned |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
@@ -65,6 +70,15 @@ the biggest time saving (T13), then motivation and goals (T14–T16). T13 change
 what counts as a successful review, so it ships only after a simulation shows
 retention holds. T13 and T16 change plan selection, so they run one after
 another, never in parallel.
+
+**Third wave (T17–T21), from the 2026-10-19 average-user review.** These cut the
+daily friction around the plan rather than change what the plan picks.
+Suggested order: **T13 → T17 → T18 → T19**, then **T20** and **T21** whenever a
+session is free.
+- **T17 first:** without it `durationMinutes` is almost always empty, so T12's
+  estimates never calibrate to the user.
+- **`DailyPlan.tsx`:** T15, T18 and T19 all edit it, so they run one after
+  another, never in parallel.
 
 ## Decisions already made (don't relitigate)
 
@@ -179,6 +193,11 @@ To keep two sessions from editing the same logic:
 | `.github/workflows/deploy.yml` | T9 |
 | `README.md`, `CONTRIBUTING.md`, `LICENSE`, app name in UI/package/manifest | T10 |
 | `src/services/sessionTime.ts`, `db/sessionBudget.ts`, budget + estimate UI in `DailyPlan.tsx` | T12 (T13, T15 read it) |
+| Attempt timer (new `services/attemptTimer.ts` + the timer control in `ProblemDetail` / `AttemptForm`) | T17 (T18 reads it) |
+| Inline outcome buttons on plan items (`DailyPlan.tsx`), new `services/quickLog.ts` | T18 |
+| New `services/planReason.ts` + the reason line in `DailyPlan.tsx` | T19 |
+| Import screen + new `services/importKnown.ts`, `db/importKnown.ts` | T20 |
+| New `services/calendar.ts` + the reminder control in `Settings.tsx` | T21 |
 
 **Shared rule:** any task that adds a persisted `AppSettingKey` must also add it to
 `settingKeys` in `src/db/backup.ts` and to the `AppSettingKey` type. That's a
@@ -710,6 +729,145 @@ and counts follow automatically. Switching never touches stored progress.
 **Not in scope:** role-based lists (frontend / backend / data). There is no
 verified data on which problems each role gets, and the app can't fetch any.
 See the parking lot.
+
+## T17. Built-in attempt timer
+
+**Why:** the duration field is manual, so it's almost always empty. T12's
+per-user time estimates then never leave the defaults, and the user has to
+guess the minutes when logging.
+
+**Scope**
+- A "Start timer" control on the problem view. While it runs, it shows the
+  elapsed minutes. Logging the attempt fills `durationMinutes` with the rounded
+  elapsed minutes. The user can still edit the field, and the value is clamped
+  to the form's allowed 1–600.
+- Elapsed-time math goes in a pure `services/attemptTimer.ts`, unit-tested: it
+  takes start and stop timestamps and returns whole minutes, with no clock reads
+  inside.
+- The start time survives a reload and a trip to NeetCode in another tab.
+  - Store it in `localStorage`, keyed by problem id and wrapped in try/catch.
+  - It's a per-device convenience, not app data: no Dexie table, no backup
+    field.
+  - Saving the attempt clears it, and so does a start time older than 12 hours.
+- "Start" sits next to the NeetCode / LeetCode buttons, so opening the problem
+  and starting the clock is one motion.
+
+**Not in scope:** pause/resume, per-step timing, any change to how XP or review
+stages use duration (they don't).
+
+**Deliverable:** timer + unit tests. Browser check: start, open NeetCode, come
+back after a few minutes, log, and the duration is filled in.
+
+## T18. Quick log from the plan
+
+**Why:** logging every item means opening the full problem view and filling a
+form, and that daily friction is what makes people stop logging.
+
+**Scope**
+- Each unlogged plan item gets three buttons: "Solved it", "Needed a hint" and
+  "Couldn't solve it".
+- A pure `services/quickLog.ts` maps each button to a full `AttemptInput`
+  using the same rules as `attemptForm.ts`, so quality derives exactly as from
+  the form. Unit-test that each button yields the same quality as the
+  equivalent form submission.
+  - "Solved it" → `solved_independently` + `manageable` (strong).
+  - "Needed a hint" → `solved_with_hint` + `small_hint` (partial).
+  - "Couldn't solve it" → `could_not_solve` (weak).
+- Saving goes through `saveAttempt`, so it's one transaction like any other
+  attempt. If T17's timer is running for that problem, its minutes are
+  included.
+- After a quick log the item shows "Logged · add a note" (opens the full form
+  to edit nothing but the note) and a one-tap Undo for the next 10 seconds.
+  - Undo deletes that attempt and restores the previous progress row in one
+    transaction. XP is recomputed with `replayXp`, as backup restore does.
+  - Explain that in the PR, because it's the only path that removes an
+    attempt.
+- The full form stays the way to record anything more detailed.
+
+**Not in scope:** changing the form, bulk logging several items at once.
+
+**Deliverable:** buttons + undo + tests (quality mapping, undo restores
+progress and XP exactly).
+
+## T19. "Why this problem today?"
+
+**Why:** the plan already knows why it picked each item, but it doesn't say.
+A one-line reason makes the plan feel like coaching instead of a random list,
+and it explains a review-only day.
+
+**Scope**
+- A pure `services/planReason.ts`, unit-tested, returns one short line per
+  `DailyPlanItem`:
+  - "Review · 5 days overdue"
+  - "Review · last attempt needed a hint"
+  - "New · weakest topic you're working on"
+  - "New · next stop on the route"
+  - "Warm-up for <problem>" (T5)
+  - "Reviews first: N more to clear before new problems" (overload)
+- It reads only what selection already computed (progress, skills, cadence)
+  and adds no stored state. It's recomputed on every render, so same-day replay
+  stays stable.
+- Shown as a muted line under each item in `DailyPlan.tsx`.
+- **Must not** change `RecommendationEvent.kind` or selection itself. If the
+  exact reason a stored item was picked can't be recovered on replay, show the
+  best true statement ("Review · due today"), never a guess.
+
+**Not in scope:** changing selection, explanations longer than one line.
+
+**Deliverable:** reasons + tests covering every branch.
+
+## T20. Import prior history
+
+**Why:** most people install the app after already solving part of the list.
+Today they either re-solve everything from scratch or log fake attempts one by
+one.
+
+**Scope**
+- A one-time screen, reachable from Settings and offered on first launch next
+  to the problem-set picker: "Mark problems you already know". It shows a
+  checklist by topic, with a "select whole topic" option.
+- Marked problems get a `progress` row only: status `solved`, `reviewStage` 2,
+  next review spread over the next 7–21 days, so they don't all come due on the
+  same day.
+  - **No `Attempt` rows.** Imports earn no XP, no streak and no badges.
+  - XP stays reconstructible from `attempts` alone, and nobody can farm XP.
+  - The spreading rule goes in a pure `services/importKnown.ts`, unit-tested.
+- Undo: a "Remove imported marks" button deletes progress rows that have no
+  attempts. That set is identifiable without any new field.
+- Known gap to document: topic skill (`skill.ts`) replays only attempts, so an
+  imported topic still starts at Easy for new problems until the first real
+  attempts there. T16's "skip Easies" covers users for whom that matters.
+
+**Not in scope:** importing from a LeetCode account (rejected, see Decisions),
+importing files from other trackers.
+
+**Deliverable:** import screen + undo + tests. Browser check: import a topic;
+its reviews arrive over the following weeks, and XP is unchanged.
+
+## T21. Calendar reminder
+
+**Why:** a practice habit needs a nudge, and push notifications need a server.
+A recurring calendar event gives most of the value with no network.
+
+**Scope**
+- Settings → "Add practice reminder to my calendar": pick days of the week and
+  a time, then download a `.ics` file.
+- A pure `services/calendar.ts`, unit-tested, builds an RFC 5545 VEVENT:
+  - Weekly `RRULE` with `BYDAY`.
+  - Floating local `DTSTART`.
+  - Fixed 45-minute duration, or the T12 time budget when one is set.
+  - A deterministic `UID`.
+  - A short description that links the deployed app URL when known, otherwise
+    none.
+- If T14's weekly goal exists, prefill the day count from it.
+- Nothing is stored. The file is generated on demand.
+
+**Not in scope:** push notifications, editing an event already added (the user
+deletes it in their calendar and downloads a new one).
+
+**Deliverable:** generator + tests (golden `.ics` text for a sample, line
+endings `\r\n`, escaping) + a check that the file imports into a calendar app,
+done by the owner since the session can't.
 
 ## Parking lot
 
