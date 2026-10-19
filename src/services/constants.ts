@@ -67,32 +67,88 @@ export function xpStreakMultiplier(streakDays: number): number {
   return multiplier;
 }
 
+// Why each reward exists (T6). The app's goals are (1) retain what you learned,
+// (2) fix weak topics instead of avoiding them, (3) log honestly, (4) practise
+// steadily, not necessarily daily. Every rule below pays for exactly one of them,
+// and every one is additive or a max(), so a re-replay can only raise lifetime XP:
+//   retention bonus    goal 1. A due review recalled at stage >= 1 proves the spacing worked.
+//   comeback bonus     goal 2. Turning a struggling problem strong is the hardest, most valuable event.
+//   weekly multiplier  goal 4. 3 active days a week is a fine schedule; it earns the same tiers a daily streak does.
+//   weak attempts      goal 3. They keep their base XP, so honest logging is never punished.
+
+// Bonus XP added to the base of a strong or partial first-of-day attempt on a review that is due,
+// indexed by the review stage the problem was at BEFORE the attempt (stage 0 earns none).
+export const XP_RETENTION_BONUS_BY_STAGE = [0, 2, 4, 6, 8, 10] as const;
+// Bonus XP for the strong attempt that ends a run of STRUGGLE_THRESHOLD+ weak attempts on a problem.
+export const XP_COMEBACK_BONUS = 25;
+
+// Weekly streak: consecutive calendar weeks (Monday start) with at least
+// WEEKLY_STREAK_MIN_ACTIVE_DAYS active days. Grace-free and replayable from the
+// attempt dates, like the daily streak. The week in progress never breaks the
+// streak: it counts once it reaches the minimum, and is skipped until then.
+export const WEEKLY_STREAK_MIN_ACTIVE_DAYS = 3;
+// `[minWeeks, multiplier]`, highest applicable wins; same ceiling as the daily tiers.
+export const XP_WEEKLY_MULTIPLIER_TIERS = [
+  [0, 1.0],
+  [2, 1.1],
+  [4, 1.25],
+  [8, 1.5]
+] as const;
+
+export function xpWeeklyMultiplier(weeks: number): number {
+  let multiplier = 1.0;
+  for (const [min, value] of XP_WEEKLY_MULTIPLIER_TIERS) {
+    if (weeks >= min) multiplier = value;
+  }
+  return multiplier;
+}
+
+// The consistency multiplier is the better of the two streaks, so a daily user
+// loses nothing and a steady 3-days-a-week user can reach the same tiers.
+export function xpConsistencyMultiplier(streakDays: number, streakWeeks: number): number {
+  return Math.max(xpStreakMultiplier(streakDays), xpWeeklyMultiplier(streakWeeks));
+}
+
 // Level curve: gentle square-root growth. level = floor(sqrt(xp / XP_PER_LEVEL_UNIT)),
 // so level 1 at 50 XP, level 2 at 200, level 3 at 450, level 4 at 800.
 export const XP_PER_LEVEL_UNIT = 50;
 
-// Milestone badges — the named checkpoints across all three progression axes
-// (consistency / mastery / volume, plus level). Every predicate is a pure,
-// monotonic check of progress + attempts + catalog + streak + level; the earned
-// set is stored as a monotonic union so a later weak attempt (which resets a
-// review stage) or a broken streak can never un-earn one. Ordered by axis, then
-// ascending within an axis, so the shelf reads as a progression.
+// Milestone badges — the named checkpoints across the progression axes
+// (retention / consistency / mastery / volume, plus level). Every predicate is a
+// pure, monotonic check of progress + attempts + catalog + streaks + level; the
+// earned set is stored as a monotonic union so a later weak attempt (which resets
+// a review stage) or a broken streak can never un-earn one. Ordered by axis, then
+// ascending within an axis, so the shelf reads retention -> consistency ->
+// mastery -> volume -> level. `hint` is the set-neutral text; `badgeHint` in
+// badges.ts swaps in the active set's numbers where a badge depends on it.
 export const BADGES = [
-  // Volume / mastery — first steps
-  { id: 'first-solve', label: 'First solve', hint: 'Solve any problem for the first time.' },
-  { id: 'first-mastered', label: 'First mastered', hint: 'Take a problem all the way to mastered.' },
-  // Consistency
+  // Retention — problems that survived their spaced reviews
+  { id: 'retained-10', label: 'Retained 10', hint: 'Get 10 problems to review stage 3 or beyond.' },
+  { id: 'retained-25', label: 'Retained 25', hint: 'Get 25 problems to review stage 3 or beyond.' },
+  { id: 'retained-50', label: 'Retained 50', hint: 'Get 50 problems to review stage 3 or beyond.' },
+  // Consistency — daily streaks, weekly streaks, and coming back
   { id: 'week-streak', label: 'Week streak', hint: 'Practise seven calendar days in a row.' },
   { id: 'ten-day-streak', label: 'Ten-day streak', hint: 'Practise ten calendar days in a row.' },
   { id: 'month-streak', label: 'Month streak', hint: 'Practise thirty calendar days in a row.' },
   { id: 'century-streak', label: 'Hundred-day streak', hint: 'Practise a hundred calendar days in a row.' },
+  { id: 'weeks-4', label: '4 consistent weeks', hint: 'Practise on 3+ days a week, four weeks in a row.' },
+  { id: 'weeks-12', label: '12 consistent weeks', hint: 'Practise on 3+ days a week, twelve weeks in a row.' },
+  { id: 'weeks-26', label: '26 consistent weeks', hint: 'Practise on 3+ days a week, twenty-six weeks in a row.' },
+  { id: 'welcome-back', label: 'Welcome back', hint: 'Practise again after a break of a week or more.' },
   // Mastery
-  { id: 'topic-cleared', label: 'Topic cleared', hint: 'Reach mastered on every problem in one topic.' },
-  { id: 'five-topics-cleared', label: 'Five topics cleared', hint: 'Reach mastered on every problem in five topics.' },
-  { id: 'all-mastered', label: 'All mastered', hint: 'Reach mastered on every problem in the catalog.' },
+  { id: 'first-mastered', label: 'First mastered', hint: 'Take a problem all the way to mastered.' },
+  { id: 'foundations-solid', label: 'Foundations solid', hint: 'Reach solid skill in every foundations topic.' },
+  { id: 'comeback', label: 'Comeback', hint: 'Solve a problem you were struggling with.' },
+  { id: 'topic-cleared', label: 'Topic proficient', hint: 'Get every core problem in one topic to review stage 3.' },
+  { id: 'five-topics-cleared', label: 'Five topics proficient', hint: 'Get every core problem in five topics to review stage 3.' },
+  { id: 'all-mastered', label: 'All mastered', hint: 'Reach mastered on every problem in your set.' },
   // Volume
-  { id: 'half-catalog', label: 'Halfway', hint: 'Attempt 75 problems from the catalog.' },
-  { id: 'century', label: 'Century', hint: 'Attempt 100 problems from the catalog.' },
+  { id: 'first-solve', label: 'First solve', hint: 'Solve any problem for the first time.' },
+  { id: 'half-catalog', label: 'Halfway', hint: 'Attempt half the problems in your set.' },
+  { id: 'century', label: 'Century', hint: 'Attempt up to 100 problems from your set.' },
+  { id: 'list-75', label: 'NeetCode 75 complete', hint: 'Solve every problem in the NeetCode 75.' },
+  { id: 'list-150', label: 'NeetCode 150 complete', hint: 'Solve every problem in the NeetCode 150.' },
+  { id: 'list-250', label: 'NeetCode 250 complete', hint: 'Solve every problem in the NeetCode 250.' },
   // Level
   { id: 'level-5', label: 'Level 5', hint: 'Reach level 5.' },
   { id: 'level-10', label: 'Level 10', hint: 'Reach level 10.' }
@@ -105,10 +161,17 @@ export const BADGE_STREAK_WEEK = 7;
 export const BADGE_STREAK_DAYS = 10;
 export const BADGE_STREAK_MONTH = 30;
 export const BADGE_STREAK_CENTURY = 100;
-// Attempted-problem counts that unlock `half-catalog` / `century`.
-export const BADGE_ATTEMPTED_HALF = 75;
+// Weekly-streak lengths (consecutive consistent weeks) for `weeks-4` / `weeks-12` / `weeks-26`.
+export const BADGE_WEEKS = [4, 12, 26] as const;
+// Retention badges count problems at or beyond this review stage ...
+export const BADGE_RETAINED_STAGE = 3;
+// ... and unlock at these counts: `retained-10` / `retained-25` / `retained-50`.
+export const BADGE_RETAINED_COUNTS = [10, 25, 50] as const;
+// A topic is "proficient" when every core problem in it is at least this review stage.
+export const PROFICIENT_STAGE = 3;
+// `century` asks for this many attempted problems, or the whole set when the set is smaller.
 export const BADGE_ATTEMPTED_CENTURY = 100;
-// Topics cleared for `five-topics-cleared`.
+// Topics proficient for `five-topics-cleared`.
 export const BADGE_TOPICS_CLEARED = 5;
 // Levels that unlock the level badges.
 export const BADGE_LEVEL_MID = 5;

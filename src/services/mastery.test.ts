@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { masteryByTopic, strugglingProblems, topicTrajectory } from './mastery';
+import { masteryByTopic, proficientTopics, strugglingProblems, topicTrajectory } from './mastery';
 import type { Attempt, CatalogProblem, ProblemProgress, Quality } from '../types/models';
 
 const problems: CatalogProblem[] = [
@@ -63,6 +63,37 @@ describe('masteryByTopic', () => {
     const rows = [progress({ problemId: 'a', struggling: true, reviewStage: 0, status: 'attempted' })];
     const arrays = masteryByTopic(problems, rows)[0];
     expect(arrays.mastery).toBe(0); // (0/5 + 0) / 2, b untouched
+  });
+});
+
+describe('topic proficiency (the map star)', () => {
+  const core: CatalogProblem[] = [
+    { ...problems[0], lists: ['nc75', 'nc150', 'nc250'] },
+    { ...problems[1], lists: ['nc150', 'nc250'] },
+    { ...problems[2], id: 'extra', lists: ['nc250'] }
+  ];
+
+  it('stars a topic once every core problem is at stage 3, whatever the rest of the 250 is doing', () => {
+    const rows = [progress({ problemId: 'a', reviewStage: 3 }), progress({ problemId: 'b', reviewStage: 4 })];
+    const cells = masteryByTopic(core, rows, 'nc250');
+    expect(cells.find((cell) => cell.topic === 'Arrays')?.proficient).toBe(true);
+    // The mastery ring is still honest: 3/5 and 4/5 is well short of full.
+    expect(cells.find((cell) => cell.topic === 'Arrays')?.mastery).toBeLessThan(1);
+  });
+
+  it('does not star a topic with one core problem short of stage 3', () => {
+    const rows = [progress({ problemId: 'a', reviewStage: 5 }), progress({ problemId: 'b', reviewStage: 2 })];
+    expect(masteryByTopic(core, rows, 'nc150')[0].proficient).toBe(false);
+  });
+
+  it('asks only for the NeetCode 75 when the 75 is active', () => {
+    const rows = [progress({ problemId: 'a', reviewStage: 3 })];
+    expect(proficientTopics([core[0]], rows, 'nc75').has('Arrays')).toBe(true);
+    expect(proficientTopics(core.slice(0, 2), rows, 'nc150').has('Arrays')).toBe(false);
+  });
+
+  it('never stars a topic whose only problems are outside the core', () => {
+    expect(masteryByTopic(core, [progress({ problemId: 'extra', reviewStage: 5 })], 'nc150').find((cell) => cell.topic === 'Trees')?.proficient).toBe(false);
   });
 });
 

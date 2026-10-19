@@ -30,8 +30,8 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Key files
 
 - `src/services/` — pure, **deterministic, unit-tested** rules. No I/O. `reviews.ts`
-  (quality + review stage; late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection), `mastery.ts`,
-  `streak.ts` (grace days), `gamification.ts` (XP/levels), `badges.ts`,
+  (quality + review stage; late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection), `mastery.ts` (incl. `proficientTopics`: the one definition behind the map star and the topic badges),
+  `streak.ts` (grace days; grace-free daily and weekly streaks for XP), `gamification.ts` (XP/levels; `attemptXpAwards` is the one fold that `replayXp` and the live award both read, `stagesBeforeEach` replays prior review stage), `badges.ts` (predicates + set-aware `badgeHint`),
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),
   `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet`; the review queue is fed the unfiltered catalog),
@@ -68,8 +68,11 @@ Do not add a dependency without asking first, and explain why existing code can'
 - **Level and badge state are derived, not stored where they can drift.** Level is
   `floor(sqrt(xp / 50))`, computed on read. Badges are a monotonic union — never
   un-earned. XP is the only persisted gamification number, and it is reconstructible from
-  the `attempts` history alone (`replayXp`), which the Dexie v3/v4 migrations and backup
-  restore all rely on.
+  the `attempts` history alone (`replayXp`), which the Dexie v3/v4/v5 migrations and backup
+  restore all rely on. Every XP rule (retention and comeback bonuses, daily/weekly streak
+  multiplier) must be a function of the attempt rows, additive or a `max()`, so a re-replay
+  can only raise XP; the live award reads its entry from `attemptXpAwards`, never from a
+  stored progress row.
 - **All recommendation and review rules are deterministic and unit-tested.** No
   wall-clock reads inside the pure functions — dates are passed in as `YYYY-MM-DD` local
   strings.

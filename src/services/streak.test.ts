@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentStreak, refreshGrace, streakEndingOn, type StreakGraceState } from './streak';
+import { currentStreak, refreshGrace, streakEndingOn, weeklyStreakEndingOn, type StreakGraceState } from './streak';
 
 const grace = (remaining: number, refreshedOn = '2026-07-01'): StreakGraceState => ({ graceRemaining: remaining, graceRefreshedOn: refreshedOn });
 const dates = (...list: string[]) => new Set(list);
@@ -96,5 +96,50 @@ describe('refreshGrace', () => {
     const active = new Set(Array.from({ length: 20 }, (_, i) => `2026-07-${String(i + 2).padStart(2, '0')}`));
     const next = refreshGrace(grace(1, '2026-07-01'), active, '2026-07-21');
     expect(next.graceRemaining).toBe(1);
+  });
+});
+
+// 2026-07-27 is a Monday, so weeks run 07-27..08-02, 08-03..08-09, ...
+describe('weeklyStreakEndingOn', () => {
+  it('is 0 with no activity', () => {
+    expect(weeklyStreakEndingOn(dates(), '2026-08-05')).toBe(0);
+  });
+
+  it('counts the current week once it has 3 active days', () => {
+    expect(weeklyStreakEndingOn(dates('2026-08-03', '2026-08-04'), '2026-08-05')).toBe(0);
+    expect(weeklyStreakEndingOn(dates('2026-08-03', '2026-08-04', '2026-08-05'), '2026-08-05')).toBe(1);
+  });
+
+  it('counts consecutive consistent weeks, 3 days each, with no daily streak needed', () => {
+    const active = dates('2026-07-27', '2026-07-29', '2026-07-31', '2026-08-03', '2026-08-05', '2026-08-07', '2026-08-10', '2026-08-12', '2026-08-14');
+    expect(weeklyStreakEndingOn(active, '2026-08-14')).toBe(3);
+    expect(streakEndingOn(active, '2026-08-14')).toBe(1);
+  });
+
+  it('does not break on the week in progress: it is skipped until it reaches 3 days', () => {
+    const active = dates('2026-07-27', '2026-07-29', '2026-07-31', '2026-08-03', '2026-08-05', '2026-08-07', '2026-08-10');
+    expect(weeklyStreakEndingOn(active, '2026-08-11')).toBe(2);
+  });
+
+  it('breaks on a finished week with fewer than 3 active days', () => {
+    const active = dates('2026-07-27', '2026-07-29', '2026-07-31', '2026-08-03', '2026-08-05', '2026-08-10', '2026-08-12', '2026-08-14');
+    expect(weeklyStreakEndingOn(active, '2026-08-14')).toBe(1);
+  });
+
+  it('only counts dates up to the end date', () => {
+    const active = dates('2026-08-03', '2026-08-05', '2026-08-07');
+    expect(weeklyStreakEndingOn(active, '2026-08-05')).toBe(0); // only 2 days so far this week
+    expect(weeklyStreakEndingOn(active, '2026-08-07')).toBe(1);
+  });
+
+  it('starts weeks on Monday: Sunday belongs to the week before', () => {
+    // Fri, Sat, Sun = one week (07-27..08-02 holds 07-31, 08-01, 08-02), Mon starts the next.
+    expect(weeklyStreakEndingOn(dates('2026-07-31', '2026-08-01', '2026-08-02'), '2026-08-02')).toBe(1);
+    expect(weeklyStreakEndingOn(dates('2026-07-31', '2026-08-01', '2026-08-03'), '2026-08-03')).toBe(0);
+  });
+
+  it('walks across a year boundary', () => {
+    const active = dates('2025-12-22', '2025-12-24', '2025-12-26', '2025-12-29', '2025-12-31', '2026-01-02');
+    expect(weeklyStreakEndingOn(active, '2026-01-02')).toBe(2);
   });
 });

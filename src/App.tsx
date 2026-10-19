@@ -12,7 +12,7 @@ import { seedCatalog } from './db/seedCatalog';
 import { useDailyPlan } from './hooks/useDailyPlan';
 import { useGamification } from './hooks/useGamification';
 import { parseProblemSet, problemsInSet, PROBLEM_SETS } from './services/problemSet';
-import { streakEndingOn } from './services/streak';
+import { streakEndingOn, weeklyStreakEndingOn } from './services/streak';
 import type { ProblemList } from './types/models';
 
 function localDate(date = new Date()): string {
@@ -52,7 +52,9 @@ export default function App() {
   const progressByProblem = new Map(progress.map((item) => [item.problemId, item.status]));
   // Grace-free streak ending today — the number that drives the XP multiplier on
   // the award path, so the ×N chip on the bar matches what an attempt would earn.
-  const streakDays = streakEndingOn(new Set(attempts.map((a) => a.attemptedOn)), localDate());
+  const activeDates = new Set(attempts.map((a) => a.attemptedOn));
+  const streakDays = streakEndingOn(activeDates, localDate());
+  const streakWeeks = weeklyStreakEndingOn(activeDates, localDate());
 
   const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set).length])) as Record<ProblemList, number>;
 
@@ -61,8 +63,8 @@ export default function App() {
       <div className="app-intro">
         <h1>LeetCode Tracker</h1>
       </div>
-      {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} />}
-      {gamification && <BadgeShelf earned={gamification.badges} />}
+      {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} streakWeeks={streakWeeks} />}
+      {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problems.length} />}
       {storedSet === undefined && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
         <span>Which list are you working through?</span>
         <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} />
@@ -76,6 +78,8 @@ export default function App() {
       progress={progress}
       progressByProblem={progressByProblem}
       settings={settings}
+      problemSet={problemSet}
+      streakWeeks={streakWeeks}
       planItems={plan ?? []}
       completedProblemIds={completedProblemIds}
       profile={profile}

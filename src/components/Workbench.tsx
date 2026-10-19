@@ -9,7 +9,7 @@ import { ProblemDetail } from './ProblemDetail';
 import { DailyPlan } from './DailyPlan';
 import { Overlay } from './Overlay';
 import type { CadenceProfile } from '../services/cadence';
-import type { AppSetting, Attempt, CatalogProblem, ProblemProgress, ProgressStatus } from '../types/models';
+import type { AppSetting, Attempt, CatalogProblem, ProblemList, ProblemProgress, ProgressStatus } from '../types/models';
 
 interface WorkbenchProps {
   attempts: Attempt[];
@@ -20,6 +20,9 @@ interface WorkbenchProps {
   progress: ProblemProgress[];
   progressByProblem: Map<string, ProgressStatus>;
   settings: AppSetting[];
+  problemSet: ProblemList;
+  // Consecutive calendar weeks with 3+ active days, shown beside the daily streak.
+  streakWeeks: number;
   planItems: DailyPlanItem[];
   completedProblemIds: Set<string>;
   profile: CadenceProfile;
@@ -49,7 +52,7 @@ function graceStateFrom(settings: AppSetting[]): StreakGraceState {
 // The single screen: XP strip, a search box, the tiered topic map (with the
 // bare-minimum stats above it and a side panel for a topic's problems, the
 // search results, or one problem's detail), today's plan, badge shelf.
-export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, planItems, completedProblemIds, profile, onAddExtra, onSkip }: WorkbenchProps) {
+export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, planItems, completedProblemIds, profile, onAddExtra, onSkip }: WorkbenchProps) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -115,6 +118,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   return <section className="workbench" aria-label="Practice workbench">
     <div className="workbench-stats" aria-label="Progress summary">
       <span><b>{streak}</b> day streak{graceDaysUsed > 0 && <> · <span className="grace-note">{graceDaysUsed} grace {graceDaysUsed === 1 ? 'day' : 'days'}</span></>}</span>
+      <span title="Consecutive weeks with 3+ active days"><b>{streakWeeks}</b> {streakWeeks === 1 ? 'week' : 'weeks'} consistent</span>
       <span><b>{attemptsThisWeek}</b> attempts · 7 days</span>
       <button
         type="button"
@@ -169,7 +173,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         </div>
       : <div className={`workbench-map${panel ? ' has-panel' : ''}`}>
           <TopicMap
-            cells={masteryByTopic(problems, progress)}
+            cells={masteryByTopic(problems, progress, problemSet)}
             strugglingTopics={strugglingTopics}
             selectedTopic={selectedTopic}
             onSelectTopic={toggleTopic}

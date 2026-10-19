@@ -1,4 +1,4 @@
-import { STREAK_GRACE_ACTIVE_DAYS_PER_GRANT, STREAK_GRACE_PER_WEEK } from './constants';
+import { STREAK_GRACE_ACTIVE_DAYS_PER_GRANT, STREAK_GRACE_PER_WEEK, WEEKLY_STREAK_MIN_ACTIVE_DAYS } from './constants';
 
 // Streak with grace days: a returning user does not lose the whole streak on the
 // first missed day. Pure — the caller reads/writes the grace state from Dexie.
@@ -41,6 +41,33 @@ export function streakEndingOn(activeDates: Set<string>, endDate: string): numbe
     cursor.setDate(cursor.getDate() - 1);
   }
   return streak;
+}
+
+// Consecutive consistent calendar weeks (Monday start, at least
+// WEEKLY_STREAK_MIN_ACTIVE_DAYS active days each) ending with the week that
+// contains `endDate`. Like `streakEndingOn` it is grace-free and a pure function
+// of `activeDates` + `endDate`, so the XP award and the `replayXp` fold agree.
+// Only dates up to `endDate` count, and the week in progress never breaks the
+// streak: it adds one once it has reached the minimum and is skipped until then.
+export function weeklyStreakEndingOn(activeDates: Set<string>, endDate: string): number {
+  const parts = endDate.split('-').map(Number);
+  const end = new Date(parts[0], parts[1] - 1, parts[2]);
+  const endKey = toKey(end);
+  const monday = new Date(end.getFullYear(), end.getMonth(), end.getDate() - ((end.getDay() + 6) % 7));
+  let weeks = 0;
+  let current = true;
+  while (true) {
+    let activeDays = 0;
+    for (let offset = 0; offset < 7; offset += 1) {
+      const key = toKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + offset));
+      if (key <= endKey && activeDates.has(key)) activeDays += 1;
+    }
+    if (activeDays >= WEEKLY_STREAK_MIN_ACTIVE_DAYS) weeks += 1;
+    else if (!current) break;
+    current = false;
+    monday.setDate(monday.getDate() - 7);
+  }
+  return weeks;
 }
 
 // Refresh the grace allowance: grant STREAK_GRACE_PER_WEEK once every

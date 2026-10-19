@@ -1,9 +1,8 @@
 import { db } from './database';
 import { mergeBadges } from '../services/badges';
-import { xpForAttempt } from '../services/gamification';
-import { streakEndingOn } from '../services/streak';
+import { attemptXpAwards } from '../services/gamification';
 import type { BadgeId } from '../services/constants';
-import type { GamificationState, Quality } from '../types/models';
+import type { Attempt, GamificationState } from '../types/models';
 
 const DEFAULT_STATE: Required<GamificationState> = { key: 'state', xp: 0, badges: [], updatedAt: '' };
 
@@ -18,23 +17,16 @@ export async function readGamification(): Promise<Required<GamificationState>> {
 }
 
 // Award XP for one attempt, inside a caller-supplied transaction so the write is
-// atomic with the attempt/progress writes in `saveAttempt`. `isFirstOfDay` is
-// false for a same-day reinforcement pass. `attemptedOn` + `priorActiveDates`
-// (the set of dates the user was already active on, INCLUDING this attempt's
-// date) drive the grace-free streak multiplier — the same inputs `replayXp`
-// reconstructs, so the v4 replay lands on the same lifetime total.
-export async function awardAttemptXp(
-  quality: Quality,
-  isFirstOfDay: boolean,
-  attemptedOn: string,
-  activeDates: Set<string>,
-  now: Date
-): Promise<void> {
+// atomic with the attempt/progress writes in `saveAttempt`. `attempts` is the full
+// history INCLUDING the attempt just added; the award is that attempt's entry in
+// `attemptXpAwards`, the very fold `replayXp` sums, so the live total can never
+// drift from the replayed one (retention and comeback bonuses, daily and weekly
+// streaks and the same-day repeat rule all come from the attempt rows).
+export async function awardAttemptXp(attemptId: string, attempts: Attempt[], now: Date): Promise<void> {
   const current = (await db.gamification.get('state')) ?? DEFAULT_STATE;
-  const streakDays = streakEndingOn(activeDates, attemptedOn);
   await db.gamification.put({
     key: 'state',
-    xp: current.xp + xpForAttempt(quality, isFirstOfDay, streakDays),
+    xp: current.xp + (attemptXpAwards(attempts).get(attemptId) ?? 0),
     badges: current.badges ?? [],
     updatedAt: now.toISOString()
   });

@@ -41,7 +41,7 @@ up from there.
 | T4 | Cadence-aware plan: regular, occasional and returning users | T3 | T7, T8 | Done |
 | T11 | Review load: reach mastery with fewer repeats | T4 | T7, T8 | Done |
 | T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Done |
-| T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Todo |
+| T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Done |
 | T7 | PWA: installable, offline, persistent storage | — | anything | Todo |
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Todo |
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Todo |
@@ -712,10 +712,24 @@ Each session fills in its own entry in its PR.
 - Follow-ups: T6 may want a "comeback" reward when a struggling problem is finally solved. The "returning" cap of exactly one new problem can see two when the warm-up is an unsolved Easy (rare: nothing solved in that topic or its prerequisites).
 
 ### T6
-- Status / PR / date:
+- Status / PR / date: Done · 2026-10-19 · branch `claude/leetcode-master-roadmap-znri4s`
 - What shipped:
+  - **XP** (`gamification.ts`, `constants.ts`): a retention bonus (+2/4/6/8/10 by prior stage 1-5) on a strong or partial first-of-day attempt on a due review; a comeback bonus (+25) on the strong attempt that ends 3+ weak ones; the consistency multiplier is `max(daily tier, weekly tier)` (weekly tiers 2 / 4 / 8 consistent weeks → ×1.1 / 1.25 / 1.5). Weak attempts keep their base XP. New pure `stagesBeforeEach` replays each attempt's prior stage through `progressAfterAttempt` (T11's rules). `attemptXpAwards` is the single fold; `replayXp` sums it and the live path (`awardAttemptXp`) reads the new attempt's entry from it, so live and replay cannot drift.
+  - **Weekly streak** (`weeklyStreakEndingOn` in `streak.ts`): consecutive Monday-start weeks with 3+ active days, grace-free, the week in progress never breaks it. Shown as "N weeks consistent" beside the daily streak, and in the XP chip's tooltip.
+  - **Dexie v5**: re-replays XP with the new formula via `xpAfterReplay` (`max(stored, replay)`).
+  - **Badges** (25, was 13; ids kept, order retention → consistency → mastery → volume → level): `retained-10/25/50` (stage ≥ 3), `weeks-4/12/26`, `comeback`, `welcome-back`, `foundations-solid`, `list-75/150/250`. `topic-cleared` / `five-topics-cleared` are now "topic proficient": every core problem of the active set at stage ≥ 3 (core = nc75 when the 75 is active, nc150 otherwise), defined once in `proficientTopics` (`mastery.ts`) and shared with the map star. `half-catalog` / `century` scale to the active set; `badgeHint` quotes the set. Marks for every new badge in `BadgeShelf`.
+  - **Map**: the star and "N of 18 topics proficient" use proficiency; the ring still shows honest mastery.
+  - Tests: replay equals live for seeded random histories, v5 ≥ v4 total, a 3-days-a-week learner reaches ×1.5, weekly-streak edge cases (week boundary, year boundary, in-progress week), every new badge predicate, proficiency and hints.
 - Decisions & deviations:
-- Follow-ups:
+  - **Retention bonus needs the review to be due** (attempt date on or after the replayed `nextReviewDate`), not just prior stage ≥ 1. The roadmap says "prior stage ≥ 1"; without the due check a user could farm the bonus by redoing a stage-4 problem the next day. It is first-of-day only, so a same-day repeat never earns it.
+  - **Replay is the definition of prior stage.** The live path does not read the stored `progress` row, so XP is the same for a user whose rows predate T11's rules. Stored rows are untouched.
+  - **Weekly tiers** (2 / 4 / 8 weeks) were chosen so 8 steady weeks of 3 days reach the same ×1.5 ceiling the daily tiers reach at 14 days.
+  - **Volume badges:** `half-catalog` = half the active set; `century` = 100 attempted problems, or the whole set when it has fewer than 100 (so the 75 can earn it). Counts are over in-set problems; stored badges are never removed when the set changes. Ids unchanged; labels for the proficiency badges changed ("Topic proficient").
+  - **List-complete badges read the whole catalog**, so finishing the 150 counts while the 75 is active.
+  - **`foundations-solid`** uses `PREREQ_SKILL_THRESHOLD` (T3's skill threshold) over the tier-1 topics present in the active set.
+  - **New badges are not backfilled by the v5 migration**; they arrive on the next saved attempt (monotonic union, nothing already earned changes). The map star and the weekly streak are derived, so they appear immediately.
+  - **QA** (Chromium; old v4 build seeded with 29 attempts through raw IndexedDB, then the new build on the same origin): upgraded in place to Dexie v5, all attempts kept, XP 543 → 723 (never lower), "8 weeks consistent" and the ×1.5 chip show, the star lands on Arrays & Hashing, 25 marks render, volume hint quotes "NeetCode 150". A live attempt through the form earned +33 XP (20 + stage-1 retention 2, ×1.5) and added `weeks-4`, `welcome-back`, `comeback`, `topic-cleared`, `first-solve` and nothing else. IndexedDB XP equalled `replayXp` of the stored attempts after the migration and after the live save. The page never scrolls at 1280 and 700 px; the badge shelf stays inside its box. No console errors. Not exercised in a browser: level-up and badge-reveal animations (unchanged, still behind `prefers-reduced-motion`), and restoring a backup.
+- Follow-ups: the header still says "LeetCode Tracker" (T10). `restoreBackup` always rebuilds XP from the attempts, so a restored backup picks up the new formula; its badges come from the payload and top up on the next attempt. The daily-streak tiers still count only consecutive days (unchanged by design: the weekly tier is the max() alternative).
 
 ### T7
 - Status / PR / date:

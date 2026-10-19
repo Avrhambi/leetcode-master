@@ -46,7 +46,8 @@ function Node({ node, cell, struggling, selected, onSelect }: {
   // the ring's fill arc, the core's colour rung, and the node's radius.
   const radius = NODE_R + band * 0.45;
   const circumference = 2 * Math.PI * (radius + 1.4);
-  const complete = cell.mastery >= 1;
+  // The star means "topic proficient": every core problem of the active set at review stage 3+.
+  const complete = cell.proficient;
 
   const classes = ['path-node', struggling ? 'struggling' : '', selected ? 'selected' : '', complete ? 'complete' : '']
     .filter(Boolean).join(' ');
@@ -57,7 +58,7 @@ function Node({ node, cell, struggling, selected, onSelect }: {
     role="button"
     tabIndex={0}
     aria-pressed={selected}
-    aria-label={`${cell.topic}: ${pct}% mastery, ${cell.attempted} of ${cell.total} attempted${struggling ? ', needs a different approach' : ''}`}
+    aria-label={`${cell.topic}: ${pct}% mastery, ${cell.attempted} of ${cell.total} attempted${cell.proficient ? ', proficient' : ''}${struggling ? ', needs a different approach' : ''}`}
     onClick={onSelect}
     onKeyDown={(event) => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -113,13 +114,13 @@ export function TopicMap({ cells, strugglingTopics, selectedTopic, onSelectTopic
     -1
   );
   const progress = nodes.length < 2 ? 0 : Math.max(0, lastTouched) / (nodes.length - 1);
-  const clearedTopics = cells.filter((cell) => cell.mastery >= 1).length;
+  const clearedTopics = cells.filter((cell) => cell.proficient).length;
 
   return <section className="topic-map" aria-labelledby="topic-map-heading">
     <div className="topic-map-head">
       <p className="eyebrow" id="topic-map-heading">The route</p>
       <p className="topic-map-hint">
-        <b>{clearedTopics}</b> of <b>{cells.length}</b> topics cleared · follow the trail, pick a stop to see its problems
+        <b>{clearedTopics}</b> of <b>{cells.length}</b> topics proficient · follow the trail, pick a stop to see its problems
       </p>
     </div>
     <div className="topic-map-canvas">

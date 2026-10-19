@@ -1,6 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { AppSetting, Attempt, CatalogProblem, GamificationState, ProblemProgress, RecommendationEvent } from '../types/models';
-import { replayXp } from '../services/gamification';
+import { replayXp, xpAfterReplay } from '../services/gamification';
 
 export const db = new Dexie('pattern-pilot') as Dexie & {
   problems: EntityTable<CatalogProblem, 'id'>;
@@ -67,6 +67,26 @@ db.version(4).stores(storesV3).upgrade(async (tx) => {
   await tx.table<GamificationState>('gamification').put({
     key: 'state',
     xp: replayXp(attempts),
+    badges: row?.badges ?? [],
+    updatedAt: new Date().toISOString()
+  });
+});
+
+// v5: the XP formula gains a retention bonus, a comeback bonus and a weekly-streak
+// multiplier (services/constants.ts), and the badge set grows. Re-replay XP with
+// the new formula: every change is additive or a max(), so this is a one-time
+// retroactive XP *increase* (a possible level bump) and `xpAfterReplay` never
+// lets it fall below the stored total. The new badges are not backfilled here;
+// they arrive on the next saved attempt (the earned set is a monotonic union, so
+// nothing already earned changes). A fresh install is created at v5 and skips
+// this. `replayXp` still reads only attempt rows, so backup restore's fallback
+// call (backup.ts) picks up the new formula for free.
+db.version(5).stores(storesV3).upgrade(async (tx) => {
+  const attempts = await tx.table<Attempt>('attempts').toArray();
+  const row = await tx.table<GamificationState>('gamification').get('state');
+  await tx.table<GamificationState>('gamification').put({
+    key: 'state',
+    xp: xpAfterReplay(row?.xp ?? 0, attempts),
     badges: row?.badges ?? [],
     updatedAt: new Date().toISOString()
   });

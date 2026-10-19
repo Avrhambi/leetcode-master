@@ -1,7 +1,7 @@
-import { qualityFor, progressAfterAttempt } from '../services/reviews';
+import { localDate, qualityFor, progressAfterAttempt } from '../services/reviews';
 import { openRecommendationsToComplete } from '../services/recommendations';
 import { badgesEarned } from '../services/badges';
-import { currentStreak, type StreakGraceState } from '../services/streak';
+import { currentStreak, weeklyStreakEndingOn, type StreakGraceState } from '../services/streak';
 import { STREAK_GRACE_PER_WEEK } from '../services/constants';
 import { levelForXp } from '../services/gamification';
 import { parseProblemSet, problemsInSet } from '../services/problemSet';
@@ -37,20 +37,21 @@ export async function saveAttempt(input: AttemptInput): Promise<void> {
     const [progress, attempts, problems, settings] = await Promise.all([
       db.progress.toArray(), db.attempts.toArray(), db.problems.toArray(), db.settings.toArray()
     ]);
-    const activeDates = new Set(attempts.map((row) => row.attemptedOn));
 
-    // Award XP in the same transaction so it is atomic with the attempt write.
-    // `isFirstOfDay` is the negation of the same-day guard above; the grace-free
-    // streak ending on `attemptedOn` applies the consistency multiplier. Both
-    // inputs are reconstructible from attempt rows, so the v4 replay agrees.
-    await awardAttemptXp(attempt.quality, !alreadyAttemptedToday, input.attemptedOn, activeDates, now);
+    // Award XP in the same transaction so it is atomic with the attempt write. The
+    // award is replayed from the attempt rows (see `awardAttemptXp`), so it agrees
+    // with `replayXp` by construction.
+    await awardAttemptXp(attempt.id, attempts, now);
 
     // Badge check runs after the progress write so predicates see fresh state,
     // and after the XP award so the level badges see the post-attempt level.
     // recordBadges unions into the stored set, so this only ever adds.
-    const { streak } = currentStreak(new Set(attempts.map((row) => row.attemptedOn)), graceStateFrom(settings), now);
+    const activeDates = new Set(attempts.map((row) => row.attemptedOn));
+    const { streak } = currentStreak(activeDates, graceStateFrom(settings), now);
+    const weeklyStreakWeeks = weeklyStreakEndingOn(activeDates, localDate(0, now));
     const level = levelForXp((await readGamification()).xp);
-    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, parseProblemSet(settings.find((row) => row.key === 'problemSet')?.value)), currentStreakDays: streak, level }), now);
+    const problemSet = parseProblemSet(settings.find((row) => row.key === 'problemSet')?.value);
+    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, problemSet), allProblems: problems, problemSet, currentStreakDays: streak, weeklyStreakWeeks, level }), now);
     // Recording an attempt from either entry point (daily plan or catalog)
     // completes any matching open daily recommendation for this problem today.
     const openEvents = await db.recommendationEvents.where('problemId').equals(input.problemId).toArray();
