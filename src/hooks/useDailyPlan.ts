@@ -4,6 +4,7 @@ import { db } from '../db/database';
 import { persistRecommendations } from '../db/recommendations';
 import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from '../services/dailyPlan';
 import { cadenceFor, type CadenceProfile } from '../services/cadence';
+import { REVIEW_OVERLOAD_DUE } from '../services/constants';
 import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
 
 function localDay(date = new Date()): string {
@@ -69,8 +70,10 @@ export function useDailyPlan(
 
   const profile = cadenceFor(attempts ?? [], localDay()).profile;
   const allLogged = plan !== undefined && plan.length > 0 && plan.every((item) => completedProblemIds.has(item.problem.id));
+  // Not under review overload: new problems are paused until the backlog clears.
+  const dueCount = planInput ? dueReviewQueue(planInput.problems, planInput.progress).length : 0;
   const offerExtra = planInput !== undefined && plan !== undefined && allLogged
-    && (profile === 'regular' || dueReviewQueue(planInput.problems, planInput.progress).length === 0);
+    && dueCount < REVIEW_OVERLOAD_DUE && (profile === 'regular' || dueCount === 0);
   const addExtra = offerExtra ? async () => {
     const extra = selectExtraProblem(planInput, plan);
     if (extra) await persistRecommendations([{ problem: extra, kind: 'new' }]);

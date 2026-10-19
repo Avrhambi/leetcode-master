@@ -41,7 +41,9 @@ This wraps the NeetCode 150 in a coaching loop that reacts to your results.
 new one, plus reviews that are actually due. New problems are chosen by a
 priority score per topic — how foundational the topic is, how far along you are
 in it, and how recently you last touched it — so you get breadth early and depth
-where you need it, not a fixed march down the list.
+where you need it, not a fixed march down the list. If reviews pile up (12 or
+more due), new problems pause and the plan is all reviews until you are caught
+up, so you never build review debt faster than you can pay it.
 
 **Every attempt steers the next one.** You record how a problem went — solved it
 cleanly, needed a hint, watched the solution, couldn't do it — and that outcome

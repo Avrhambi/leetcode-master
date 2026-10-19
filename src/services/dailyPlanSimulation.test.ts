@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from './dailyPlan';
 import { cadenceFor } from './cadence';
+import { REVIEW_OVERLOAD_DUE } from './constants';
 import { coreRank } from './coreRank';
 import { progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
@@ -61,12 +62,12 @@ function simulate(days: number) {
 }
 
 describe('daily plan simulation over the real catalog', () => {
-  it('keeps every day sized 2-4 with at least one new problem', () => {
+  it('keeps every day sized 2-4 with at least one new problem, except an all-review overload day', () => {
     const { perDay } = simulate(30);
     for (const plan of perDay) {
       expect(plan.length).toBeGreaterThanOrEqual(2);
       expect(plan.length).toBeLessThanOrEqual(4);
-      expect(plan.some((item) => item.kind === 'new')).toBe(true);
+      expect(plan.some((item) => item.kind === 'new') || plan.every((item) => item.kind === 'review')).toBe(true);
     }
   });
 
@@ -275,13 +276,15 @@ function runPersona(active: (day: number) => boolean, qualityOf: (problem: Catal
 describe('T4 cadence personas (12 simulated weeks)', () => {
   for (const [cadenceName, active] of Object.entries(CADENCES)) {
     for (const [personaName, qualityOf] of [['fast', () => 'strong' as Quality], ['typical', typicalQuality]] as const) {
-      it(`${personaName} / ${cadenceName}: at least one new problem on every active day, never more than four items`, () => {
-        const { records } = runPersona(active, qualityOf);
+      it(`${personaName} / ${cadenceName}: a new problem on every active day unless reviews are overloaded, never more than four items`, () => {
+        const { records, attempts } = runPersona(active, qualityOf);
         expect(records.length).toBeGreaterThan(0);
-        for (const { day, plan } of records) {
+        for (const { day, now, plan, dueBefore } of records) {
           expect(plan.length, `day ${day}`).toBeLessThanOrEqual(4);
           expect(plan.length, `day ${day}`).toBeGreaterThanOrEqual(2);
-          expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
+          if (dueBefore < REVIEW_OVERLOAD_DUE) expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
+          else if (cadenceFor(attempts, localDate(0, now)).profile === 'returning') expect(plan.filter((item) => item.kind === 'new'), `day ${day} (returning)`).toHaveLength(1);
+          else expect(plan.every((item) => item.kind === 'review'), `day ${day} (overloaded)`).toBe(true);
         }
       });
     }
@@ -301,9 +304,11 @@ describe('T4 cadence personas (12 simulated weeks)', () => {
     expect(plan.length).toBeLessThanOrEqual(4);
     const knownTopics = new Set(attempts.map((attempt) => catalog.find((c) => c.id === attempt.problemId)?.primaryTopic));
     expect(knownTopics.has(news[0].problem.primaryTopic)).toBe(true);
-    // The profile clears itself: the next active day is back to a normal plan.
+    // The profile clears itself: the next active day is a normal plan — still review-heavy while the backlog is
+    // overloaded (new problems pause), otherwise with a new problem.
     const next = records.find((record) => record.day === 36)!;
-    expect(next.plan.filter((item) => item.kind === 'new').length).toBeGreaterThanOrEqual(1);
+    if (next.dueBefore >= REVIEW_OVERLOAD_DUE) expect(next.plan.every((item) => item.kind === 'review')).toBe(true);
+    else expect(next.plan.filter((item) => item.kind === 'new').length).toBeGreaterThanOrEqual(1);
   });
 
   it('an occasional user (two days a week) gets NeetCode 75 problems first, across topics', () => {
@@ -418,6 +423,18 @@ describe('T11 review load (12 simulated weeks)', () => {
     expect(twiceMax).toBeLessThanOrEqual(BACKLOG_BOUND_TWO_DAYS);
   });
 });
+describe('review overload keeps the backlog bounded over a year (T4 follow-up to T11)', () => {
+  it('typical learner: the due backlog stays at or under 30 at every cadence, 52 weeks', { timeout: 60000 }, () => {
+    // Without the overload rule the same runs reach 163 (daily), 133 (4 days a week) and 56 (2 days a week);
+    // with it the measured max is 25, 21 and 18.
+    for (const name of ['daily', 'fourDaysAWeek', 'twoDaysAWeek']) {
+      const { backlog, records } = runPersona(CADENCES[name], typicalQuality, 364);
+      expect(Math.max(...backlog), name).toBeLessThanOrEqual(30);
+      expect(Math.max(...records.map((record) => record.plan.length)), name).toBeLessThanOrEqual(4);
+    }
+  });
+});
+
 // Measured max over 12 weeks (typical, two days a week) is 21; baseline before T11 was 20, with no problem reaching mastery.
 const BACKLOG_BOUND_TWO_DAYS = 25;
 

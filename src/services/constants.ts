@@ -215,6 +215,14 @@ export const CADENCE_NEW_HISTORY_DAYS = 7;
 // Review slots in a returning user's re-entry plan. The plan keeps exactly one
 // new-problem slot and the rest of the backlog stays in the review queue.
 export const RETURNING_MAX_REVIEW_SLOTS = 3;
+// Review overload: with this many reviews due, the plan pauses new problems and
+// serves up to REVIEW_OVERLOAD_SLOTS reviews until the backlog is back under the
+// threshold. Each new problem spawns ~5 reviews, so a plan capped at four items
+// that keeps adding new problems cannot clear its own reviews: simulated over a
+// year, a typical learner's due backlog grew to 100+ (daily) without this rule and
+// stays at or under 25 with it, at every cadence.
+export const REVIEW_OVERLOAD_DUE = 12;
+export const REVIEW_OVERLOAD_SLOTS = 4;
 // An occasional user stays in a topic longer: the "recently served topic"
 // priority penalty is milder than the default 0.35, so scarce sessions go to
 // finishing a topic's ceiling instead of hopping between topics.

@@ -2,7 +2,7 @@ import type { Attempt, CatalogProblem, ProblemProgress, Quality, RecommendationE
 import { tierWeight } from '../data/topicTiers';
 import { coreRank } from './coreRank';
 import { cadenceFor, daysBetween, type CadenceProfile } from './cadence';
-import { FAILING_TOPIC_PRIORITY_PENALTY, OCCASIONAL_RECENT_TOPIC_PENALTY, RETURNING_MAX_REVIEW_SLOTS, SKILL_MEDIUM_THRESHOLD } from './constants';
+import { FAILING_TOPIC_PRIORITY_PENALTY, OCCASIONAL_RECENT_TOPIC_PENALTY, RETURNING_MAX_REVIEW_SLOTS, REVIEW_OVERLOAD_DUE, REVIEW_OVERLOAD_SLOTS, SKILL_MEDIUM_THRESHOLD } from './constants';
 import { targetDifficulty, topicSkills } from './skill';
 import { prerequisitePenalty } from './topicGraph';
 import { selectReinforcement, warmUpTargetFor } from './reinforcement';
@@ -57,12 +57,12 @@ function jitter(seed: string): number {
   return ((hash >>> 0) / 0xffffffff) * 0.05;
 }
 
-// Number of review / new slots given how many reviews are due today. Always at
-// least one new problem so fresh material never disappears, and the plan never
-// *shrinks* as the backlog grows — total slots step 2 → 3 → 3 → 4 as due count
-// rises. A large backlog is drained through the review-queue panel, not by
-// inflating the daily plan past four, so every user — brand new, caught up, or
-// behind — gets a comparably sized, review-first plan.
+// Number of review / new slots given how many reviews are due today. At least one
+// new problem so fresh material does not disappear — except under review overload
+// (REVIEW_OVERLOAD_DUE or more due), when new problems pause and the plan is all
+// reviews until the backlog clears. The plan never *shrinks* as the backlog grows —
+// total slots step 2 → 3 → 3 → 4 → 4 as due count rises — and never passes four;
+// a large backlog is also drained through the review-queue panel.
 //
 // A `returning` user (7+ days away) gets a re-entry plan: reviews fill every slot
 // but one, so the backlog is eased into instead of dumped, and the single new
@@ -70,6 +70,7 @@ function jitter(seed: string): number {
 // review queue — the plan itself is never inflated.
 function planSlots(dueCount: number, profile: CadenceProfile): { reviewSlots: number; newSlots: number } {
   if (profile === 'returning' && dueCount > 0) return { reviewSlots: Math.min(dueCount, RETURNING_MAX_REVIEW_SLOTS), newSlots: 1 };
+  if (dueCount >= REVIEW_OVERLOAD_DUE) return { reviewSlots: REVIEW_OVERLOAD_SLOTS, newSlots: 0 };
   if (dueCount === 0) return { reviewSlots: 0, newSlots: 2 };
   if (dueCount <= 2) return { reviewSlots: 1, newSlots: 2 };
   if (dueCount <= 5) return { reviewSlots: 2, newSlots: 1 };

@@ -120,10 +120,26 @@ describe('daily plan selection', () => {
     // — no backlog, small backlog, large backlog — gets a plan at least as big
     // as a user with a smaller backlog, and always review-first.
     const due = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'strong' }));
-    const sizes = [0, 1, 2, 4, 8].map((count) => selectDailyPlan({ problems: catalog, progress: due(count), recommendationEvents: [], now }).length);
+    const sizes = [0, 1, 2, 4, 8, 11, 12, 30].map((count) => selectDailyPlan({ problems: catalog, progress: due(count), recommendationEvents: [], now }).length);
     for (let index = 1; index < sizes.length; index += 1) {
       expect(sizes[index]).toBeGreaterThanOrEqual(sizes[index - 1]);
     }
-    expect(sizes).toEqual([2, 3, 3, 3, 4]);
+    expect(sizes).toEqual([2, 3, 3, 3, 4, 4, 4, 4]);
+  });
+
+  it('pauses new problems under review overload: 12+ due gives four reviews and nothing new', () => {
+    const due = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'strong' }));
+    const calm = selectDailyPlan({ problems: catalog, progress: due(11), recommendationEvents: [], now });
+    const overloaded = selectDailyPlan({ problems: catalog, progress: due(12), recommendationEvents: [], now });
+    expect(calm.some((item) => item.kind === 'new')).toBe(true);
+    expect(overloaded).toHaveLength(4);
+    expect(overloaded.every((item) => item.kind === 'review')).toBe(true);
+  });
+  it('keeps an overloaded plan stable across the day as reviews are logged', () => {
+    const due = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'strong' }));
+    const plan = selectDailyPlan({ problems: catalog, progress: due(14), recommendationEvents: [], now });
+    const stored = plan.map((item) => event(item.problem.id, item.kind, now.toISOString()));
+    const later = selectDailyPlan({ problems: catalog, progress: due(10), recommendationEvents: stored, now });
+    expect(later.map((item) => item.problem.id)).toEqual(plan.map((item) => item.problem.id));
   });
 });
