@@ -8,7 +8,9 @@
    (the side panel, a modal body) scrolls inside its own box instead. */
 html, body { height: 100%; overflow: hidden; }
 body { margin: 0; min-width: 20rem; color: var(--color-ink); background: var(--color-paper); font-family: var(--font-body); line-height: 1.5; }
-main { display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(72rem, calc(100% - var(--space-2xl))); height: 100dvh; padding-block: var(--space-md); margin-inline: auto; overflow: hidden; }
+/* One explicit `minmax(0, 1fr)` column: an implicit auto column grows to its widest
+   child's max-content (the badge strip), which pushed the shell past a phone screen. */
+main { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); width: min(72rem, calc(100% - var(--space-2xl))); height: 100dvh; padding-block: var(--space-md); margin-inline: auto; overflow: hidden; }
 h1, h2, h3 { color: var(--color-ink); font-family: var(--font-display); font-style: normal; font-weight: 800; letter-spacing: 0.015em; line-height: 1.05; overflow-wrap: anywhere; margin-top: 0; }
 h1 { margin-bottom: var(--space-2xs); }
 h2 { margin-bottom: var(--space-2xs); }
@@ -64,6 +66,13 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
    grid layouts had to fight column counts and band heights. Nothing here scrolls. */
 .topic-map-canvas { display: grid; min-height: 0; overflow: hidden; }
 .topic-path { width: 100%; height: 100%; min-height: 0; overflow: visible; }
+/* Phone: the portrait route is drawn at the box's full width — big enough to
+   read and tap — and scrolls vertically inside its own box instead of shrinking. */
+.topic-map-canvas.portrait { display: block; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.topic-path.portrait { height: auto; }
+.topic-path.portrait .path-node-label { font-size: 3px; }
+/* Narrower legs: a smaller, tighter tier marker clears the edge stops' labels. */
+.topic-path.portrait .tier-gate { font-size: 2.4px; letter-spacing: 0.08em; }
 
 /* The trail: dim full route, with the travelled portion lit over it. */
 .topic-track { fill: none; stroke: var(--color-rule); stroke-width: 0.7; stroke-linecap: round; stroke-dasharray: 2 2.2; opacity: 0.7; }
@@ -254,7 +263,28 @@ input:invalid, select:invalid, textarea:invalid { border-color: var(--color-erro
 
 @media (max-width: 45rem) {
   main { width: min(100% - var(--space-md), 72rem); padding-block: var(--space-xs); }
-  .app-header { margin-bottom: var(--space-sm); }
+  /* Phone header: title + Settings on one row, then the XP strip and the badge
+     strip full width (the strip scrolls sideways inside its own box). */
+  .app-header { gap: var(--space-xs) var(--space-sm); margin-bottom: var(--space-sm); }
+  .app-header .app-intro { flex: 1 1 auto; order: 0; }
+  .app-header .settings-toggle { order: 1; min-height: 2.75rem; }
+  .app-header .update-notice { order: 2; flex: 1 1 100%; white-space: normal; }
+  .app-header .xp-bar { order: 3; flex: 1 1 100%; }
+  .app-header .badge-strip-scroll { order: 4; flex: 1 1 100%; }
+  .app-header .problem-set-banner { order: 5; }
+  /* An open panel takes the whole map area: a map squeezed into half a phone
+     screen is unreadable, and the panel has its own Close. */
+  .workbench-map.has-panel { grid-template-rows: minmax(0, 1fr); }
+  .workbench-map.has-panel > .topic-map { display: none; }
+  /* Compact stats so the map / panel keeps most of the screen. */
+  .workbench { gap: var(--space-sm); }
+  .workbench-stats { gap: var(--space-2xs) var(--space-md); padding: var(--space-xs) 0; font-size: var(--text-xs); }
+  .workbench-stats b { font-size: var(--text-base); }
+  .challenge-trigger { margin-left: 0; }
+  /* An open problem gets the whole workbench: stats and search step aside. */
+  .workbench.is-focused { grid-template-rows: minmax(0, 1fr); }
+  .workbench.is-focused > .workbench-stats, .workbench.is-focused > .workbench-search { display: none; }
+  .workbench-focus { padding: var(--space-md); }
   .section-heading, .daily-challenge-header { align-items: start; flex-direction: column; }
   .workbench-stats { gap: var(--space-md); }
   .catalog-row { grid-template-columns: 2.25rem minmax(0, 1fr); padding: var(--space-md); }
@@ -262,6 +292,13 @@ input:invalid, select:invalid, textarea:invalid { border-color: var(--color-erro
   .daily-challenge-actions { justify-content: start; }
   .attempt-form, .settings article, .topic-map, .topic-panel { padding: var(--space-md); }
   .settings-overlay-panel { padding: var(--space-lg); }
+}
+
+/* Touch screens: text links get a 44px-tall tap target. */
+@media (pointer: coarse) {
+  .daily-plan a, .problem-detail a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  .review-trigger, .challenge-trigger, .problem-set-picker button { min-height: 2.75rem; }
+  .problem-link { min-height: 2.75rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

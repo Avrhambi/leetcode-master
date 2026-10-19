@@ -117,7 +117,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
     setSearchInput('');
   };
 
-  return <section className="workbench" aria-label="Practice workbench">
+  return <section className={`workbench${panel?.kind === 'problem' ? ' is-focused' : ''}`} aria-label="Practice workbench">
     <div className="workbench-stats" aria-label="Progress summary">
       <span><b>{streak}</b> day streak{graceDaysUsed > 0 && <> · <span className="grace-note">{graceDaysUsed} grace {graceDaysUsed === 1 ? 'day' : 'days'}</span></>}</span>
       <span title="Consecutive weeks with 3+ active days"><b>{streakWeeks}</b> {streakWeeks === 1 ? 'week' : 'weeks'} consistent</span>
