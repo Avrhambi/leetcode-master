@@ -659,9 +659,9 @@ Each session fills in its own entry in its PR.
 
 ### T0
 - Status / PR / date: Done / pushed straight to `master` at the owner's request / 2026-10-19
-- What shipped: `.github/workflows/ci.yml` (PR + push to `master`: Node 22.12, `npm ci`, `npm run verify`). Every `"latest"` in `package.json` is now a caret range at the version the lockfile already resolved (no upgrades). `@vitejs/plugin-react` moved to `devDependencies`. `jsdom` removed as a direct dev dependency. `engines.node >=22.12` added. Lockfile regenerated with `--package-lock-only`; no resolved versions changed.
-- Decisions & deviations: `jsdom` still appears in the lockfile as an optional peer of `vitest`; it is not installed as a direct dependency. The workflow could not be run before the push, so its first green run on GitHub is the remaining check.
-- Follow-ups: confirm the first Actions run on `master` is green.
+- What shipped: `.github/workflows/ci.yml` (now manual-only via `workflow_dispatch`, disabled at the owner's request; was PR + push to `master`: Node 22.12, `npm ci`, `npm run verify`). Every `"latest"` in `package.json` is now a caret range at the version the lockfile already resolved (no upgrades). `@vitejs/plugin-react` moved to `devDependencies`. `jsdom` removed as a direct dev dependency. `engines.node >=22.12` added. Lockfile regenerated with `--package-lock-only`; no resolved versions changed.
+- Decisions & deviations: `jsdom` still appears in the lockfile as an optional peer of `vitest`; it is not installed as a direct dependency.
+- Follow-ups: restore the `pull_request` and `push: branches: [master]` triggers in `ci.yml` to re-enable CI.
 
 ### T1
 - Status / PR / date:

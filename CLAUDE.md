@@ -89,8 +89,8 @@ Do not add a dependency without asking first, and explain why existing code can'
 
 ## Automation
 
-`.github/workflows/ci.yml` runs `npm ci` then `npm run verify` on every pull request and on pushes to
-`master`, using Node 22.12.
+`.github/workflows/ci.yml` runs `npm ci` then `npm run verify` on Node 22.12. It is currently disabled
+(manual `workflow_dispatch` only); restore the `pull_request` and `push` triggers to re-enable it.
 
 `.claude/settings.json` runs `.claude/hooks/lint-edited.py` after every Edit/Write: eslint
 on **just the edited file**, then `tsc -b` across the project (TypeScript can't check one

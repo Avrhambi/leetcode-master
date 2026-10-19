@@ -1,9 +1,8 @@
 name: CI
 
+# Disabled: runs only when started manually from the Actions tab.
 on:
-  pull_request:
-  push:
-    branches: [master]
+  workflow_dispatch:
 
 jobs:
   verify:
