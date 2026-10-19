@@ -1,4 +1,4 @@
-# PatternPilot
+# LeetCode Master
 
 Local-first NeetCode 250 practice tracker (NeetCode 75 / 150 flagged inside it). React 19 + TypeScript + Vite, Dexie/IndexedDB,
 plain CSS. No server, no auth, no network calls — all data lives in the browser.

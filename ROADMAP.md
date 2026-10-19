@@ -45,7 +45,7 @@ up from there.
 | T7 | PWA: installable, offline, persistent storage | — | anything | Done |
 | T8 | Backup hardening | T2 | T4, T5, T6, T7 | Done |
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Done |
-| T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Todo |
+| T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Done |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
@@ -763,7 +763,7 @@ Each session fills in its own entry in its PR.
 - Follow-ups: Owner must set repo Settings → Pages → Source: GitHub Actions, then confirm install + offline on the live URL. T10 should link it.
 
 ### T10
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done, 2026-10-19 (merged straight to `master`, no PR, at the owner's request)
+- What shipped: name applied to header, `<title>`, `package.json`/lockfile, backup error text (and its tests), Settings copy and `CLAUDE.md`; comment on the `pattern-pilot` Dexie name. New README (loop, 75/150/250, cadences, Mermaid architecture, screenshot at `docs/screenshot.png`, live demo, install, privacy, disclaimer, badges), `CONTRIBUTING.md`, `LICENSE`, issue templates (bug, catalog fix) and PR template.
+- Decisions & deviations: owner chose **MIT** (so the README does not call the project source-available; the "not for commercial use" note in Decisions is superseded). LICENSE copyright holder is the GitHub handle `Avrhambi`; change it if a legal name is preferred. The CI badge points at `ci.yml`, which is manual-only, so it shows no status until CI is re-enabled; a Deploy badge is included too.
+- Follow-ups: owner confirms the copyright holder name and that the live URL is up.

@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import type { AppSetting, Attempt, CatalogProblem, GamificationState, ProblemProgress, RecommendationEvent } from '../types/models';
 import { replayXp, xpAfterReplay } from '../services/gamification';
 
+// The database name is a storage key, not branding: renaming it would orphan every user's data.
 export const db = new Dexie('pattern-pilot') as Dexie & {
   problems: EntityTable<CatalogProblem, 'id'>;
   progress: EntityTable<ProblemProgress, 'problemId'>;

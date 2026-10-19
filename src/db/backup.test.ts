@@ -28,8 +28,8 @@ describe('validateBackupPayload', () => {
     delete bare.catalogVersion;
     delete bare.appVersion;
     expect(validateBackupPayload(bare)).toEqual(bare);
-    expect(() => validateBackupPayload({ ...v3Backup, appVersion: 3 })).toThrow('valid LeetCode Tracker backup');
-    expect(() => validateBackupPayload({ ...v3Backup, catalogVersion: null })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v3Backup, appVersion: 3 })).toThrow('valid LeetCode Master backup');
+    expect(() => validateBackupPayload({ ...v3Backup, catalogVersion: null })).toThrow('valid LeetCode Master backup');
   });
   it('accepts the lastBackupOn settings key', () => {
     const withBackup = { ...v3Backup, settings: [{ key: 'lastBackupOn', value: '2026-10-19' }] };
@@ -60,20 +60,20 @@ describe('validateBackupPayload', () => {
     expect(validateBackupPayload(withBadges)).toEqual(withBadges);
   });
   it('rejects a malformed gamification row', () => {
-    expect(() => validateBackupPayload({ ...v2Backup, gamification: { key: 'state', xp: -1, updatedAt: 'x' } })).toThrow('valid LeetCode Tracker backup');
-    expect(() => validateBackupPayload({ ...v2Backup, gamification: { key: 'wrong', xp: 10, updatedAt: 'x' } })).toThrow('valid LeetCode Tracker backup');
-    expect(() => validateBackupPayload({ ...v2Backup, gamification: { key: 'state', xp: 10, badges: [1, 2], updatedAt: 'x' } })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v2Backup, gamification: { key: 'state', xp: -1, updatedAt: 'x' } })).toThrow('valid LeetCode Master backup');
+    expect(() => validateBackupPayload({ ...v2Backup, gamification: { key: 'wrong', xp: 10, updatedAt: 'x' } })).toThrow('valid LeetCode Master backup');
+    expect(() => validateBackupPayload({ ...v2Backup, gamification: { key: 'state', xp: 10, badges: [1, 2], updatedAt: 'x' } })).toThrow('valid LeetCode Master backup');
   });
   it('rejects invalid nested user data before restore', () => {
-    expect(() => validateBackupPayload({ ...v1Backup, attempts: [{ id: 'a' }] })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v1Backup, attempts: [{ id: 'a' }] })).toThrow('valid LeetCode Master backup');
   });
   it('rejects a malformed v2 field', () => {
-    expect(() => validateBackupPayload({ ...v2Backup, progress: [{ ...v2Progress, consecutiveWeak: -1 }] })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v2Backup, progress: [{ ...v2Progress, consecutiveWeak: -1 }] })).toThrow('valid LeetCode Master backup');
   });
   it('rejects an unsupported format version', () => {
-    expect(() => validateBackupPayload({ ...v1Backup, formatVersion: 4 })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v1Backup, formatVersion: 4 })).toThrow('valid LeetCode Master backup');
   });
   it('rejects an unknown settings key', () => {
-    expect(() => validateBackupPayload({ ...v1Backup, settings: [{ key: 'nope', value: 'x' }] })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v1Backup, settings: [{ key: 'nope', value: 'x' }] })).toThrow('valid LeetCode Master backup');
   });
 });

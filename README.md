@@ -1,20 +1,29 @@
-# leetcode-master
+# LeetCode Master
 
-A local-first study coach for the NeetCode 150. It turns "grind LeetCode until
-something sticks" into a directed, adaptive practice loop.
+[![CI](https://github.com/Avrhambi/leetcode-master/actions/workflows/ci.yml/badge.svg)](https://github.com/Avrhambi/leetcode-master/actions/workflows/ci.yml)
+[![Deploy](https://github.com/Avrhambi/leetcode-master/actions/workflows/deploy.yml/badge.svg)](https://github.com/Avrhambi/leetcode-master/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+A local-first study coach for the NeetCode 75 / 150 / 250. It turns "grind
+LeetCode until something sticks" into a directed, adaptive practice loop that
+fights forgetting.
+
+**Live demo:** <https://avrhambi.github.io/leetcode-master/>
+
+![LeetCode Master: the quest path through every topic](docs/screenshot.png)
 
 ## Why this exists
 
 Almost everyone preparing for a software engineering interview ends up on
-LeetCode, and most of them work through the NeetCode 150 — the widely-shared
-curated list of 150 problems that covers the patterns interviewers actually ask
+LeetCode, and most of them work through the NeetCode 75 / 150 / 250 — the widely-shared
+curated lists that covers the patterns interviewers actually ask
 about. It is the closest thing the field has to a standard syllabus.
 
 The list tells you *what* to solve. It does not tell you *how to practise it*.
 
 ## The problem
 
-Working through the 150 on your own is frustrating in a specific way:
+Working through these lists on your own is frustrating in a specific way:
 
 - **No direction.** You finish a problem and there is no answer to "what next?"
   You either march down the list in order or pick something at random. Neither
@@ -35,7 +44,7 @@ effort, and no feedback loop to correct course.
 
 ## The solution
 
-This wraps the NeetCode 150 in a coaching loop that reacts to your results.
+This wraps the NeetCode 75 / 150 / 250 in a coaching loop that reacts to your results.
 
 **A daily plan, not a list.** Each day you get two to four problems: at least one
 new one, plus reviews that are actually due. New problems are chosen by a
@@ -72,6 +81,62 @@ approach" can never be mistaken for progress.
 Everything runs in the browser. Your data lives in IndexedDB — no account, no
 server, no network calls — and you can export or import it as a single JSON file.
 
+## The problem sets
+
+One bundled catalog of 250 problems, with the **NeetCode 75** and **NeetCode 150**
+flagged inside it (75 ⊂ 150 ⊂ 250). Pick a list in the header; the plan, map and
+counts follow it. Switching lists never touches your stored progress, and reviews
+for problems outside the chosen list keep coming due.
+
+## Built for how you actually practise
+
+- **Regular** (most days): steady new material, on-time reviews, daily and weekly streaks.
+- **Occasional** (a few days a week): each short session goes to the reviews most
+  at risk of being forgotten and to core problems first; weekly consistency counts.
+- **Returning after a gap**: a gentle re-entry plan instead of a wall of overdue
+  reviews. No XP or badge is ever lost.
+- **New**: easy wins in foundation topics first, guided by a prerequisite graph.
+
+Your profile and per-topic skill are derived from your attempt history, never
+stored, so they cannot drift.
+
+## Architecture
+
+Everything is client-side. Rules are pure, deterministic functions that are unit
+tested; Dexie calls are direct.
+
+```mermaid
+flowchart LR
+  UI[React components] --> Hooks[useLiveQuery hooks]
+  Hooks --> Services[Pure services<br/>reviews, dailyPlan, mastery, skill, gamification]
+  UI --> DB[src/db: direct Dexie calls]
+  Hooks --> DB
+  DB --> IDB[(IndexedDB)]
+  DB <--> Backup[JSON export / restore]
+  SW[Service worker] -. caches app shell for offline .-> UI
+```
+
+See [`CLAUDE.md`](CLAUDE.md) for the invariants and [`ROADMAP.md`](ROADMAP.md) for
+the plan and decisions.
+
+## Install as an app
+
+It is a PWA that works offline. Open the live demo, then use your browser's
+**Install** option (Chrome/Edge: the install icon in the address bar; Safari on
+iOS: Share → Add to Home Screen). Settings shows whether persistent storage was
+granted; export a backup regularly, because browser data can be cleared.
+
+## Privacy
+
+No server, no account, no telemetry, no network calls. Your history lives in
+this browser's IndexedDB and leaves it only when you export a backup file.
+
+## Disclaimer
+
+Not affiliated with LeetCode or NeetCode. The app stores only problem titles,
+metadata and links, never problem text. Links open neetcode.io, with the LeetCode
+page as a secondary link.
+
 ## Running it
 
 ```bash
@@ -84,6 +149,6 @@ Requires Node.js 22.12+. Stack: React 19 + TypeScript + Vite, Dexie/IndexedDB,
 plain CSS. The NeetCode 250 catalog (with the 75 and 150 lists flagged inside it) is bundled — first launch seeds it and you're
 ready to go.
 
-See [`CLAUDE.md`](CLAUDE.md) for the architecture notes, invariants, and
-conventions.
+Contributions are welcome: see [`CONTRIBUTING.md`](CONTRIBUTING.md). Licensed under
+the [MIT License](LICENSE).
 

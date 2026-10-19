@@ -62,7 +62,7 @@ export default function App() {
   return <main>
     <header className="app-header">
       <div className="app-intro">
-        <h1>LeetCode Tracker</h1>
+        <h1>LeetCode Master</h1>
       </div>
       {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} streakWeeks={streakWeeks} />}
       {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problems.length} />}
