@@ -11,6 +11,7 @@ const v2Progress: ProblemProgress = { ...v1Progress, status: 'solved', lastQuali
 const base = { exportedAt: '2026-07-19T00:00:00.000Z', attempts: [], recommendationEvents: [], settings: [{ key: 'catalogVersion', value: '1' }] };
 const v1Backup = { ...base, formatVersion: 1, progress: [v1Progress] };
 const v2Backup = { ...base, formatVersion: 2, progress: [v2Progress] };
+const v3Backup = { ...base, formatVersion: 3, catalogVersion: 'neetcode-250-v1', appVersion: '0.0.0', progress: [v2Progress] };
 
 describe('validateBackupPayload', () => {
   it('accepts a version-one backup whose progress omits the v2 fields', () => {
@@ -18,6 +19,25 @@ describe('validateBackupPayload', () => {
   });
   it('accepts a version-two backup that carries the v2 fields', () => {
     expect(validateBackupPayload(v2Backup)).toEqual(v2Backup);
+  });
+  it('accepts a version-three backup with its informational fields', () => {
+    expect(validateBackupPayload(v3Backup)).toEqual(v3Backup);
+  });
+  it('accepts a version-three backup without them, and rejects non-string ones', () => {
+    const bare: Record<string, unknown> = { ...v3Backup };
+    delete bare.catalogVersion;
+    delete bare.appVersion;
+    expect(validateBackupPayload(bare)).toEqual(bare);
+    expect(() => validateBackupPayload({ ...v3Backup, appVersion: 3 })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v3Backup, catalogVersion: null })).toThrow('valid LeetCode Tracker backup');
+  });
+  it('accepts the lastBackupOn settings key', () => {
+    const withBackup = { ...v3Backup, settings: [{ key: 'lastBackupOn', value: '2026-10-19' }] };
+    expect(validateBackupPayload(withBackup)).toEqual(withBackup);
+  });
+  it('keeps rows for problem ids that are not in the catalog', () => {
+    const orphan = { ...v2Progress, problemId: 'removed-from-catalog' };
+    expect(validateBackupPayload({ ...v3Backup, progress: [orphan] }).progress).toEqual([orphan]);
   });
   it('accepts the new streak settings keys', () => {
     const withStreak = { ...v2Backup, settings: [{ key: 'streakGraceRemaining', value: '1' }, { key: 'streakGraceRefreshedOn', value: '2026-07-19' }] };
@@ -51,7 +71,7 @@ describe('validateBackupPayload', () => {
     expect(() => validateBackupPayload({ ...v2Backup, progress: [{ ...v2Progress, consecutiveWeak: -1 }] })).toThrow('valid LeetCode Tracker backup');
   });
   it('rejects an unsupported format version', () => {
-    expect(() => validateBackupPayload({ ...v1Backup, formatVersion: 3 })).toThrow('valid LeetCode Tracker backup');
+    expect(() => validateBackupPayload({ ...v1Backup, formatVersion: 4 })).toThrow('valid LeetCode Tracker backup');
   });
   it('rejects an unknown settings key', () => {
     expect(() => validateBackupPayload({ ...v1Backup, settings: [{ key: 'nope', value: 'x' }] })).toThrow('valid LeetCode Tracker backup');

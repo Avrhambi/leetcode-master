@@ -39,12 +39,13 @@ Do not add a dependency without asking first, and explain why existing code can'
   `skill.ts` (per-topic skill replayed from `attempts`, never stored; sets the plan's difficulty target),
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
   `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
+  `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
-  is JSON export/restore with `formatVersion` validation; `seedCatalog.ts` seeds the
+  is JSON export/restore with `formatVersion` validation (current 3; 1 and 2 still restore; restore is parse → confirm → replace, and keeps rows for ids outside the catalog); `seedCatalog.ts` seeds the
   bundled catalog on first launch.
 - `src/data/` — `catalog.ts` + `neetcode250.json`: the 250-problem catalog, each row flagged
   `lists` ⊆ `nc75`/`nc150`/`nc250` (metadata +

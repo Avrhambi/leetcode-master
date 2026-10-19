@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { STREAK_GRACE_PER_WEEK } from '../services/constants';
 import { currentStreak, type StreakGraceState } from '../services/streak';
+import { backupReminderDue } from '../services/backupHealth';
 import { masteryByTopic } from '../services/mastery';
 import { dueReviewQueue, type DailyPlanItem } from '../services/dailyPlan';
 import { TopicMap } from './TopicMap';
@@ -82,6 +83,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   const dueReviews = progress.filter((item) => item.nextReviewDate !== null && item.nextReviewDate <= today).length;
   const attemptsThisWeek = attempts.filter((attempt) => attempt.attemptedOn >= weekStart && attempt.attemptedOn <= today).length;
   const activeDates = new Set(attempts.map((attempt) => attempt.attemptedOn));
+  const backupReminder = backupReminderDue(settings.find((row) => row.key === 'lastBackupOn')?.value, [...activeDates], today);
   const { streak, graceDaysUsed } = currentStreak(activeDates, graceStateFrom(settings));
 
   // Items still open today — the count on the challenge trigger, so an untouched
@@ -184,6 +186,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
             allProblems={allProblems}
             progress={progress}
             progressByProblem={progressByProblem}
+            backupReminder={backupReminder}
             onSelectProblem={(problem, back) => setPanel({ kind: 'problem', problem, back })}
             onClose={closePanel}
           />}

@@ -219,3 +219,8 @@ export const RETURNING_MAX_REVIEW_SLOTS = 3;
 // priority penalty is milder than the default 0.35, so scarce sessions go to
 // finishing a topic's ceiling instead of hopping between topics.
 export const OCCASIONAL_RECENT_TOPIC_PENALTY = 0.7;
+
+// Days without a backup before the side panel quietly suggests one. With no
+// backup on record the clock starts at the first attempt, so a new user is not
+// nagged on day one.
+export const BACKUP_REMINDER_DAYS = 14;

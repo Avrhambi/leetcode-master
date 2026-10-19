@@ -1,5 +1,6 @@
 import { db } from './database';
 import { replayXp } from '../services/gamification';
+import { summarizeRestore, type RestoreSummary } from '../services/backupHealth';
 import type { AppSetting, Attempt, BackupPayload, GamificationState, ProblemProgress, RecommendationEvent } from '../types/models';
 
 const outcomes = ['solved_independently', 'solved_with_hint', 'watched_solution', 'could_not_solve'];
@@ -8,7 +9,7 @@ const helpTypes = ['small_hint', 'pattern_identification', 'pseudocode', 'full_c
 const qualities = ['strong', 'partial', 'weak'];
 const statuses = ['not_started', 'attempted', 'solved', 'mastered'];
 const eventKinds = ['new', 'review'];
-const settingKeys = ['catalogVersion', 'streakGraceRemaining', 'streakGraceRefreshedOn', 'lastActiveOn', 'problemSet'];
+const settingKeys = ['catalogVersion', 'streakGraceRemaining', 'streakGraceRefreshedOn', 'lastActiveOn', 'problemSet', 'lastBackupOn'];
 
 // Progress fields added in backup formatVersion 2. A v1 payload omits them; they
 // are defaulted on restore, matching the Dexie v2 migration backfill.
@@ -52,7 +53,7 @@ function isGamificationState(value: unknown): value is GamificationState {
 }
 
 export function validateBackupPayload(value: unknown): BackupPayload {
-  if (!isRecord(value) || (value.formatVersion !== 1 && value.formatVersion !== 2) || !isString(value.exportedAt) || !Array.isArray(value.progress) || !Array.isArray(value.attempts) || !Array.isArray(value.recommendationEvents) || !Array.isArray(value.settings) || !value.progress.every(isProgress) || !value.attempts.every(isAttempt) || !value.recommendationEvents.every(isRecommendationEvent) || !value.settings.every(isSetting) || (value.gamification !== undefined && !isGamificationState(value.gamification))) {
+  if (!isRecord(value) || (value.formatVersion !== 1 && value.formatVersion !== 2 && value.formatVersion !== 3) || !isString(value.exportedAt) || !Array.isArray(value.progress) || !Array.isArray(value.attempts) || !Array.isArray(value.recommendationEvents) || !Array.isArray(value.settings) || !value.progress.every(isProgress) || !value.attempts.every(isAttempt) || !value.recommendationEvents.every(isRecommendationEvent) || !value.settings.every(isSetting) || (value.gamification !== undefined && !isGamificationState(value.gamification)) || (value.catalogVersion !== undefined && !isString(value.catalogVersion)) || (value.appVersion !== undefined && !isString(value.appVersion))) {
     throw new Error('This file is not a valid LeetCode Tracker backup.');
   }
   return value as unknown as BackupPayload;
@@ -62,12 +63,24 @@ export async function createBackupPayload(): Promise<BackupPayload> {
   const [progress, attempts, recommendationEvents, settings, gamification] = await Promise.all([
     db.progress.toArray(), db.attempts.toArray(), db.recommendationEvents.toArray(), db.settings.toArray(), db.gamification.get('state')
   ]);
-  return { formatVersion: 2, exportedAt: new Date().toISOString(), progress, attempts, recommendationEvents, settings, ...(gamification ? { gamification } : {}) };
+  const catalogVersion = settings.find((row) => row.key === 'catalogVersion')?.value;
+  return { formatVersion: 3, ...(catalogVersion ? { catalogVersion } : {}), appVersion: __APP_VERSION__, exportedAt: new Date().toISOString(), progress, attempts, recommendationEvents, settings, ...(gamification ? { gamification } : {}) };
 }
 
-export async function restoreBackup(file: File): Promise<void> {
+// Reading is separate from replacing so the UI can show the file's contents and
+// offer "download current data first" before anything is destroyed.
+export async function parseBackupFile(file: File): Promise<BackupPayload> {
   if (file.size > 5 * 1024 * 1024) throw new Error('Backup files must be 5 MB or smaller.');
-  const payload = validateBackupPayload(JSON.parse(await file.text()));
+  return validateBackupPayload(JSON.parse(await file.text()));
+}
+
+export async function recordBackup(today: string): Promise<void> {
+  await db.settings.put({ key: 'lastBackupOn', value: today });
+}
+
+// Rows for problem ids missing from the catalog are kept, not rejected: the
+// catalog may have changed between builds, and history must survive that.
+export async function restoreBackup(payload: BackupPayload): Promise<RestoreSummary> {
   await db.transaction('rw', db.progress, db.attempts, db.recommendationEvents, db.settings, db.gamification, async () => {
     await Promise.all([db.progress.clear(), db.attempts.clear(), db.recommendationEvents.clear(), db.settings.clear(), db.gamification.clear()]);
     await Promise.all([
@@ -92,6 +105,8 @@ export async function restoreBackup(file: File): Promise<void> {
     };
     await db.gamification.put(gamification);
   });
+  const catalogIds = new Set((await db.problems.toCollection().primaryKeys()) as string[]);
+  return summarizeRestore(payload, catalogIds);
 }
 
 export async function resetAndReseed(): Promise<void> {

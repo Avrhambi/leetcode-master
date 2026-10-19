@@ -27,6 +27,7 @@ interface SidePanelProps {
   allProblems: CatalogProblem[];
   progress: ProblemProgress[];
   progressByProblem: Map<string, ProgressStatus>;
+  backupReminder: boolean;
   onSelectProblem: (problem: CatalogProblem, back: Panel) => void;
   onClose: () => void;
 }
@@ -51,9 +52,11 @@ function ProblemRow({ problem, status, showTopic, onSelect }: {
   </li>;
 }
 
-export function SidePanel({ panel, problems, allProblems, progress, progressByProblem, onSelectProblem, onClose }: SidePanelProps) {
+export function SidePanel({ panel, problems, allProblems, progress, progressByProblem, backupReminder, onSelectProblem, onClose }: SidePanelProps) {
   // `problem` never reaches here — Workbench renders it full-screen instead.
   if (panel.kind === 'problem') return null;
+
+  const reminder = backupReminder ? <p className="backup-reminder" role="note">It has been a while since your last backup. Export one from Settings.</p> : null;
 
   const statusOf = (problem: CatalogProblem) => progressByProblem.get(problem.id) ?? 'not_started';
 
@@ -67,6 +70,7 @@ export function SidePanel({ panel, problems, allProblems, progress, progressByPr
         </div>
         <button type="button" className="topic-panel-close" onClick={onClose} aria-label="Close review queue">Close</button>
       </div>
+      {reminder}
       {queue.length === 0
         ? <p className="empty-state">Nothing due for review. You are caught up.</p>
         : <ol className="catalog-list">
@@ -96,6 +100,7 @@ export function SidePanel({ panel, problems, allProblems, progress, progressByPr
         </div>
         <button type="button" className="topic-panel-close" onClick={onClose} aria-label="Close search results">Close</button>
       </div>
+      {reminder}
       {matches.length === 0
         ? <p className="empty-state">No matching problems.</p>
         : <ol className="catalog-list">
@@ -123,6 +128,7 @@ export function SidePanel({ panel, problems, allProblems, progress, progressByPr
       </div>
       <button type="button" className="topic-panel-close" onClick={onClose} aria-label="Close topic panel">Close</button>
     </div>
+    {reminder}
     <ol className="catalog-list">
       {topicProblems.map((problem) => <ProblemRow
         key={problem.id}

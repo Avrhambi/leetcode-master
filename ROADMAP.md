@@ -43,7 +43,7 @@ up from there.
 | T5 | Competency engine: reinforcement problems on repeated failure | T11 | T7, T8 | Done |
 | T6 | Gamification aligned to the app's goals and to every practice cadence | T2, T4, T11 | T7, T8 | Done |
 | T7 | PWA: installable, offline, persistent storage | — | anything | Done |
-| T8 | Backup hardening | T2 | T4, T5, T6, T7 | Todo |
+| T8 | Backup hardening | T2 | T4, T5, T6, T7 | Done |
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Todo |
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Todo |
 
@@ -739,10 +739,11 @@ Each session fills in its own entry in its PR.
 - Follow-ups: T8 may add a backup reminder using the storage status; bump `CACHE` in `public/sw.js` only if precache contents change.
 
 ### T8
-- Status / PR / date:
-- What shipped:
-- Decisions & deviations:
-- Follow-ups:
+- Status / PR / date: Done · 2026-10-19 · branch `claude/leetcode-master-roadmap-znri4s`, merged to `master` at the owner's request
+- What shipped: dated export filename (`leetcode-master-backup-YYYY-MM-DD.json`); `lastBackupOn` setting written on export, shown in Settings ("Last backup: N days ago"); side-panel reminder after `BACKUP_REMINDER_DAYS` (14); restore is now two-step (`parseBackupFile` → confirm with "Download current data first" → `restoreBackup`) and ends with a summary ("Restored N attempts across M problems", plus a count of ids not in the catalog); `formatVersion` 3 with informational `catalogVersion`/`appVersion` (1 and 2 still accepted); `src/services/backupHealth.ts` (+ tests) holds the pure rules.
+- Decisions & deviations: with no backup on record, the reminder clock starts at the first attempt so new users aren't nagged. `appVersion` comes from `package.json` via a Vite `define` (`__APP_VERSION__`); `tsconfig.node.json` gained `resolveJsonModule` because `@types/node` isn't a dependency. "Problems" in the summary = distinct problems with attempts. Out-of-catalog rows were already kept by `bulkPut`; now they are reported too. The pre-restore download also counts as a backup (`lastBackupOn`).
+- QA: `npm run verify` green (262 tests). Preview build in Chromium: v2 file restores, orphan progress row reported and kept, export filename and v3 fields correct, "Last backup" moves never → today, reminder shows in the side panel for a 20-day-old attempt, invalid file shows inline error with Retry, no page overflow at 1280 px and 700 px, no console errors.
+- Follow-ups: restoring an old backup brings back its older `lastBackupOn`, so the reminder may reappear; acceptable for now.
 
 ### T9
 - Status / PR / date:

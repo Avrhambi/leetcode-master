@@ -228,6 +228,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 
 /* The local-first note that used to be the page footer; on a single non-scrolling
    screen it lives where someone looking for data handling actually goes. */
+.backup-reminder { margin: 0; padding: var(--space-xs) var(--space-md); color: var(--color-muted); font-size: var(--text-xs); border-bottom: var(--rule-hair) solid var(--color-rule); }
 .settings-note { max-width: 72ch; margin: 0; color: var(--color-muted); font-size: var(--text-xs); }
 
 .easy { color: var(--color-success); }
