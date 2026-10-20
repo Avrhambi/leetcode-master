@@ -2,16 +2,20 @@ import { useState, type FormEvent } from 'react';
 import { localDate } from '../services/reviews';
 import { difficultiesFor, difficultyLabels, helpTypeLabels, outcomeLabels, outcomeOptions, resolvePerceivedDifficulty, snapDifficultyForOutcome } from '../services/attemptForm';
 import { saveAttempt } from '../db/saveAttempt';
+import { ATTEMPT_DURATION_MAX_MINUTES, ATTEMPT_DURATION_MIN_MINUTES } from '../services/constants';
 import type { HelpType, Outcome, PerceivedDifficulty } from '../types/models';
 
 const outcomeOrder: Outcome[] = ['solved_independently', 'solved_with_hint', 'watched_solution', 'could_not_solve'];
 
-export function AttemptForm({ problemId, onSaved, lightReviewOffered = false }: { problemId: string; onSaved: () => void; lightReviewOffered?: boolean }) {
+export function AttemptForm({ problemId, onSaved, lightReviewOffered = false, timerMinutes = null }: { problemId: string; onSaved: () => void; lightReviewOffered?: boolean; timerMinutes?: number | null }) {
   const [attemptedOn, setAttemptedOn] = useState(localDate());
   const [outcome, setOutcome] = useState<Outcome>('solved_independently');
   const [difficulty, setDifficulty] = useState<PerceivedDifficulty>('manageable');
   const [helpType, setHelpType] = useState<HelpType | ''>('');
-  const [duration, setDuration] = useState('');
+  // While the attempt timer runs, the duration field follows it until the user
+  // types their own value.
+  const [typedDuration, setTypedDuration] = useState<string | null>(null);
+  const duration = typedDuration ?? (timerMinutes === null ? '' : String(timerMinutes));
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
 
@@ -33,7 +37,7 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false }: 
     event.preventDefault();
     setError('');
     const durationMinutes = duration === '' ? null : Number(duration);
-    if (!attemptedOn || (helpTypeChoices && !helpType) || !Number.isInteger(durationMinutes ?? 1) || (durationMinutes !== null && (durationMinutes < 1 || durationMinutes > 600))) {
+    if (!attemptedOn || (helpTypeChoices && !helpType) || !Number.isInteger(durationMinutes ?? 1) || (durationMinutes !== null && (durationMinutes < ATTEMPT_DURATION_MIN_MINUTES || durationMinutes > ATTEMPT_DURATION_MAX_MINUTES))) {
       setError('Please complete all required fields with a duration from 1 to 600 minutes.');
       return;
     }
@@ -96,7 +100,9 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false }: 
           </select>
         </label>
       )}
-      <label>Time spent in minutes (optional) <input type="number" min="1" max="600" step="1" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
+      <label>Time spent in minutes (optional) <input type="number" min={ATTEMPT_DURATION_MIN_MINUTES} max={ATTEMPT_DURATION_MAX_MINUTES} step="1" value={duration} onChange={(event) => setTypedDuration(event.target.value)} />
+        {typedDuration === null && timerMinutes !== null && <span className="field-hint">Filled from the timer. Edit it if it's off.</span>}
+      </label>
       <label>Notes for your next attempt (optional) <textarea maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
       <button type="submit">Save attempt</button>
     </form>

@@ -41,6 +41,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
   `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
+  `attemptTimer.ts` (the built-in attempt timer's pure math: stale-start parsing and rounded 1-600 elapsed minutes; the start time lives in per-device `localStorage` behind `hooks/useAttemptTimer.ts`, never in Dexie or a backup),
   `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
   `calendar.ts` (the practice-reminder `.ics`: weekly `RRULE`, floating local `DTSTART`, CRLF, 75-octet folding, deterministic UID; start date and app URL are arguments — the Settings component passes `localDate()` and `deployedAppUrl(window.location.href)`; nothing stored),
   `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
@@ -59,7 +60,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   links only, **never problem text**). `topicTiers.ts` maps each topic to a curriculum
   tier. The `[INEFFECTIVE_DYNAMIC_IMPORT]` build warning for `catalog.ts` is known and benign.
 - `public/` + `src/pwa.ts` — manifest, icons and hand-written `sw.js` (all paths relative to the registration scope); the worker is registered only in production builds. `requestPersistentStorage` runs once at startup; Settings shows the result.
-- `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers).
+- `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers); `useAttemptTimer.ts` (the one place the attempt timer reads the clock and `localStorage`).
 - `src/components/` — one file per screen/panel. Plain React, no state library beyond
   Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings and the
   daily challenge both use it) — don't write a second one.
@@ -106,7 +107,7 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Conventions
 
 - IDs: `crypto.randomUUID()`. Dates: `YYYY-MM-DD` local-time string keys.
-- IndexedDB only — no server, auth, external API, telemetry, AI model, scraping, or
+- IndexedDB only (the one per-device exception: the attempt timer's start time in `localStorage`, always in try/catch) — no server, auth, external API, telemetry, AI model, scraping, or
   browser extension.
 - External problem links: new tab, `rel="noreferrer"`.
 - Caught failures render inline with a single explicit Retry button.
