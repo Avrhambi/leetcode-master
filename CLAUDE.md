@@ -107,7 +107,7 @@ Do not add a dependency without asking first, and explain why existing code can'
 
 - **The problem set is filtered once, in `App.tsx`.** `problems` (in-set, and without Easies when the `skipEasies` setting is on) feeds the plan, map, mastery,
   search and counts; `allProblems` feeds only the review queue (and the deadline hours) so out-of-set history keeps coming due.
-  Switching sets, setting an interview date or skipping Easies never touches stored progress. (`saveAttempt` still builds badge inputs from the set alone, not from `skipEasies`.)
+  Switching sets, setting an interview date or skipping Easies never touches stored progress. `saveAttempt` builds its badge inputs the same way.
 
 ## Conventions
 

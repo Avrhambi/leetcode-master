@@ -37,7 +37,6 @@ export default function App() {
 
   // The problem set is filtered once, here, so the plan, map, mastery counts and
   // search all see the same problems. `allProblems` only feeds the review queue.
-  // (The badge shelf's set size stays the whole set: badge predicates in saveAttempt don't skip Easies.)
   const storedSet = settings?.find((row) => row.key === 'problemSet')?.value;
   const problemSet = parseProblemSet(storedSet);
   // "Skip Easies" (T16) narrows the same view, so the plan, map and counts follow it.
@@ -74,7 +73,7 @@ export default function App() {
         <h1>LeetCode Master</h1>
       </div>
       {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} streakWeeks={streakWeeks} />}
-      {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problemsInSet(allProblems, problemSet).length} />}
+      {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problems.length} />}
       {(storedSet === undefined || freshStart) && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
         {storedSet === undefined && <><span>Which list are you working through?</span>
         <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} /></>}
