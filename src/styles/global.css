@@ -239,7 +239,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 .attempt-list { padding-left: 1.25rem; }
 
 /* ---- Settings ---- */
-.settings { display: grid; gap: var(--space-sm); }
+.settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
 .settings article { display: grid; gap: var(--space-sm); padding: var(--space-xl); }
 .settings article h3 { font-size: var(--text-xl); }
 .settings article p { margin: 0; color: var(--color-neutral); }
@@ -343,13 +343,13 @@ a.solve-button:hover { color: var(--color-accent); border-color: var(--color-acc
 .attempt-form label .field-hint { font-weight: 400; color: var(--color-ink-2); font-size: var(--text-xs); }
 
 /* Goal plans (Settings): interview deadline and skip Easies. */
-.goal-plans { display: grid; gap: var(--space-sm); }
+.goal-plans, .goal-result { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
+.goal-plans article { min-width: 0; }
 .goal-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 .settings article .goal-secondary { color: var(--color-ink-2); background: transparent; border-color: var(--color-rule-2); }
 .settings article .goal-secondary:not(:disabled):hover { color: var(--color-accent); background: transparent; border-color: var(--color-accent); }
-.goal-result { display: grid; gap: var(--space-sm); }
 .goal-table { width: 100%; border-collapse: collapse; color: var(--color-ink-2); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
-.goal-table th, .goal-table td { padding: var(--space-2xs) var(--space-xs); text-align: left; border-bottom: var(--rule-hair) solid var(--color-rule); font-weight: 400; }
+.goal-table th, .goal-table td { padding: var(--space-2xs) var(--space-xs); text-align: left; overflow-wrap: anywhere; border-bottom: var(--rule-hair) solid var(--color-rule); font-weight: 400; }
 .goal-table thead th { color: var(--color-muted); font-size: var(--text-xs); }
 .goal-table tr[data-active="true"] th, .goal-table tr[data-active="true"] td { color: var(--color-accent); }
 .goal-result details { color: var(--color-ink-2); font-size: var(--text-sm); }
