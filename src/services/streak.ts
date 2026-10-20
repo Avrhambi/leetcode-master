@@ -1,4 +1,4 @@
-import { STREAK_GRACE_ACTIVE_DAYS_PER_GRANT, STREAK_GRACE_PER_WEEK, WEEKLY_STREAK_MIN_ACTIVE_DAYS } from './constants';
+import { STREAK_GRACE_ACTIVE_DAYS_PER_GRANT, STREAK_GRACE_PER_WEEK, WEEKLY_GOAL_OPTIONS, WEEKLY_STREAK_MIN_ACTIVE_DAYS } from './constants';
 
 // Streak with grace days: a returning user does not lose the whole streak on the
 // first missed day. Pure — the caller reads/writes the grace state from Dexie.
@@ -50,24 +50,43 @@ export function streakEndingOn(activeDates: Set<string>, endDate: string): numbe
 // Only dates up to `endDate` count, and the week in progress never breaks the
 // streak: it adds one once it has reached the minimum and is skipped until then.
 export function weeklyStreakEndingOn(activeDates: Set<string>, endDate: string): number {
-  const parts = endDate.split('-').map(Number);
-  const end = new Date(parts[0], parts[1] - 1, parts[2]);
-  const endKey = toKey(end);
-  const monday = new Date(end.getFullYear(), end.getMonth(), end.getDate() - ((end.getDay() + 6) % 7));
+  const monday = mondayOf(endDate);
   let weeks = 0;
   let current = true;
   while (true) {
-    let activeDays = 0;
-    for (let offset = 0; offset < 7; offset += 1) {
-      const key = toKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + offset));
-      if (key <= endKey && activeDates.has(key)) activeDays += 1;
-    }
-    if (activeDays >= WEEKLY_STREAK_MIN_ACTIVE_DAYS) weeks += 1;
+    if (activeDaysInWeekOf(activeDates, monday, endDate) >= WEEKLY_STREAK_MIN_ACTIVE_DAYS) weeks += 1;
     else if (!current) break;
     current = false;
     monday.setDate(monday.getDate() - 7);
   }
   return weeks;
+}
+
+function mondayOf(dateKey: string): Date {
+  const parts = dateKey.split('-').map(Number);
+  const date = new Date(parts[0], parts[1] - 1, parts[2]);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() - ((date.getDay() + 6) % 7));
+}
+
+// Active days in the Monday-start week beginning `monday`, counting only dates up to `endDate`.
+function activeDaysInWeekOf(activeDates: Set<string>, monday: Date, endDate: string): number {
+  let activeDays = 0;
+  for (let offset = 0; offset < 7; offset += 1) {
+    const key = toKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + offset));
+    if (key <= endDate && activeDates.has(key)) activeDays += 1;
+  }
+  return activeDays;
+}
+
+// Active days so far in the calendar week (Monday start) that contains `endDate`:
+// the number the weekly streak and the weekly goal both measure.
+export function activeDaysThisWeek(activeDates: Set<string>, endDate: string): number {
+  return activeDaysInWeekOf(activeDates, mondayOf(endDate), endDate);
+}
+
+// The stored `weeklyGoalDays` setting. Anything unknown (or no row) means no goal.
+export function parseWeeklyGoal(value: string | undefined): number | null {
+  return WEEKLY_GOAL_OPTIONS.find((option) => String(option) === value) ?? null;
 }
 
 // Refresh the grace allowance: grant STREAK_GRACE_PER_WEEK once every

@@ -249,6 +249,16 @@ export const SESSION_CALIBRATION_WINDOW = 10;
 // The time budgets on offer ("I have 30 / 45 / 60 minutes"). No budget is the default.
 export const SESSION_BUDGET_OPTIONS = [30, 45, 60] as const;
 
+// Finish forecast: the user's pace is the new problems (first attempts) of the last
+// FORECAST_WINDOW_DAYS divided by the calendar weeks in that window with any practice.
+// Fewer than FORECAST_MIN_NEW_PROBLEMS in the window is too little to project from.
+export const FORECAST_WINDOW_DAYS = 28;
+export const FORECAST_MIN_NEW_PROBLEMS = 5;
+
+// The "N days a week" goals on offer. The goal is a personal target shown beside the
+// weekly streak; the streak's own threshold (WEEKLY_STREAK_MIN_ACTIVE_DAYS) is unchanged.
+export const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
+
 // Days without a backup before the side panel quietly suggests one. With no
 // backup on record the clock starts at the first attempt, so a new user is not
 // nagged on day one.

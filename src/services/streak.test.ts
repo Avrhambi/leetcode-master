@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { currentStreak, refreshGrace, streakEndingOn, weeklyStreakEndingOn, type StreakGraceState } from './streak';
+import { activeDaysThisWeek, currentStreak, parseWeeklyGoal, refreshGrace, streakEndingOn, weeklyStreakEndingOn, type StreakGraceState } from './streak';
 
 const grace = (remaining: number, refreshedOn = '2026-07-01'): StreakGraceState => ({ graceRemaining: remaining, graceRefreshedOn: refreshedOn });
 const dates = (...list: string[]) => new Set(list);
@@ -141,5 +141,35 @@ describe('weeklyStreakEndingOn', () => {
   it('walks across a year boundary', () => {
     const active = dates('2025-12-22', '2025-12-24', '2025-12-26', '2025-12-29', '2025-12-31', '2026-01-02');
     expect(weeklyStreakEndingOn(active, '2026-01-02')).toBe(2);
+  });
+});
+
+describe('activeDaysThisWeek', () => {
+  // 2026-10-19 is a Monday.
+  it('counts active days from Monday through the given date', () => {
+    const active = dates('2026-10-18', '2026-10-19', '2026-10-21', '2026-10-23');
+    expect(activeDaysThisWeek(active, '2026-10-21')).toBe(2);
+    expect(activeDaysThisWeek(active, '2026-10-25')).toBe(3);
+  });
+
+  it('starts a fresh count on Monday and ignores the previous Sunday', () => {
+    expect(activeDaysThisWeek(dates('2026-10-18'), '2026-10-19')).toBe(0);
+  });
+
+  it('agrees with the weekly streak: a week with 3 counted days is a consistent week', () => {
+    const active = dates('2026-10-19', '2026-10-20', '2026-10-22');
+    expect(activeDaysThisWeek(active, '2026-10-22')).toBe(3);
+    expect(weeklyStreakEndingOn(active, '2026-10-22')).toBe(1);
+  });
+});
+
+describe('parseWeeklyGoal', () => {
+  it('accepts 1-7 and reads anything else as no goal', () => {
+    expect(parseWeeklyGoal('4')).toBe(4);
+    expect(parseWeeklyGoal('7')).toBe(7);
+    expect(parseWeeklyGoal('0')).toBeNull();
+    expect(parseWeeklyGoal('8')).toBeNull();
+    expect(parseWeeklyGoal('abc')).toBeNull();
+    expect(parseWeeklyGoal(undefined)).toBeNull();
   });
 });
