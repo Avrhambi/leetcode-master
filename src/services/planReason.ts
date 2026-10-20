@@ -13,6 +13,7 @@ import { topicSkills, targetDifficulty } from './skill';
 // selector: the plan is replayed from stored recommendations all day, so the
 // state it was picked from is gone. Where the exact reason cannot be recovered
 // it says the less specific true thing ("was due for today"), never a guess.
+// The item's title already says New / Review / Warm-up, so the line doesn't repeat it.
 // Skill and "has this topic been started" read attempts from *before today*, so
 // logging the item does not rewrite its own line.
 
@@ -36,8 +37,8 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 // The weakest-first review order is by last-attempt quality, so these say what
 // the last attempt was. Partial covers a hinted solve and a solve that felt hard.
 function qualityPhrase(quality: ProblemProgress['lastQuality']): string | undefined {
-  if (quality === 'weak') return "last attempt wasn't solved";
-  if (quality === 'partial') return 'last attempt needed a hint or felt hard';
+  if (quality === 'weak') return "Last attempt wasn't solved";
+  if (quality === 'partial') return 'Last attempt needed a hint or felt hard';
   return undefined;
 }
 
@@ -45,14 +46,14 @@ function reviewReason(progress: ProblemProgress | undefined, today: string, paus
   const next = progress?.nextReviewDate ?? null;
   // Not due now: it was due when the plan was made and its schedule has moved on
   // since (it is logged). Its earlier overdue count is not recoverable.
-  if (next === null || next > today) return 'Review · was due for today';
+  if (next === null || next > today) return 'Was due for today';
   const overdue = daysBetween(next, today);
-  const parts = ['Review'];
+  const parts: string[] = [];
   const quality = qualityPhrase(progress?.lastQuality ?? null);
   if (quality) parts.push(quality);
   parts.push(overdue > 0 ? `${plural(overdue, 'day')} overdue` : 'due today');
-  if (paused) parts.push('new problems paused');
-  return parts.join(' · ');
+  if (paused) parts.push('reviews first');
+  return capitalise(parts.join(' · '));
 }
 
 // Reasons for the plan as it stands. Returns a lookup so the per-render work
@@ -75,19 +76,18 @@ export function planReasoner({ plan, problems, allProblems, progress, attempts, 
     const topic = problem.primaryTopic;
     const skill = skills.get(topic) ?? 0;
     // A returning user's new problem comes from a topic they have skill in.
-    if (profile === 'returning' && skill > 0) return 'New · easing back in: a topic you already have skill in';
+    if (profile === 'returning' && skill > 0) return 'Easing back in: a topic you already have skill in';
     // An occasional user's new problems are strictly core-first across topics.
     if (profile === 'occasional') {
       const rank = coreRank(problem);
-      if (rank === 0) return 'New · core first: from the NeetCode 75';
-      if (rank === 1) return 'New · core first: from the NeetCode 150';
-      return 'New · core first: the NeetCode 150 has none left to offer';
+      if (rank === 0) return 'Core first: from the NeetCode 75';
+      if (rank === 1) return 'Core first: from the NeetCode 150';
+      return 'Core first: the NeetCode 150 has none left to offer';
     }
-    if (!triedAnywhere.has(topic)) return `New · a topic you haven't started (${TIER_LABELS[topicTier(topic)]})`;
+    if (!triedAnywhere.has(topic)) return `A topic you haven't started (${TIER_LABELS[topicTier(topic)]})`;
     const inTopic = problems.filter((candidate) => candidate.primaryTopic === topic);
     const tried = inTopic.filter((candidate) => triedIds.has(candidate.id)).length;
-    const parts = ['New'];
-    parts.push(tried > 0 ? `${tried} of ${inTopic.length} tried in this topic` : "you've practised this topic before");
+    const parts = [tried > 0 ? `${tried} of ${inTopic.length} tried in this topic` : "You've practised this topic before"];
     if (targetDifficulty(skill) === problem.difficulty) parts.push(`${capitalise(problem.difficulty)} fits your level here`);
     return parts.join(' · ');
   };
