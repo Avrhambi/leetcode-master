@@ -185,6 +185,14 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .review-note span { color: var(--color-accent); }
 .daily-extra { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
 .daily-extra p { margin: 0; color: var(--color-neutral); font-size: var(--text-sm); }
+.day-wrap-up { display: grid; gap: var(--space-sm); margin-top: var(--space-lg); padding: var(--space-md); background: var(--color-paper-3); border: var(--rule-hair) solid var(--mastery-3); animation: wrap-up-in 300ms ease-out; }
+.daily-plan .day-wrap-up h3 { margin: 0; color: var(--color-accent); }
+.day-wrap-up dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-sm); margin: 0; }
+.day-wrap-up dt { color: var(--color-neutral); font-size: var(--text-xs); }
+.day-wrap-up dd { margin: 0; color: var(--color-ink); font-weight: 700; }
+.daily-plan .day-wrap-up p { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); }
+@keyframes wrap-up-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .day-wrap-up { animation: none; } }
 .daily-plan .attempt-form { margin-bottom: 0; }
 .quick-log, .quick-log-done { display: grid; gap: var(--space-xs); margin-top: var(--space-sm); }
 .quick-log-buttons, .quick-log-note-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }

@@ -7,6 +7,7 @@ import { backupReminderDue } from '../services/backupHealth';
 import { masteryByTopic } from '../services/mastery';
 import { dueReviewQueue, type DailyPlanItem } from '../services/dailyPlan';
 import { latestNotes } from '../services/reviewNotes';
+import { dayWrapUp } from '../services/dayWrapUp';
 import type { SessionBudget } from '../services/sessionTime';
 import { TopicMap } from './TopicMap';
 import { SidePanel, type Panel } from './SidePanel';
@@ -220,6 +221,8 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         notes={latestNotes(attempts)}
         budget={sessionBudget}
         onBudgetChange={onBudgetChange}
+        today={localDate()}
+        wrapUp={dayWrapUp({ today: localDate(), planProblemIds: planItems.map((item) => item.problem.id), completedProblemIds, attempts, progress, catalogIds: new Set(allProblems.map((problem) => problem.id)) })}
         onOpenProblem={(problem) => {
           setChallengeOpen(false);
           setPanel({ kind: 'problem', problem, back: null });

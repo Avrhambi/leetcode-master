@@ -22,7 +22,7 @@ const attempt = (over: Partial<Attempt>): Attempt => {
   };
 };
 const row = (problemId: string, nextReviewDate: string | null): ProblemProgress => ({
-  problemId, status: 'learning', reviewStage: 1, nextReviewDate, lastAttemptDate: TODAY, lastQuality: 'strong',
+  problemId, status: 'solved', reviewStage: 1, nextReviewDate, lastAttemptDate: TODAY, lastQuality: 'strong',
   strongAttemptCount: 1, consecutiveWeak: 0, struggling: false, updatedAt: `${TODAY}T10:00:00.000Z`
 });
 const input = (over: Partial<DayWrapUpInput> = {}): DayWrapUpInput => ({
