@@ -26,7 +26,7 @@ async function downloadBackup(): Promise<void> {
   await recordBackup(localDate());
 }
 
-export function Settings() {
+export function Settings({ onImportKnown }: { onImportKnown?: () => void }) {
   const [confirmation, setConfirmation] = useState('');
   const [lastFile, setLastFile] = useState<File | null>(null);
   const [failedAction, setFailedAction] = useState<Action>(null);
@@ -105,6 +105,7 @@ export function Settings() {
         <button type="button" onClick={() => void confirmRestore()}>Replace my data</button>{' '}
         <button type="button" onClick={() => setPending(null)}>Cancel</button></div>}
       {summary && <p role="status">{summary}</p>}</article>
+    {onImportKnown && <article><h3>Import prior history</h3><p>Already solved some of the list? Mark those problems as known so they come back for review instead of as new. Marking earns no XP, streak or badges.</p><button type="button" onClick={onImportKnown}>Mark problems you already know</button></article>}
     <article><h3>Reset all data</h3><p>Type <code>RESET</code> to erase study data and reseed the catalog.</p><label>Confirmation<input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label><button type="button" disabled={confirmation !== 'RESET'} onClick={() => void reset()}>Reset all data</button></article>
     {message && <p role="status">{message}</p>}
     {error && <p role="alert">{error} <button type="button" onClick={retry}>Retry</button></p>}
