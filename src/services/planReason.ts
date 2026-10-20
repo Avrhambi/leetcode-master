@@ -4,6 +4,7 @@ import { coreRank } from './coreRank';
 import { daysBetween, type CadenceProfile } from './cadence';
 import type { DailyPlanItem } from './dailyPlan';
 import { topicSkills, targetDifficulty } from './skill';
+import { importedIds } from './importKnown';
 
 // "Why this problem today?" One short line per plan item, read from what
 // selection already looks at (progress, topic skill, cadence). Nothing is stored
@@ -61,7 +62,7 @@ function reviewReason(progress: ProblemProgress | undefined, today: string, paus
 export function planReasoner({ plan, problems, allProblems, progress, attempts, profile, reviewsUntilNew, today }: PlanReasonInput): (item: DailyPlanItem) => string {
   const progressByProblem = new Map(progress.map((row) => [row.problemId, row]));
   const before = attempts.filter((attempt) => attempt.attemptedOn < today);
-  const skills = topicSkills(before, allProblems);
+  const skills = topicSkills(before, allProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
   const topicOf = new Map(allProblems.map((problem) => [problem.id, problem.primaryTopic]));
   const triedIds = new Set(before.map((attempt) => attempt.problemId));
   const triedAnywhere = new Set<string>();

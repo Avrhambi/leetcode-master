@@ -889,12 +889,12 @@ your task ID. Don't implement them.
 - (T12) Role-based plans (frontend / backend / data). Only as an owner-reviewed suggestion list, labelled "picked because these topics are common for the role", never presented as fact.
 - (T12) Under review overload, one new Easy every other day, or a separate "missed reviews" pile. A quick trial of adding new problems during overload grew the yearly backlog to 117, so any version must re-run the year-long backlog test.
 - (T12) Changing the budget after logging something re-plans only new problems; due reviews that dropped out stay in the review queue rather than coming back into the plan. Revisit if users find that confusing.
-- (T20) The T14 finish forecast counts imported problems as "remaining" (it reads attempts only), so it overstates the weeks left for someone who imported a lot. Fix by also treating progress rows with no attempts as done.
 - (T20) A very large import (over ~180 marks) puts 12+ reviews on a day inside the 7-21 day window, which pauses new problems. A wider window for big imports, or a per-day cap, would avoid that.
 - (T18) Undoing a quick log on a review leaves any extra new-problem row the planner topped up while the review was logged (stored plan rows are never deleted), so the plan can keep one more item than before the log. Also the timer's start is not restored by Undo.
 - (T15) The wrap-up needs every stored item logged, so when the same-day rule tops up another new problem right after the last item is logged, the summary waits for that one too (and "Items done" counts it).
 - (T19) A logged review's line falls back to "Was due for today" because its old schedule and last quality are gone once it is logged. Showing the original overdue count would mean replaying the attempt sequence before today's attempt; only worth it if users miss it.
 - (T16) The deadline hours leave out reviews already scheduled for problems the user has started, and count every review as a full re-solve (no light reviews). Both make the number lower or higher than reality; add them if users find the hours off.
+- (T20, closed) Forecast now counts imported marks as done, and `topicSkills` seeds one strong result per imported mark (`importedIds` in `importKnown.ts`), so an imported topic no longer restarts at Easy. Backup validation now drops setting keys it does not know instead of rejecting the file (an older build still rejects a newer file; `formatVersion` stays 3).
 
 ## Session log
 

@@ -81,7 +81,11 @@ describe('validateBackupPayload', () => {
   it('rejects an unsupported format version', () => {
     expect(() => validateBackupPayload({ ...v1Backup, formatVersion: 4 })).toThrow('valid LeetCode Master backup');
   });
-  it('rejects an unknown settings key', () => {
-    expect(() => validateBackupPayload({ ...v1Backup, settings: [{ key: 'nope', value: 'x' }] })).toThrow('valid LeetCode Master backup');
+  it('drops a settings key from a newer build instead of rejecting the backup', () => {
+    const restored = validateBackupPayload({ ...v1Backup, settings: [{ key: 'nope', value: 'x' }, { key: 'lastBackupOn', value: '2026-10-19' }] });
+    expect(restored.settings).toEqual([{ key: 'lastBackupOn', value: '2026-10-19' }]);
+  });
+  it('rejects a malformed settings row', () => {
+    expect(() => validateBackupPayload({ ...v1Backup, settings: [{ key: 'nope', value: 1 }] })).toThrow('valid LeetCode Master backup');
   });
 });

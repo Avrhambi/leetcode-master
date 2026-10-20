@@ -47,7 +47,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `calendar.ts` (the practice-reminder `.ics`: weekly `RRULE`, floating local `DTSTART`, CRLF, 75-octet folding, deterministic UID; start date and app URL are arguments — the Settings component passes `localDate()` and `deployedAppUrl(window.location.href)`; nothing stored),
   `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
   `planReason.ts` (the one-line "why this problem today" under each plan item: only facts that hold for the stored item, never a re-run of selection; skill and "started" read attempts from before today so logging an item does not rewrite its line),
-  `importKnown.ts` ("mark problems you already know": a progress row only, stage 2, first review dealt evenly over 7-21 days; no Attempt rows, so no XP/streak/badges; undo = progress rows with no attempts),
+  `importKnown.ts` ("mark problems you already know": a progress row only, read by `topicSkills` and `finishForecast` via `importedIds` so a mark counts as done, stage 2, first review dealt evenly over 7-21 days; no Attempt rows, so no XP/streak/badges; undo = progress rows with no attempts),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed),
   `quickLog.ts` (the plan's three one-tap outcome buttons → a full `AttemptInput` via `attemptForm.ts`, never a light review),

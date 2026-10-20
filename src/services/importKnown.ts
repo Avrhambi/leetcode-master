@@ -60,6 +60,12 @@ export function removableImportIds(progressIds: Iterable<string>, attemptedIds: 
   return [...progressIds].filter((id) => !attempted.has(id));
 }
 
+// The marked problems as a set: progress rows with no attempt behind them. Skill
+// and the finish forecast read this so an import counts as done, not as untouched.
+export function importedIds(progressIds: Iterable<string>, attemptedIds: Iterable<string>): Set<string> {
+  return new Set(removableImportIds(progressIds, attemptedIds));
+}
+
 // First and last next-review date of a set of rows, for the confirmation line.
 export function reviewSpan(rows: Pick<ProblemProgress, 'nextReviewDate'>[]): { first: string; last: string } | null {
   const dates = rows.map((row) => row.nextReviewDate).filter((date): date is string => date !== null).sort();

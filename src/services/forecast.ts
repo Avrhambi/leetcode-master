@@ -5,7 +5,7 @@ import type { Attempt } from '../types/models';
 // "At this pace you finish the set in about N weeks", from the user's own recent
 // rate. Pure: `today` is passed in, nothing is stored.
 export interface FinishForecast {
-  // Problems in the set with no attempt yet.
+  // Problems in the set with no attempt yet and not marked as already known.
   remaining: number;
   // New problems per week with any practice, over the window; null with too little history.
   newPerActiveWeek: number | null;
@@ -23,7 +23,7 @@ function weekKey(date: string): number {
   return utc / 86_400_000 - weekday;
 }
 
-export function finishForecast(setProblemIds: string[], attempts: Pick<Attempt, 'problemId' | 'attemptedOn'>[], today: string): FinishForecast {
+export function finishForecast(setProblemIds: string[], attempts: Pick<Attempt, 'problemId' | 'attemptedOn'>[], today: string, imported: ReadonlySet<string> = new Set()): FinishForecast {
   const firstAttempt = new Map<string, string>();
   for (const attempt of attempts) {
     const known = firstAttempt.get(attempt.problemId);
@@ -33,7 +33,7 @@ export function finishForecast(setProblemIds: string[], attempts: Pick<Attempt, 
 
   const newInWindow = [...firstAttempt.values()].filter(inWindow).length;
   const activeWeeks = new Set(attempts.filter((attempt) => inWindow(attempt.attemptedOn)).map((attempt) => weekKey(attempt.attemptedOn))).size;
-  const remaining = setProblemIds.filter((id) => !firstAttempt.has(id)).length;
+  const remaining = setProblemIds.filter((id) => !firstAttempt.has(id) && !imported.has(id)).length;
 
   const newPerActiveWeek = newInWindow >= FORECAST_MIN_NEW_PROBLEMS && activeWeeks > 0 ? newInWindow / activeWeeks : null;
   const weeks = newPerActiveWeek !== null && remaining > 0 ? Math.max(1, Math.ceil(remaining / newPerActiveWeek)) : null;

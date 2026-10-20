@@ -18,6 +18,11 @@ describe('finishForecast', () => {
     expect(forecast.weeks).toBe(8);
   });
 
+  it('treats imported problems as done, not remaining', () => {
+    const forecast = finishForecast(ids(60), twoWeeks, '2026-10-14', new Set(['p20', 'p21', 'p22']));
+    expect(forecast.remaining).toBe(45);
+  });
+
   it('rounds partial weeks up', () => {
     expect(finishForecast(ids(15), twoWeeks, '2026-10-14').weeks).toBe(1);
     expect(finishForecast(ids(20), twoWeeks, '2026-10-14').weeks).toBe(2);

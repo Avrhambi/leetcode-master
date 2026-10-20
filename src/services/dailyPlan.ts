@@ -4,6 +4,7 @@ import { coreRank } from './coreRank';
 import { cadenceFor, daysBetween, type CadenceProfile } from './cadence';
 import { FAILING_TOPIC_PRIORITY_PENALTY, OCCASIONAL_RECENT_TOPIC_PENALTY, RETURNING_MAX_REVIEW_SLOTS, REVIEW_OVERLOAD_DUE, REVIEW_OVERLOAD_SLOTS, SKILL_MEDIUM_THRESHOLD } from './constants';
 import { targetDifficulty, topicSkills } from './skill';
+import { importedIds } from './importKnown';
 import { prerequisitePenalty } from './topicGraph';
 import { selectReinforcement, warmUpTargetFor } from './reinforcement';
 import { fitPlanToBudget, minutesEstimator, planMinutes, type MinutesEstimator } from './sessionTime';
@@ -147,7 +148,7 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const hiddenProblemIds = hiddenIds(recommendationEvents, now);
 
-  const skills = topicSkills(attempts, skillProblems);
+  const skills = topicSkills(attempts, skillProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
   const profile = cadenceFor(attempts, localToday(now)).profile;
   const estimate = minutesEstimator(attempts, skillProblems, localToday(now));
 
@@ -223,7 +224,7 @@ export function selectExtraProblem({ problems, progress, recommendationEvents, a
   const progressByProblem = new Map(progress.map((item) => [item.problemId, item]));
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const hiddenProblemIds = hiddenIds(recommendationEvents, now);
-  const skills = topicSkills(attempts, skillProblems);
+  const skills = topicSkills(attempts, skillProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
   const profile = cadenceFor(attempts, localToday(now)).profile;
   return selectNewProblem(
     problems, progressByProblem, recommendationEvents, hiddenProblemIds,

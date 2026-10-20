@@ -12,10 +12,18 @@ import {
 // Per-topic skill in [0, 1], replayed deterministically from the attempts
 // history. It is never stored, so it cannot drift, and it does not depend on how
 // many problems the active set has in a topic. Topics with no attempts are 0.
-export function topicSkills(attempts: Attempt[], problems: CatalogProblem[]): Map<string, number> {
+export function topicSkills(attempts: Attempt[], problems: CatalogProblem[], imported: ReadonlySet<string> = new Set()): Map<string, number> {
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const skills = new Map<string, number>();
   const seenToday = new Set<string>();
+  // Imported marks ("already know") count as one strong result each, before any
+  // attempt, in catalog order so the result never depends on tick order.
+  const marks = problems.filter((problem) => imported.has(problem.id)).sort((a, b) => a.neetcodeOrder - b.neetcodeOrder || a.id.localeCompare(b.id));
+  for (const problem of marks) {
+    const skill = skills.get(problem.primaryTopic) ?? 0;
+    const expected = 1 / (1 + Math.exp(-(skill - SKILL_DIFFICULTY_RATING[problem.difficulty]) / SKILL_SCALE));
+    skills.set(problem.primaryTopic, Math.min(1, Math.max(0, skill + SKILL_K * (SKILL_QUALITY_RESULT.strong - expected))));
+  }
   const ordered = [...attempts].sort((a, b) => a.attemptedOn.localeCompare(b.attemptedOn) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
   for (const attempt of ordered) {
     const problem = problemById.get(attempt.problemId);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { STREAK_GRACE_PER_WEEK } from '../services/constants';
 import { activeDaysThisWeek, currentStreak, parseWeeklyGoal, type StreakGraceState } from '../services/streak';
+import { importedIds } from '../services/importKnown';
 import { finishForecast, forecastDetail, forecastText } from '../services/forecast';
 import { PROBLEM_SET_LABELS } from '../services/problemSet';
 import { buildGoalPlan, goalDetail, goalLineShort, readGoalSettings } from '../services/goalPlan';
@@ -99,7 +100,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   const { streak, graceDaysUsed } = currentStreak(activeDates, graceStateFrom(settings));
   const weeklyGoal = parseWeeklyGoal(settings.find((row) => row.key === 'weeklyGoalDays')?.value);
   const daysThisWeek = activeDaysThisWeek(activeDates, today);
-  const forecast = finishForecast(problems.map((problem) => problem.id), attempts, today);
+  const forecast = finishForecast(problems.map((problem) => problem.id), attempts, today, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
   const forecastLine = forecastText(PROBLEM_SET_LABELS[problemSet], forecast);
 
   // Interview deadline (T16): hours the active set needs before the date, from the same

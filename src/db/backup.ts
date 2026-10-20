@@ -53,10 +53,13 @@ function isGamificationState(value: unknown): value is GamificationState {
 }
 
 export function validateBackupPayload(value: unknown): BackupPayload {
-  if (!isRecord(value) || (value.formatVersion !== 1 && value.formatVersion !== 2 && value.formatVersion !== 3) || !isString(value.exportedAt) || !Array.isArray(value.progress) || !Array.isArray(value.attempts) || !Array.isArray(value.recommendationEvents) || !Array.isArray(value.settings) || !value.progress.every(isProgress) || !value.attempts.every(isAttempt) || !value.recommendationEvents.every(isRecommendationEvent) || !value.settings.every(isSetting) || (value.gamification !== undefined && !isGamificationState(value.gamification)) || (value.catalogVersion !== undefined && !isString(value.catalogVersion)) || (value.appVersion !== undefined && !isString(value.appVersion))) {
+  if (!isRecord(value) || (value.formatVersion !== 1 && value.formatVersion !== 2 && value.formatVersion !== 3) || !isString(value.exportedAt) || !Array.isArray(value.progress) || !Array.isArray(value.attempts) || !Array.isArray(value.recommendationEvents) || !Array.isArray(value.settings) || !value.progress.every(isProgress) || !value.attempts.every(isAttempt) || !value.recommendationEvents.every(isRecommendationEvent) || !value.settings.every((row) => isRecord(row) && isString(row.key) && isString(row.value)) || (value.gamification !== undefined && !isGamificationState(value.gamification)) || (value.catalogVersion !== undefined && !isString(value.catalogVersion)) || (value.appVersion !== undefined && !isString(value.appVersion))) {
     throw new Error('This file is not a valid LeetCode Master backup.');
   }
-  return value as unknown as BackupPayload;
+  // A setting key this build does not know (written by a newer build) is dropped,
+  // not rejected, so a newer backup still restores here.
+  const payload = value as unknown as BackupPayload;
+  return { ...payload, settings: (payload.settings as unknown[]).filter(isSetting) };
 }
 
 export async function createBackupPayload(): Promise<BackupPayload> {

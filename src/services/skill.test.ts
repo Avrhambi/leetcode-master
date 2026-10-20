@@ -14,6 +14,11 @@ describe('topic skill', () => {
     expect(skillAfter([])).toBe(0);
     expect(skillAfter([attempt('ghost', 1, 'strong')])).toBe(0);
   });
+  it('counts imported marks as strong results, so the topic does not restart at Easy', () => {
+    const imported = new Set(['e1', 'e2']);
+    expect(targetDifficulty(topicSkills([], problems, imported).get('T') ?? 0)).toBe('medium');
+    expect(topicSkills([], problems, new Set()).get('T') ?? 0).toBe(0);
+  });
   it('unlocks Medium after two strong Easy solves, not one', () => {
     expect(targetDifficulty(skillAfter([attempt('e1', 1, 'strong')]))).toBe('easy');
     expect(targetDifficulty(skillAfter([attempt('e1', 1, 'strong'), attempt('e2', 2, 'strong')]))).toBe('medium');
