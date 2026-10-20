@@ -43,6 +43,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
   `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
   `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
+  `planReason.ts` (the one-line "why this problem today" under each plan item: only facts that hold for the stored item, never a re-run of selection; skill and "started" read attempts from before today so logging an item does not rewrite its line),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
