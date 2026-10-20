@@ -35,6 +35,7 @@ interface WorkbenchProps {
   onSkip: (item: DailyPlanItem) => Promise<void>;
   minutesOf: (item: DailyPlanItem) => number;
   reviewsUntilNew: number;
+  reasonOf: (item: DailyPlanItem) => string;
   sessionBudget: SessionBudget | null;
   onBudgetChange: (minutes: SessionBudget | null) => Promise<void>;
 }
@@ -61,7 +62,7 @@ function graceStateFrom(settings: AppSetting[]): StreakGraceState {
 // The single screen: XP strip, a search box, the tiered topic map (with the
 // bare-minimum stats above it and a side panel for a topic's problems, the
 // search results, or one problem's detail), today's plan, badge shelf.
-export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, planItems, completedProblemIds, profile, onAddExtra, onSkip, minutesOf, reviewsUntilNew, sessionBudget, onBudgetChange }: WorkbenchProps) {
+export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, planItems, completedProblemIds, profile, onAddExtra, onSkip, minutesOf, reviewsUntilNew, reasonOf, sessionBudget, onBudgetChange }: WorkbenchProps) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -215,6 +216,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         onSkip={onSkip}
         minutesOf={minutesOf}
         reviewsUntilNew={reviewsUntilNew}
+        reasonOf={reasonOf}
         notes={latestNotes(attempts)}
         budget={sessionBudget}
         onBudgetChange={onBudgetChange}

@@ -5,6 +5,7 @@ import { persistRecommendations } from '../db/recommendations';
 import { dueReviewQueue, reviewsUntilNewProblems, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from '../services/dailyPlan';
 import { itemMinutes, minutesEstimator, parseSessionBudget, type SessionBudget } from '../services/sessionTime';
 import { cadenceFor, type CadenceProfile } from '../services/cadence';
+import { planReasoner } from '../services/planReason';
 import { REVIEW_OVERLOAD_DUE } from '../services/constants';
 import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
 
@@ -27,6 +28,8 @@ export interface UseDailyPlanResult {
   minutesOf: (item: DailyPlanItem) => number;
   // Due reviews still to clear before new problems come back (0 when not paused).
   reviewsUntilNew: number;
+  // The one-line "why this problem today" for a plan item (see planReason.ts).
+  reasonOf: (item: DailyPlanItem) => string;
   // The stored time budget (`null` = none).
   budget: SessionBudget | null;
 }
@@ -99,5 +102,7 @@ export function useDailyPlan(
   const minutesOf = (item: DailyPlanItem) => itemMinutes(item, estimate);
   const reviewsUntilNew = planInput ? reviewsUntilNewProblems(planInput) : 0;
 
-  return { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, budget: sessionMinutes };
+  const reasonOf = planReasoner({ plan: plan ?? [], problems: problems ?? [], allProblems: allProblems ?? [], progress: progress ?? [], attempts: attempts ?? [], profile, reviewsUntilNew, today: localDay() });
+
+  return { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionMinutes };
 }

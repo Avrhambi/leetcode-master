@@ -178,6 +178,7 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .session-budget { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); margin-top: var(--space-sm); color: var(--color-neutral); font-size: var(--text-sm); }
 .daily-plan .session-budget button { padding: var(--space-2xs) var(--space-sm); }
 .daily-plan .session-budget button[aria-pressed="true"] { color: var(--color-accent-ink); background: var(--color-accent); border-color: var(--color-accent); }
+.daily-plan li p.plan-reason { color: var(--color-ink-2); font-style: italic; }
 .daily-plan .plan-time { color: var(--color-ink); font-size: var(--text-sm); }
 .daily-plan .review-note, .problem-detail .review-note { color: var(--color-ink); white-space: pre-wrap; }
 .review-note span { color: var(--color-accent); }
