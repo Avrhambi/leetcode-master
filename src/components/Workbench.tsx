@@ -8,7 +8,12 @@ import { buildGoalPlan, goalDetail, goalLineShort, readGoalSettings } from '../s
 import { minutesEstimator } from '../services/sessionTime';
 import { backupReminderDue } from '../services/backupHealth';
 import { masteryByTopic } from '../services/mastery';
-import { dueReviewQueue, type DailyPlanItem } from '../services/dailyPlan';
+import { reviewQueueSections, type DailyPlanItem } from '../services/dailyPlan';
+import { strategyLine, type TrainingStrategy } from '../services/strategy';
+import { readinessDetail, readinessSummary } from '../services/readiness';
+import { topicSkills } from '../services/skill';
+import { daysSinceLastMock, mockDue, parseActiveMock } from '../services/mockInterview';
+import { MockInterview } from './MockInterview';
 import { latestNotes } from '../services/reviewNotes';
 import { dayWrapUp } from '../services/dayWrapUp';
 import type { SessionBudget } from '../services/sessionTime';
@@ -42,6 +47,7 @@ interface WorkbenchProps {
   reasonOf: (item: DailyPlanItem) => string;
   sessionBudget: SessionBudget | null;
   onBudgetChange: (minutes: SessionBudget | null) => Promise<void>;
+  strategy: TrainingStrategy;
 }
 
 function localDate(date = new Date()): string {
@@ -66,11 +72,12 @@ function graceStateFrom(settings: AppSetting[]): StreakGraceState {
 // The single screen: XP strip, a search box, the tiered topic map (with the
 // bare-minimum stats above it and a side panel for a topic's problems, the
 // search results, or one problem's detail), today's plan, badge shelf.
-export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, planItems, completedProblemIds, profile, onAddExtra, onSkip, minutesOf, reviewsUntilNew, reasonOf, sessionBudget, onBudgetChange }: WorkbenchProps) {
+export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, planItems, completedProblemIds, profile, onAddExtra, onSkip, minutesOf, reviewsUntilNew, reasonOf, sessionBudget, onBudgetChange, strategy }: WorkbenchProps) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [challengeOpen, setChallengeOpen] = useState(false);
+  const [mockOpen, setMockOpen] = useState(false);
 
   // 200 ms debounce (CLAUDE.md convention for search).
   useEffect(() => {
@@ -93,7 +100,16 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
   const weekStart = localDate(sevenDaysAgo);
 
-  const dueReviews = progress.filter((item) => item.nextReviewDate !== null && item.nextReviewDate <= today).length;
+  // Reviews owed (T22): pattern-covered, parked and second-in-topic reviews are optional.
+  const reviewSections = reviewQueueSections(allProblems, progress, attempts);
+  const dueReviews = reviewSections.owed.length;
+  // Interview readiness (T23): chance on an unseen Medium per topic, from skill.
+  const readiness = readinessSummary(problems, topicSkills(attempts, allProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId))));
+  // Mock interviews (T24): the running one (a setting) and whether one is due.
+  const activeMock = parseActiveMock(settings.find((row) => row.key === 'activeMock')?.value, new Date());
+  const mockIsDue = mockDue(attempts, allProblems, today, strategy.mockEveryDays);
+  const lastMock = daysSinceLastMock(attempts, today);
+  const mockNudge = activeMock ? 'A mock interview is running.' : mockIsDue ? (lastMock === null ? 'Ready for a first mock interview? It shows how you do on unseen problems against the clock.' : `Time for a mock interview: the last one was ${lastMock} ${lastMock === 1 ? 'day' : 'days'} ago.`) : null;
   const attemptsThisWeek = attempts.filter((attempt) => attempt.attemptedOn >= weekStart && attempt.attemptedOn <= today).length;
   const activeDates = new Set(attempts.map((attempt) => attempt.attemptedOn));
   const backupReminder = backupReminderDue(settings.find((row) => row.key === 'lastBackupOn')?.value, [...activeDates], today);
@@ -155,6 +171,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
       <span title="Consecutive weeks with 3+ active days"><b>{streakWeeks}</b> {streakWeeks === 1 ? 'week' : 'weeks'} consistent</span>
       {weeklyGoal !== null && <span className="weekly-goal" data-met={daysThisWeek >= weeklyGoal} title="Days you practised this week (Monday start) against your weekly goal"><b>{daysThisWeek}</b> / {weeklyGoal} days this week{daysThisWeek >= weeklyGoal && ' · goal met'}</span>}
       <span><b>{attemptsThisWeek}</b> attempts · 7 days</span>
+      <span className="readiness-line" title={readinessDetail(readiness)}>Interview readiness <b>{Math.round(readiness.overall * 100)}%</b> · {readiness.readyCount} of {readiness.topics.length} topics ready</span>
       {forecastLine && <span className="finish-forecast" title={forecastDetail(forecast)}>{forecastLine}</span>}
       {goalPlan && <span className="goal-line" data-fits={goalPlan.fits.find((fit) => fit.set === problemSet)?.fits ?? true} title={goalDetail(goalPlan, problemSet).join('\n')}>{goalLineShort(goalPlan, problemSet)}</span>}
       <button
@@ -168,6 +185,14 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         }}
       >
         <b>{dueReviews}</b> for review
+      </button>
+      <button
+        type="button"
+        className="challenge-trigger mock-trigger"
+        data-due={activeMock !== null || mockIsDue}
+        onClick={() => setMockOpen(true)}
+      >
+        {activeMock ? 'Mock running' : 'Mock interview'}
       </button>
       <button
         type="button"
@@ -197,7 +222,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
           {(() => {
             const fromReview = panel.back?.kind === 'review';
             const nextInReview = fromReview
-              ? dueReviewQueue(allProblems, progress).find((entry) => entry.problem.id !== panel.problem.id)?.problem ?? null
+              ? [...reviewSections.owed, ...reviewSections.optional].find((entry) => entry.problem.id !== panel.problem.id)?.problem ?? null
               : null;
             return <ProblemDetail
               problem={panel.problem}
@@ -218,9 +243,8 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
           {panel && <SidePanel
             panel={panel}
             problems={problems}
-            allProblems={allProblems}
-            progress={progress}
             progressByProblem={progressByProblem}
+            reviewSections={reviewSections}
             backupReminder={backupReminder}
             onSelectProblem={(problem, back) => setPanel({ kind: 'problem', problem, back })}
             onClose={closePanel}
@@ -240,13 +264,20 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         notes={latestNotes(attempts)}
         budget={sessionBudget}
         onBudgetChange={onBudgetChange}
+        strategyLine={strategyLine(strategy)}
+        mockNudge={mockNudge}
+        onOpenMock={() => { setChallengeOpen(false); setMockOpen(true); }}
         today={localDate()}
-        wrapUp={dayWrapUp({ today: localDate(), planProblemIds: planItems.map((item) => item.problem.id), completedProblemIds, attempts, progress, catalogIds: new Set(allProblems.map((problem) => problem.id)) })}
+        wrapUp={dayWrapUp({ today: localDate(), planProblemIds: planItems.map((item) => item.problem.id), completedProblemIds, attempts, progress, catalogIds: new Set(allProblems.map((problem) => problem.id)), optionalIds: new Set(reviewSections.optional.map((entry) => entry.problem.id)) })}
         onOpenProblem={(problem) => {
           setChallengeOpen(false);
           setPanel({ kind: 'problem', problem, back: null });
         }}
       />
+    </Overlay>}
+
+    {mockOpen && <Overlay label="Mock interview" onClose={() => setMockOpen(false)}>
+      <MockInterview problems={problems} allProblems={allProblems} progress={progress} attempts={attempts} active={activeMock} today={today} />
     </Overlay>}
 
   </section>;

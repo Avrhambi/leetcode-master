@@ -43,7 +43,7 @@ export default function App() {
   const skipEasies = parseSkipEasies(settings?.find((row) => row.key === 'skipEasies')?.value);
   const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet, skipEasies) : undefined), [allProblems, problemSet, skipEasies]);
 
-  const { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionBudget } = useDailyPlan(problems, progress, attempts, allProblems);
+  const { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionBudget, strategy } = useDailyPlan(problems, progress, attempts, allProblems);
   const gamification = useGamification();
 
   const seed = () => {
@@ -99,6 +99,7 @@ export default function App() {
       reviewsUntilNew={reviewsUntilNew}
       reasonOf={reasonOf}
       sessionBudget={sessionBudget}
+      strategy={strategy}
       onBudgetChange={saveSessionBudget}
       onSkip={(item) => skipRecommendation(item.problem.id, item.kind)}
     />

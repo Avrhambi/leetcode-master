@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import { persistRecommendations } from '../db/recommendations';
-import { dueReviewQueue, reviewsUntilNewProblems, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from '../services/dailyPlan';
+import { planDueCount, reviewsUntilNewProblems, selectDailyPlan, selectExtraProblem, strategyOf, type DailyPlanItem } from '../services/dailyPlan';
 import { itemMinutes, minutesEstimator, parseSessionBudget, type SessionBudget } from '../services/sessionTime';
 import { cadenceFor, type CadenceProfile } from '../services/cadence';
 import { planReasoner } from '../services/planReason';
 import { REVIEW_OVERLOAD_DUE } from '../services/constants';
 import { parseInterviewDate } from '../services/goalPlan';
+import type { TrainingStrategy } from '../services/strategy';
 import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
 
 function localDay(date = new Date()): string {
@@ -33,6 +34,8 @@ export interface UseDailyPlanResult {
   reasonOf: (item: DailyPlanItem) => string;
   // The stored time budget (`null` = none).
   budget: SessionBudget | null;
+  // How the plan behaves for this user's time (strategy.ts): horizon, cap, mix.
+  strategy: TrainingStrategy;
 }
 
 // Owns the adaptive daily plan: selection, the once-per-day persistence of the
@@ -62,8 +65,11 @@ export function useDailyPlan(
   const recommendationEvents = snapshot?.recommendationEvents;
   const sessionMinutes = snapshot?.budget ?? null;
   const planResetAt = snapshot?.planResetAt ?? null;
-  // An active interview deadline weights new problems towards the foundations (T16).
-  const favourFoundations = parseInterviewDate(snapshot?.interviewDate, localDay()) !== null;
+  // An active interview deadline weights new problems towards the foundations (T16)
+  // and sets the training strategy's horizon (T23).
+  const interview = parseInterviewDate(snapshot?.interviewDate, localDay());
+  const favourFoundations = interview !== null;
+  const interviewDaysLeft = interview?.daysLeft ?? null;
   const [dayRefresh, setDayRefresh] = useState(0);
 
   useEffect(() => {
@@ -74,7 +80,7 @@ export function useDailyPlan(
   }, [dayRefresh]);
 
   const planInput = problems && progress && attempts && allProblems && recommendationEvents
-    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems, sessionMinutes, planResetAt, favourFoundations }
+    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems, sessionMinutes, planResetAt, favourFoundations, interviewDaysLeft }
     : undefined;
   const plan = planInput ? selectDailyPlan(planInput) : undefined;
 
@@ -93,8 +99,9 @@ export function useDailyPlan(
 
   const profile = cadenceFor(attempts ?? [], localDay()).profile;
   const allLogged = plan !== undefined && plan.length > 0 && plan.every((item) => completedProblemIds.has(item.problem.id));
-  // Not under review overload: new problems are paused until the backlog clears.
-  const dueCount = planInput ? dueReviewQueue(planInput.problems, planInput.progress).length : 0;
+  // Not under review overload: the owed reviews (pattern-covered and parked ones
+  // left out, as the plan counts them) come first.
+  const dueCount = planInput ? planDueCount(planInput) : 0;
   const offerExtra = planInput !== undefined && plan !== undefined && allLogged
     && dueCount < REVIEW_OVERLOAD_DUE && (profile === 'regular' || dueCount === 0);
   const addExtra = offerExtra ? async () => {
@@ -108,5 +115,5 @@ export function useDailyPlan(
 
   const reasonOf = planReasoner({ plan: plan ?? [], problems: problems ?? [], allProblems: allProblems ?? [], progress: progress ?? [], attempts: attempts ?? [], profile, reviewsUntilNew, today: localDay() });
 
-  return { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionMinutes };
+  return { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionMinutes, strategy: strategyOf({ interviewDaysLeft, sessionMinutes }) };
 }

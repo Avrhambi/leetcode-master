@@ -184,6 +184,28 @@ export function strategyOf(input: Pick<DailyPlanInput, 'interviewDaysLeft' | 'se
   return trainingStrategy({ daysLeft: input.interviewDaysLeft ?? null, budget: input.sessionMinutes ?? null });
 }
 
+// The review queue panel's two lists (T22): the reviews the plan owes, in plan
+// order, and the optional ones with why they can wait: covered by a fresher solve
+// of the same pattern, parked above the learner's current level, or a second
+// maintenance review of a topic whose anchor review is already owed.
+export type OptionalReason = 'covered' | 'parked' | 'later';
+export interface ReviewQueueSections { owed: DueReview[]; optional: (DueReview & { why: OptionalReason; coveredBy?: CatalogProblem })[] }
+
+export function reviewQueueSections(allProblems: CatalogProblem[], progress: ProblemProgress[], attempts: Attempt[], now: Date = new Date()): ReviewQueueSections {
+  const skills = skillsOf(progress, attempts, allProblems);
+  const owed = planDueReviews(allProblems, progress, [], allProblems, skills, now);
+  const owedIds = new Set(owed.map((entry) => entry.problem.id));
+  const covered = coveredReviews(allProblems, progress, localToday(now));
+  const optional = dueReviewQueue(allProblems, progress, now)
+    .filter((entry) => !owedIds.has(entry.problem.id))
+    .map((entry) => {
+      const anchor = covered.get(entry.problem.id);
+      if (anchor) return { ...entry, why: 'covered' as const, coveredBy: anchor };
+      return { ...entry, why: isParked(entry.problem, entry.progress, skills) ? 'parked' as const : 'later' as const };
+    });
+  return { owed, optional };
+}
+
 // Reviews the plan counts as due: skipped ones and pattern-covered ones left out.
 export function planDueCount({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, now = new Date() }: DailyPlanInput): number {
   return planDueReviews(problems, progress, recommendationEvents, skillProblems, skillsOf(progress, attempts, skillProblems), now).length;

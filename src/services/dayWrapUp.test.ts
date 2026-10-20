@@ -139,6 +139,11 @@ describe('dayWrapUp', () => {
       expect(wrapUp.reviewsStillDue).toBe(2);
       expect(wrapUp.nextReviewDate).toBe('2026-10-21');
     });
+
+    it('leaves out due reviews the plan does not owe (covered, parked or later in the topic)', () => {
+      const wrapUp = dayWrapUp(input({ progress: [row('p3', '2026-10-15'), row('p2', '2026-10-20')], optionalIds: new Set(['p3']) }))!;
+      expect(wrapUp.reviewsStillDue).toBe(1);
+    });
   });
 });
 

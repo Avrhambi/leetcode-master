@@ -17,6 +17,9 @@ export interface DayWrapUpInput {
   // Catalog ids (unfiltered). Progress rows outside it are kept on restore but
   // never come due, so they are not counted here either.
   catalogIds: ReadonlySet<string>;
+  // Due reviews the plan does not owe (pattern-covered, parked, or after the topic's
+  // owed review; see dailyPlan's `reviewQueueSections`), left out of `reviewsStillDue`.
+  optionalIds?: ReadonlySet<string>;
 }
 
 export interface DayWrapUp {
@@ -34,7 +37,7 @@ export interface DayWrapUp {
   xpEarned: number;
   // Earliest review date after today, or null when none is scheduled.
   nextReviewDate: string | null;
-  // Reviews that are due today or earlier and still not done (a time budget or
+  // Owed reviews that are due today or earlier and still not done (a time budget or
   // overload kept them out of the plan, or they were skipped for 24 hours).
   reviewsStillDue: number;
 }
@@ -57,7 +60,7 @@ export function dayWrapUp(input: DayWrapUpInput): DayWrapUp | null {
     untimedAttempts: todays.length - timed.length,
     xpEarned: todays.reduce((sum, attempt) => sum + (awards.get(attempt.id) ?? 0), 0),
     nextReviewDate: upcoming[0] ?? null,
-    reviewsStillDue: reviewable.filter((row) => (row.nextReviewDate as string) <= input.today).length
+    reviewsStillDue: reviewable.filter((row) => (row.nextReviewDate as string) <= input.today && !input.optionalIds?.has(row.problemId)).length
   };
 }
 
