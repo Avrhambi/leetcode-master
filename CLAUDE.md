@@ -35,7 +35,8 @@ Do not add a dependency without asking first, and explain why existing code can'
   `forecast.ts` (finish forecast: remaining problems ÷ the user's new problems per practised week over the last 28 days; null under 5 new problems, so no number is shown on thin history), `gamification.ts` (XP/levels; `attemptXpAwards` is the one fold that `replayXp` and the live award both read, `stagesBeforeEach` replays prior review stage), `badges.ts` (predicates + set-aware `badgeHint`),
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),
-  `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet`; the review queue is fed the unfiltered catalog),
+  `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet(problems, set, skipEasies)`; the review queue is fed the unfiltered catalog),
+  `goalPlan.ts` (interview deadline and "skip Easies": pure date validation like `parseWeeklyGoal`, the hours each set needs before the date from the T12 minute estimates plus the on-time reviews that fall before it, and the largest set that fits; display-only, nothing stored but the `interviewDate` and `skipEasies` settings; an active deadline only passes `favourFoundations` to the plan, which re-weights topic tiers),
   `cadence.ts` (practice profile — new/returning/regular/occasional — derived from attempt dates, never stored; only days before today count so the day's plan shape is stable),
   `skill.ts` (per-topic skill replayed from `attempts`, never stored; sets the plan's difficulty target),
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
@@ -53,7 +54,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
   is JSON export/restore with `formatVersion` validation (current 3; 1 and 2 still restore; restore is parse → confirm → replace, and keeps rows for ids outside the catalog); `seedCatalog.ts` seeds the
-  bundled catalog on first launch. `importKnown.ts` writes the imported marks (and undoes them) in one transaction each. `sessionBudget.ts` saves the time budget and stamps
+  bundled catalog on first launch. `importKnown.ts` writes the imported marks (and undoes them) in one transaction each. `goals.ts` saves the interview date (with the set that fits it, in one transaction) and the skip-Easies flag as plain `settings` rows. `sessionBudget.ts` saves the time budget and stamps
   `planResetAt` (the same-day replay ignores today's unlogged recommendations made before
   it). Never re-plan by deleting today's recommendation rows, because a render still holding the old
   plan re-persists it.
@@ -102,9 +103,9 @@ Do not add a dependency without asking first, and explain why existing code can'
 - **All animation sits behind `prefers-reduced-motion`.** The global rule in `global.css`
   clamps durations; showy gamification animations additionally get `animation: none`.
 
-- **The problem set is filtered once, in `App.tsx`.** `problems` (in-set) feeds the plan, map, mastery,
-  search and counts; `allProblems` feeds only the review queue so out-of-set history keeps coming due.
-  Switching sets never touches stored progress.
+- **The problem set is filtered once, in `App.tsx`.** `problems` (in-set, and without Easies when the `skipEasies` setting is on) feeds the plan, map, mastery,
+  search and counts; `allProblems` feeds only the review queue (and the deadline hours) so out-of-set history keeps coming due.
+  Switching sets, setting an interview date or skipping Easies never touches stored progress. (`saveAttempt` still builds badge inputs from the set alone, not from `skipEasies`.)
 
 ## Conventions
 
