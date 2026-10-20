@@ -8,7 +8,7 @@ import { levelForXp } from '../services/gamification';
 import { parseProblemSet, problemsInSet } from '../services/problemSet';
 import { parseSkipEasies } from '../services/goalPlan';
 import { awardAttemptXp, readGamification, recordBadges } from './gamification';
-import type { Attempt, HelpType, Outcome, PerceivedDifficulty } from '../types/models';
+import type { Attempt, HelpType, MockResult, Outcome, PerceivedDifficulty } from '../types/models';
 import { db } from './database';
 
 function graceStateFrom(settings: { key: string; value: string }[]): StreakGraceState {
@@ -20,7 +20,7 @@ function graceStateFrom(settings: { key: string; value: string }[]): StreakGrace
   };
 }
 
-export interface AttemptInput { problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; lightReview?: boolean; }
+export interface AttemptInput { problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; lightReview?: boolean; mock?: MockResult; }
 
 // Returns what `undoAttempt` needs to reverse this save (the quick log's Undo):
 // the rows this transaction replaced, read inside it before they were written.

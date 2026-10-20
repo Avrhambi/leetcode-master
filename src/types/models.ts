@@ -8,9 +8,13 @@ export type ProgressStatus = 'not_started' | 'attempted' | 'solved' | 'mastered'
 export type ProblemList = 'nc75' | 'nc150' | 'nc250';
 export interface CatalogProblem { id: string; title: string; slug: string; leetcodeUrl: string; difficulty: Difficulty; topics: string[]; primaryTopic: string; neetcodeOrder: number; neetcodeUrl: string; lists: ProblemList[]; }
 export interface ProblemProgress { problemId: string; status: ProgressStatus; reviewStage: 0 | 1 | 2 | 3 | 4 | 5; nextReviewDate: string | null; lastAttemptDate: string | null; lastQuality: Quality | null; strongAttemptCount: number; consecutiveWeak: number; struggling: boolean; updatedAt: string; }
-export interface Attempt { id: string; problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; quality: Quality; createdAt: string; lightReview?: boolean; }
+// One problem of a mock interview (T24): which mock it belonged to, the tests it
+// passed (both null when not reported), the mock's time limit and whether the
+// mock ran over it. Optional and not indexed, so no Dexie version.
+export interface MockResult { sessionId: string; testsPassed: number | null; testsTotal: number | null; timeLimitMinutes: number; overTime: boolean; }
+export interface Attempt { id: string; problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; quality: Quality; createdAt: string; lightReview?: boolean; mock?: MockResult; }
 export interface RecommendationEvent { id: string; problemId: string; kind: 'new' | 'review'; recommendedAt: string; skippedUntil: string | null; completedAt?: string | null; }
-export type AppSettingKey = 'catalogVersion' | 'streakGraceRemaining' | 'streakGraceRefreshedOn' | 'lastActiveOn' | 'problemSet' | 'lastBackupOn' | 'sessionMinutes' | 'planResetAt' | 'weeklyGoalDays' | 'interviewDate' | 'skipEasies';
+export type AppSettingKey = 'catalogVersion' | 'streakGraceRemaining' | 'streakGraceRefreshedOn' | 'lastActiveOn' | 'problemSet' | 'lastBackupOn' | 'sessionMinutes' | 'planResetAt' | 'weeklyGoalDays' | 'interviewDate' | 'skipEasies' | 'activeMock';
 export interface AppSetting { key: AppSettingKey; value: string; }
 
 // Single-row store (`key: 'state'`). `xp` is lifetime XP; `badges` is the earned

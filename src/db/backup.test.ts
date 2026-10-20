@@ -51,6 +51,14 @@ describe('validateBackupPayload', () => {
     const withGoals = { ...v3Backup, settings: [{ key: 'interviewDate', value: '2026-12-01' }, { key: 'skipEasies', value: '1' }] };
     expect(validateBackupPayload(withGoals).settings).toEqual(withGoals.settings);
   });
+  it('accepts mock-interview attempts and the activeMock settings key, and rejects a malformed mock field', () => {
+    const attempt = { id: 'a1', problemId: 'two-sum', attemptedOn: '2026-07-19', outcome: 'solved_independently', perceivedDifficulty: 'hard', helpType: null, durationMinutes: null, notes: '', quality: 'partial', createdAt: '2026-07-19T12:00:00.000Z' };
+    const mock = { sessionId: 'm1', testsPassed: 7, testsTotal: 10, timeLimitMinutes: 50, overTime: false };
+    const payload = { ...v3Backup, attempts: [{ ...attempt, mock }, { ...attempt, id: 'a2', mock: { ...mock, testsPassed: null, testsTotal: null } }], settings: [{ key: 'activeMock', value: '{}' }] };
+    expect(validateBackupPayload(payload)).toEqual(payload);
+    expect(() => validateBackupPayload({ ...v3Backup, attempts: [{ ...attempt, mock: { ...mock, overTime: 'no' } }] })).toThrow();
+    expect(() => validateBackupPayload({ ...v3Backup, attempts: [{ ...attempt, mock: { ...mock, timeLimitMinutes: 0 } }] })).toThrow();
+  });
   it('accepts the problemSet settings key', () => {
     const withSet = { ...v2Backup, settings: [{ key: 'problemSet', value: 'nc75' }] };
     expect(validateBackupPayload(withSet)).toEqual(withSet);

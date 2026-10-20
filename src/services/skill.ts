@@ -3,6 +3,7 @@ import {
   SKILL_DIFFICULTY_RATING,
   SKILL_HARD_THRESHOLD,
   SKILL_K,
+  SKILL_MOCK_WEIGHT,
   SKILL_MEDIUM_THRESHOLD,
   SKILL_QUALITY_RESULT,
   SKILL_REPEAT_SAME_DAY_MULTIPLIER,
@@ -32,7 +33,8 @@ export function topicSkills(attempts: Attempt[], problems: CatalogProblem[], imp
     const skill = skills.get(topic) ?? 0;
     const expected = 1 / (1 + Math.exp(-(skill - SKILL_DIFFICULTY_RATING[problem.difficulty]) / SKILL_SCALE));
     const dayKey = `${attempt.problemId}|${attempt.attemptedOn}`;
-    const weight = seenToday.has(dayKey) ? SKILL_REPEAT_SAME_DAY_MULTIPLIER : 1;
+    // A mock interview result is timed, unseen and unaided: stronger evidence (T24).
+    const weight = (seenToday.has(dayKey) ? SKILL_REPEAT_SAME_DAY_MULTIPLIER : 1) * (attempt.mock ? SKILL_MOCK_WEIGHT : 1);
     seenToday.add(dayKey);
     const next = skill + SKILL_K * weight * (SKILL_QUALITY_RESULT[attempt.quality] - expected);
     skills.set(topic, Math.min(1, Math.max(0, next)));

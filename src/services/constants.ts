@@ -298,6 +298,9 @@ export const IMPORT_MAX_DAYS = 21;
 export const INTERVIEW_MAX_DAYS = 730;
 export const DEADLINE_DEFAULT_DAYS_PER_WEEK = 4;
 export const DEADLINE_DEFAULT_SESSION_MINUTES = 45;
+// The deadline hours (T22): the share of first attempts expected to need one
+// re-solve (a hint or a miss). Strong first solves are kept fresh at topic level.
+export const GOAL_RETRY_SHARE = 0.4;
 
 // Training strategy (see strategy.ts). The automatic plan holds PLAN_DEFAULT_MAX_ITEMS
 // items with no time budget; with one it holds one item per PLAN_MINUTES_PER_ITEM

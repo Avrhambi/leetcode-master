@@ -9,7 +9,7 @@ const helpTypes = ['small_hint', 'pattern_identification', 'pseudocode', 'full_c
 const qualities = ['strong', 'partial', 'weak'];
 const statuses = ['not_started', 'attempted', 'solved', 'mastered'];
 const eventKinds = ['new', 'review'];
-const settingKeys = ['catalogVersion', 'streakGraceRemaining', 'streakGraceRefreshedOn', 'lastActiveOn', 'problemSet', 'lastBackupOn', 'sessionMinutes', 'planResetAt', 'weeklyGoalDays', 'interviewDate', 'skipEasies'];
+const settingKeys = ['catalogVersion', 'streakGraceRemaining', 'streakGraceRefreshedOn', 'lastActiveOn', 'problemSet', 'lastBackupOn', 'sessionMinutes', 'planResetAt', 'weeklyGoalDays', 'interviewDate', 'skipEasies', 'activeMock'];
 
 // Progress fields added in backup formatVersion 2. A v1 payload omits them; they
 // are defaulted on restore, matching the Dexie v2 migration backfill.
@@ -33,8 +33,15 @@ function isProgress(value: unknown): value is ProblemProgress {
     && (value.struggling === undefined || typeof value.struggling === 'boolean');
 }
 
+function isNullableCount(value: unknown): boolean { return value === null || (isInteger(value) && value >= 0); }
+
+// The optional `mock` field of a mock-interview attempt (T24).
+function isMockResult(value: unknown): boolean {
+  return isRecord(value) && isString(value.sessionId) && isNullableCount(value.testsPassed) && isNullableCount(value.testsTotal) && isInteger(value.timeLimitMinutes) && value.timeLimitMinutes >= 1 && typeof value.overTime === 'boolean';
+}
+
 function isAttempt(value: unknown): value is Attempt {
-  return isRecord(value) && isString(value.id) && isString(value.problemId) && isString(value.attemptedOn) && isOneOf(value.outcome, outcomes) && isOneOf(value.perceivedDifficulty, perceivedDifficulties) && (value.helpType === null || isOneOf(value.helpType, helpTypes)) && (value.durationMinutes === null || (isInteger(value.durationMinutes) && value.durationMinutes >= 1 && value.durationMinutes <= 600)) && isString(value.notes) && isOneOf(value.quality, qualities) && isString(value.createdAt) && (value.lightReview === undefined || typeof value.lightReview === 'boolean');
+  return isRecord(value) && isString(value.id) && isString(value.problemId) && isString(value.attemptedOn) && isOneOf(value.outcome, outcomes) && isOneOf(value.perceivedDifficulty, perceivedDifficulties) && (value.helpType === null || isOneOf(value.helpType, helpTypes)) && (value.durationMinutes === null || (isInteger(value.durationMinutes) && value.durationMinutes >= 1 && value.durationMinutes <= 600)) && isString(value.notes) && isOneOf(value.quality, qualities) && isString(value.createdAt) && (value.lightReview === undefined || typeof value.lightReview === 'boolean') && (value.mock === undefined || isMockResult(value.mock));
 }
 
 function isRecommendationEvent(value: unknown): value is RecommendationEvent {
