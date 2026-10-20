@@ -35,6 +35,9 @@ interface DailyPlanInput {
   // are left out of the same-day replay unless they were logged, so the rest of
   // the day is re-planned under the new budget.
   planResetAt?: string | null;
+  // An interview deadline is set (T16): new-problem topics are weighted towards the
+  // tier-1 foundations (see `tierWeight`). Nothing else about the plan changes.
+  favourFoundations?: boolean;
   now?: Date;
 }
 
@@ -139,7 +142,7 @@ export function reviewsUntilNewProblems({ problems, progress, recommendationEven
   return Math.max(0, due - REVIEW_OVERLOAD_DUE + 1);
 }
 
-export function selectDailyPlan({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, sessionMinutes = null, planResetAt = null, now = new Date() }: DailyPlanInput): DailyPlanItem[] {
+export function selectDailyPlan({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, sessionMinutes = null, planResetAt = null, favourFoundations = false, now = new Date() }: DailyPlanInput): DailyPlanItem[] {
   const progressByProblem = new Map(progress.map((item) => [item.problemId, item]));
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const hiddenProblemIds = hiddenIds(recommendationEvents, now);
@@ -182,7 +185,7 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
     let target = plan.length + Math.max(0, newSlots - storedNew);
     if (target < 2) target = 2;
     if (target > 4) target = 4;
-    fillNewProblems(plan, target, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now, budgetFits(sessionMinutes, estimate));
+    fillNewProblems(plan, target, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now, favourFoundations, budgetFits(sessionMinutes, estimate));
     return plan;
   }
 
@@ -200,7 +203,7 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
   }
   const plan: DailyPlanItem[] = queue.slice(0, reviewCount).map(({ problem }) => ({ problem, kind: 'review' as const }));
   if (warmUp) plan.push({ problem: warmUp.problem, kind: warmUp.kind, reason: 'reinforce', reinforces: warmUp.target });
-  fillNewProblems(plan, plan.length + newCount, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now);
+  fillNewProblems(plan, plan.length + newCount, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now, favourFoundations);
   const spareReviews = queue.slice(reviewCount).map(({ problem }) => ({ problem, kind: 'review' as const }));
   return fitPlanToBudget(plan, sessionMinutes, estimate, spareReviews, MAX_PLAN_ITEMS);
 }
@@ -216,7 +219,7 @@ function budgetFits(budget: number | null, estimate: MinutesEstimator): ((plan: 
 // caller persists it as an ordinary `new` recommendation, which the same-day
 // replay then keeps in the plan. This is an explicit user action, so it may take
 // the plan past the automatic cap of four.
-export function selectExtraProblem({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, now = new Date() }: DailyPlanInput, plan: DailyPlanItem[]): CatalogProblem | undefined {
+export function selectExtraProblem({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, favourFoundations = false, now = new Date() }: DailyPlanInput, plan: DailyPlanItem[]): CatalogProblem | undefined {
   const progressByProblem = new Map(progress.map((item) => [item.problemId, item]));
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const hiddenProblemIds = hiddenIds(recommendationEvents, now);
@@ -225,15 +228,15 @@ export function selectExtraProblem({ problems, progress, recommendationEvents, a
   return selectNewProblem(
     problems, progressByProblem, recommendationEvents, hiddenProblemIds,
     new Set(plan.map((item) => item.problem.id)), new Set(plan.map((item) => item.problem.primaryTopic)),
-    problemById, skills, profile, now
+    problemById, skills, profile, now, favourFoundations
   );
 }
 
-function fillNewProblems(plan: DailyPlanItem[], target: number, problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, profile: CadenceProfile, now: Date, fits?: (plan: DailyPlanItem[], problem: CatalogProblem) => boolean): void {
+function fillNewProblems(plan: DailyPlanItem[], target: number, problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, profile: CadenceProfile, now: Date, favourFoundations: boolean, fits?: (plan: DailyPlanItem[], problem: CatalogProblem) => boolean): void {
   while (plan.length < target) {
     const usedProblemIds = new Set(plan.map((item) => item.problem.id));
     const usedTopics = new Set(plan.map((item) => item.problem.primaryTopic));
-    const nextProblem = selectNewProblem(problems, progressByProblem, events, hiddenProblemIds, usedProblemIds, usedTopics, problemById, skills, profile, now);
+    const nextProblem = selectNewProblem(problems, progressByProblem, events, hiddenProblemIds, usedProblemIds, usedTopics, problemById, skills, profile, now, favourFoundations);
     if (!nextProblem || (fits && !fits(plan, nextProblem))) break;
     plan.push({ problem: nextProblem, kind: 'new' });
   }
@@ -260,7 +263,7 @@ export function topicMastery(topic: string, problems: CatalogProblem[], progress
   return total / topicProblems.length;
 }
 
-function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, selectedProblemIds: Set<string>, selectedTopics: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, profile: CadenceProfile, now: Date): CatalogProblem | undefined {
+function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, selectedProblemIds: Set<string>, selectedTopics: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, profile: CadenceProfile, now: Date, favourFoundations = false): CatalogProblem | undefined {
   let candidates = problems.filter((problem) => {
     const status = progressByProblem.get(problem.id)?.status;
     return !hiddenProblemIds.has(problem.id) && !selectedProblemIds.has(problem.id) && status !== 'solved' && status !== 'mastered';
@@ -308,7 +311,7 @@ function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<str
       const mastery = topicMastery(topic, problems, progressByProblem, true);
       const recencyPenalty = selectedTopics.has(topic) ? 0.35 : recentTopics.has(topic) ? (profile === 'occasional' ? OCCASIONAL_RECENT_TOPIC_PENALTY : 0.35) : 1;
       const failingPenalty = failedTopics.has(topic) && (skills.get(topic) ?? 0) < SKILL_MEDIUM_THRESHOLD ? FAILING_TOPIC_PRIORITY_PENALTY : 1;
-      const priority = tierWeight(topic) * (1 - mastery) * recencyPenalty * failingPenalty * prerequisitePenalty(topic, skills, workingTopics) + jitter(today + topic);
+      const priority = tierWeight(topic, favourFoundations) * (1 - mastery) * recencyPenalty * failingPenalty * prerequisitePenalty(topic, skills, workingTopics) + jitter(today + topic);
       return { topic, priority };
     })
     .sort((left, right) => right.priority - left.priority)[0]?.topic;

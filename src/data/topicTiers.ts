@@ -38,7 +38,11 @@ export function topicTier(topic: string): TopicTier {
 
 const TIER_WEIGHT: Record<TopicTier, number> = { 1: 1, 2: 0.6, 3: 0.35 };
 
+// With an interview deadline the foundations come first and the niche topics
+// last: tier 2 only overtakes tier 1 once tier 1 is well advanced.
+const DEADLINE_TIER_WEIGHT: Record<TopicTier, number> = { 1: 1, 2: 0.4, 3: 0.1 };
+
 // Topics not in the map fall back to tier 2 weighting.
-export function tierWeight(topic: string): number {
-  return TIER_WEIGHT[TOPIC_TIERS[topic] ?? 2];
+export function tierWeight(topic: string, favourFoundations = false): number {
+  return (favourFoundations ? DEADLINE_TIER_WEIGHT : TIER_WEIGHT)[TOPIC_TIERS[topic] ?? 2];
 }

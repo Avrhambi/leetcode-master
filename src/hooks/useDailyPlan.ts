@@ -7,6 +7,7 @@ import { itemMinutes, minutesEstimator, parseSessionBudget, type SessionBudget }
 import { cadenceFor, type CadenceProfile } from '../services/cadence';
 import { planReasoner } from '../services/planReason';
 import { REVIEW_OVERLOAD_DUE } from '../services/constants';
+import { parseInterviewDate } from '../services/goalPlan';
 import type { Attempt, CatalogProblem, ProblemProgress } from '../types/models';
 
 function localDay(date = new Date()): string {
@@ -55,11 +56,14 @@ export function useDailyPlan(
   const snapshot = useLiveQuery(async () => ({
     recommendationEvents: await db.recommendationEvents.toArray(),
     budget: parseSessionBudget((await db.settings.get('sessionMinutes'))?.value),
-    planResetAt: (await db.settings.get('planResetAt'))?.value ?? null
+    planResetAt: (await db.settings.get('planResetAt'))?.value ?? null,
+    interviewDate: (await db.settings.get('interviewDate'))?.value
   }), []);
   const recommendationEvents = snapshot?.recommendationEvents;
   const sessionMinutes = snapshot?.budget ?? null;
   const planResetAt = snapshot?.planResetAt ?? null;
+  // An active interview deadline weights new problems towards the foundations (T16).
+  const favourFoundations = parseInterviewDate(snapshot?.interviewDate, localDay()) !== null;
   const [dayRefresh, setDayRefresh] = useState(0);
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export function useDailyPlan(
   }, [dayRefresh]);
 
   const planInput = problems && progress && attempts && allProblems && recommendationEvents
-    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems, sessionMinutes, planResetAt }
+    ? { problems, progress, recommendationEvents, attempts, skillProblems: allProblems, sessionMinutes, planResetAt, favourFoundations }
     : undefined;
   const plan = planInput ? selectDailyPlan(planInput) : undefined;
 

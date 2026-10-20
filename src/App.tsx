@@ -14,6 +14,7 @@ import { seedCatalog } from './db/seedCatalog';
 import { useDailyPlan } from './hooks/useDailyPlan';
 import { useGamification } from './hooks/useGamification';
 import { parseProblemSet, problemsInSet, PROBLEM_SETS } from './services/problemSet';
+import { parseSkipEasies } from './services/goalPlan';
 import { saveSessionBudget } from './db/sessionBudget';
 import { streakEndingOn, weeklyStreakEndingOn } from './services/streak';
 import type { ProblemList } from './types/models';
@@ -38,7 +39,9 @@ export default function App() {
   // search all see the same problems. `allProblems` only feeds the review queue.
   const storedSet = settings?.find((row) => row.key === 'problemSet')?.value;
   const problemSet = parseProblemSet(storedSet);
-  const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet) : undefined), [allProblems, problemSet]);
+  // "Skip Easies" (T16) narrows the same view, so the plan, map and counts follow it.
+  const skipEasies = parseSkipEasies(settings?.find((row) => row.key === 'skipEasies')?.value);
+  const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet, skipEasies) : undefined), [allProblems, problemSet, skipEasies]);
 
   const { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionBudget } = useDailyPlan(problems, progress, attempts, allProblems);
   const gamification = useGamification();
@@ -62,7 +65,7 @@ export default function App() {
 
   // The import offer rides the first-launch banner for someone with no history at all.
   const freshStart = progress.length === 0 && attempts.length === 0;
-  const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set).length])) as Record<ProblemList, number>;
+  const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set, skipEasies).length])) as Record<ProblemList, number>;
 
   return <main>
     <header className="app-header">

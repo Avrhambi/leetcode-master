@@ -6,6 +6,7 @@ import { currentStreak, weeklyStreakEndingOn, type StreakGraceState } from '../s
 import { STREAK_GRACE_PER_WEEK } from '../services/constants';
 import { levelForXp } from '../services/gamification';
 import { parseProblemSet, problemsInSet } from '../services/problemSet';
+import { parseSkipEasies } from '../services/goalPlan';
 import { awardAttemptXp, readGamification, recordBadges } from './gamification';
 import type { Attempt, HelpType, Outcome, PerceivedDifficulty } from '../types/models';
 import { db } from './database';
@@ -56,7 +57,7 @@ export async function saveAttempt(input: AttemptInput): Promise<AttemptUndoSnaps
     const weeklyStreakWeeks = weeklyStreakEndingOn(activeDates, localDate(0, now));
     const level = levelForXp((await readGamification()).xp);
     const problemSet = parseProblemSet(settings.find((row) => row.key === 'problemSet')?.value);
-    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, problemSet), allProblems: problems, problemSet, currentStreakDays: streak, weeklyStreakWeeks, level }), now);
+    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, problemSet, parseSkipEasies(settings.find((row) => row.key === 'skipEasies')?.value)), allProblems: problems, problemSet, currentStreakDays: streak, weeklyStreakWeeks, level }), now);
     // Recording an attempt from either entry point (daily plan or catalog)
     // completes any matching open daily recommendation for this problem today.
     const openEvents = await db.recommendationEvents.where('problemId').equals(input.problemId).toArray();
