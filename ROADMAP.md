@@ -55,7 +55,7 @@ up from there.
 | T18 | Quick log from the plan: three outcome buttons on each item | T17 | T20, T21 | Planned |
 | T19 | "Why this problem today?" line on each plan item | T12 | T17, T20, T21 | Planned |
 | T20 | Import prior history: mark problems you already know | T2 | T17, T19, T21 | Planned |
-| T21 | Calendar reminder: download a recurring .ics event | — | anything | Planned |
+| T21 | Calendar reminder: download a recurring .ics event | — | anything | Done |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
@@ -850,6 +850,8 @@ its reviews arrive over the following weeks, and XP is unchanged.
 
 ## T21. Calendar reminder
 
+Done; see the session log. The original brief follows.
+
 **Why:** a practice habit needs a nudge, and push notifications need a server.
 A recurring calendar event gives most of the value with no network.
 
@@ -1025,3 +1027,11 @@ Each session fills in its own entry in its PR.
 - Decisions & deviations: below 5 new problems in the window no forecast is shown at all (no placeholder), so a brand-new user sees nothing until there is a pace to project. The forecast counts weeks you practise, so skipped weeks add to it; the hover says so. The goal is display-only: it does not change the plan, XP or the weekly streak. Switching sets changes the forecast immediately (remaining is counted per set; pace counts all first attempts). At the owner's request the CLAUDE.md "atomic PRs, never commit direct to master" line was removed.
 - QA: `npm run verify` green (311 tests). Production build in Chromium at 1280 and 390 px with 12 seeded new problems over three weeks: forecast reads "about 36 weeks" (144 left ÷ 4 a week) and is hidden with no history; the goal buttons in Settings give "2 / 3 days this week", and Off removes it; no page overflow, no console errors. Not checked in Safari or Firefox.
 - Follow-ups: T16 can read `weeklyGoalDays` and the pace for its interview-deadline fit; T21 prefills its day count from the goal.
+
+### T21
+- Status / PR / date: Done / branch commits, not pushed / 2026-10-20
+- What shipped: `services/calendar.ts` (pure; start date and app URL are arguments, no clock reads) builds an RFC 5545 VCALENDAR with one VEVENT: weekly `RRULE:FREQ=WEEKLY;BYDAY=...`, a floating local `DTSTART` on the first picked day on or after today (so it agrees with `BYDAY`), `DURATION:PT<n>M`, `SUMMARY`, a short `DESCRIPTION`, CRLF line endings, TEXT escaping (backslash, semicolon, comma, newline) and folding at 75 octets (never inside a UTF-8 character). `UID` is derived from the days and time (`practice-MOWEFR-1800@leetcode-master`), so importing the same reminder twice updates one event instead of adding a second. `DTSTAMP` is the start date at 00:00Z, so the output is deterministic. Settings gets one section, "Add practice reminder to my calendar": Mon-Sun toggles, a time input (default 18:00) and "Download .ics" (Blob + anchor). The days start from the weekly goal's day count (T14) when set (1 Mon; 2 Mon/Thu; 3 Mon/Wed/Fri; 4 Mon/Tue/Thu/Fri; 5 Mon-Fri; 6 Mon-Sat; 7 every day), else Mon/Wed/Fri. The event length is the T12 time budget when one is set, else 45 minutes (`REMINDER_DEFAULT_MINUTES`). The description links the app only when `deployedAppUrl(window.location.href)` returns one: a public https page, with the filename, query and hash dropped. On localhost, `file:` or plain http there is no link and no `URL` property. Nothing is stored: no setting key, no Dexie change, no backup change, no network. The button is disabled with no days or an invalid time; a failure shows an inline alert with one Retry.
+- Decisions & deviations: the description is always present ("Time for your LeetCode Master practice."); only the link is conditional, which is how I read "a short description that links the app URL when known". No `VALARM`: the calendar's own default alert applies, and a per-app alert would be a second thing to edit later. `DTSTAMP` is the start date, not the wall-clock time, so the file does not change between clicks on the same day. The day toggles got their own 44 px rule: the shared Settings picker rule (36 px) outranks the touch rule, so the existing Problem set and Weekly goal buttons are still 36 px on phones (pre-existing, not touched).
+- QA: `npm run verify` green (329 tests). Production build served with `vite preview`, Chromium via Playwright at 1280 and 390 px (390 with touch emulation). The days follow a weekly goal of 5 (Mon-Fri) until the user toggles one; I picked Mon/Wed/Sat at 07:30 and downloaded. The file name was `leetcode-master-practice-reminder.ics`. It had CRLF only, balanced BEGIN/END, `RRULE:FREQ=WEEKLY;BYDAY=MO,WE,SA`, `DTSTART:20261021T073000`, `DURATION:PT45M`, no `URL` (localhost) and no line over 75 octets. With the 30 min time budget set the file has `DURATION:PT30M`. The button is disabled with no days chosen. The page does not scroll (document and body height equal the viewport, no horizontal overflow); the Settings body scrolls inside the modal. Day toggles are 44 px on the touch-emulated phone. No console errors.
+- **Not done, the owner must check:** this session cannot import the file into a real calendar app. Before relying on it, import `leetcode-master-practice-reminder.ics` into Google Calendar, Apple Calendar and Outlook and confirm each shows a repeating event on the chosen days at the chosen local time with the right length. Also check, on the deployed https page, that the link in the description is the app's address. Floating times follow the viewer's time zone, which is intended for a personal reminder.
+- Follow-ups: none required. A `VALARM` or a time-zone-pinned event would be new decisions for the owner.

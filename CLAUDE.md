@@ -42,6 +42,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
   `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
+  `calendar.ts` (the practice-reminder `.ics`: weekly `RRULE`, floating local `DTSTART`, CRLF, 75-octet folding, deterministic UID; start date and app URL are arguments — the Settings component passes `localDate()` and `deployedAppUrl(window.location.href)`; nothing stored),
   `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
