@@ -43,6 +43,10 @@ describe('validateBackupPayload', () => {
     const withStreak = { ...v2Backup, settings: [{ key: 'streakGraceRemaining', value: '1' }, { key: 'streakGraceRefreshedOn', value: '2026-07-19' }] };
     expect(validateBackupPayload(withStreak)).toEqual(withStreak);
   });
+  it('accepts the weeklyGoalDays settings key', () => {
+    const withGoal = { ...v3Backup, settings: [{ key: 'weeklyGoalDays', value: '4' }] };
+    expect(validateBackupPayload(withGoal).settings).toEqual([{ key: 'weeklyGoalDays', value: '4' }]);
+  });
   it('accepts the problemSet settings key', () => {
     const withSet = { ...v2Backup, settings: [{ key: 'problemSet', value: 'nc75' }] };
     expect(validateBackupPayload(withSet)).toEqual(withSet);

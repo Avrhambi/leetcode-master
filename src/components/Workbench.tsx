@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { STREAK_GRACE_PER_WEEK } from '../services/constants';
-import { currentStreak, type StreakGraceState } from '../services/streak';
+import { activeDaysThisWeek, currentStreak, parseWeeklyGoal, type StreakGraceState } from '../services/streak';
+import { finishForecast, forecastDetail, forecastText } from '../services/forecast';
+import { PROBLEM_SET_LABELS } from '../services/problemSet';
 import { backupReminderDue } from '../services/backupHealth';
 import { masteryByTopic } from '../services/mastery';
 import { dueReviewQueue, type DailyPlanItem } from '../services/dailyPlan';
@@ -91,6 +93,10 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   const activeDates = new Set(attempts.map((attempt) => attempt.attemptedOn));
   const backupReminder = backupReminderDue(settings.find((row) => row.key === 'lastBackupOn')?.value, [...activeDates], today);
   const { streak, graceDaysUsed } = currentStreak(activeDates, graceStateFrom(settings));
+  const weeklyGoal = parseWeeklyGoal(settings.find((row) => row.key === 'weeklyGoalDays')?.value);
+  const daysThisWeek = activeDaysThisWeek(activeDates, today);
+  const forecast = finishForecast(problems.map((problem) => problem.id), attempts, today);
+  const forecastLine = forecastText(PROBLEM_SET_LABELS[problemSet], forecast);
 
   // Items still open today — the count on the challenge trigger, so an untouched
   // challenge is visible without opening the modal.
@@ -127,7 +133,9 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
     <div className="workbench-stats" aria-label="Progress summary">
       <span><b>{streak}</b> day streak{graceDaysUsed > 0 && <> · <span className="grace-note">{graceDaysUsed} grace {graceDaysUsed === 1 ? 'day' : 'days'}</span></>}</span>
       <span title="Consecutive weeks with 3+ active days"><b>{streakWeeks}</b> {streakWeeks === 1 ? 'week' : 'weeks'} consistent</span>
+      {weeklyGoal !== null && <span className="weekly-goal" data-met={daysThisWeek >= weeklyGoal} title="Days you practised this week (Monday start) against your weekly goal"><b>{daysThisWeek}</b> / {weeklyGoal} days this week{daysThisWeek >= weeklyGoal && ' · goal met'}</span>}
       <span><b>{attemptsThisWeek}</b> attempts · 7 days</span>
+      {forecastLine && <span className="finish-forecast" title={forecastDetail(forecast)}>{forecastLine}</span>}
       <button
         type="button"
         className="review-trigger"

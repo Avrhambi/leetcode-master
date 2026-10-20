@@ -9,7 +9,7 @@ const helpTypes = ['small_hint', 'pattern_identification', 'pseudocode', 'full_c
 const qualities = ['strong', 'partial', 'weak'];
 const statuses = ['not_started', 'attempted', 'solved', 'mastered'];
 const eventKinds = ['new', 'review'];
-const settingKeys = ['catalogVersion', 'streakGraceRemaining', 'streakGraceRefreshedOn', 'lastActiveOn', 'problemSet', 'lastBackupOn', 'sessionMinutes', 'planResetAt'];
+const settingKeys = ['catalogVersion', 'streakGraceRemaining', 'streakGraceRefreshedOn', 'lastActiveOn', 'problemSet', 'lastBackupOn', 'sessionMinutes', 'planResetAt', 'weeklyGoalDays'];
 
 // Progress fields added in backup formatVersion 2. A v1 payload omits them; they
 // are defaulted on restore, matching the Dexie v2 migration backfill.

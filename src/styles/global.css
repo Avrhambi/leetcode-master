@@ -41,6 +41,8 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 /* ---- Cards / shared surfaces ---- */
 .catalog-row, .attempt-form, .settings article, .empty-state, .topic-panel { color: var(--color-ink); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-none); box-shadow: none; }
 .grace-note { color: var(--color-accent); font-weight: 700; }
+.weekly-goal[data-met="true"] { color: var(--color-accent); }
+.finish-forecast { max-width: 100%; }
 
 /* ---- Workbench (single screen) ---- */
 /* Stats, search, then the map taking every remaining pixel. `minmax(0, 1fr)` (not
