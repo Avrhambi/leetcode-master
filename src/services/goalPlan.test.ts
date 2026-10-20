@@ -78,13 +78,14 @@ describe('buildGoalPlan', () => {
     const tiny = catalog.slice(0, 2).map((problem, index) => ({ ...problem, difficulty: 'easy' as const, lists: ['nc75', 'nc150', 'nc250'] as typeof problem.lists, neetcodeOrder: index }));
     const plan = buildGoalPlan(input({ catalog: tiny, interview: { daysLeft: 14 }, estimate: minutesEstimator([], tiny, today) }));
     const fit = plan.fits[0];
-    // Two Easies at 20 min each, started on day 3.5 and day 10.5 of 14. Reviews fall 3, 10, 24 and 54
-    // days after a start and count only if they land before day 14: 3.5+3 and 3.5+10 (2), 10.5+3 (1).
+    // Two Easies at 20 min each, one topic, started on day 3.5 and day 10.5 of 14. The topic's pattern
+    // is reviewed 3, 10, 24 and 54 days after its first problem, counted only before day 14: 3.5+3 and
+    // 3.5+10 (2 reviews, 10 min each). Each first attempt adds 0.4 of a re-solve: 0.8 (8 min), rounded to 1.
     expect(fit.remaining).toBe(2);
     expect(fit.newMinutes).toBe(40);
     expect(fit.reviews).toBe(3);
-    expect(fit.reviewMinutes).toBe(30);
-    expect(fit.totalMinutes).toBe(70);
+    expect(fit.reviewMinutes).toBe(28);
+    expect(fit.totalMinutes).toBe(68);
     expect(fit.perWeek).toBe(1);
     // Assumed 4 days x 45 min over 2 weeks.
     expect(plan.availableMinutes).toBe(360);

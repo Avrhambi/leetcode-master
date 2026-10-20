@@ -1,5 +1,5 @@
 import type { AppSetting, Attempt, CatalogProblem, ProblemList, ProblemProgress } from '../types/models';
-import { DEADLINE_DEFAULT_DAYS_PER_WEEK, DEADLINE_DEFAULT_SESSION_MINUTES, INTERVIEW_MAX_DAYS, SESSION_DEFAULT_MINUTES } from './constants';
+import { DEADLINE_DEFAULT_DAYS_PER_WEEK, DEADLINE_DEFAULT_SESSION_MINUTES, GOAL_RETRY_SHARE, INTERVIEW_MAX_DAYS, SESSION_DEFAULT_MINUTES } from './constants';
 import { daysBetween } from './cadence';
 import { finishForecast } from './forecast';
 import { PROBLEM_SETS, PROBLEM_SET_LABELS, problemsInSet } from './problemSet';
@@ -108,7 +108,9 @@ export interface SetFit {
   // New problems to start per week to finish them all before the interview.
   perWeek: number;
   newMinutes: number;
-  // Reviews of those new problems that fall before the interview, and their minutes.
+  // Reviews of those new problems that fall before the interview, and their minutes:
+  // one pattern review ladder per topic plus a re-solve for the share of first
+  // attempts that need one (T22).
   reviews: number;
   reviewMinutes: number;
   totalMinutes: number;
@@ -152,17 +154,33 @@ function fitFor(set: ProblemList, input: GoalInput, weeksLeft: number, available
     .sort((left, right) => left.neetcodeOrder - right.neetcodeOrder);
   const offsets = onTimeReviewOffsets();
   const window = input.interview.daysLeft;
+  const rank = { easy: 0, medium: 1, hard: 2 } as const;
   let newMinutes = 0;
   let reviewMinutes = 0;
-  let reviews = 0;
+  let retries = 0;
+  // Per topic: the day its first problem starts and its hardest problem (the anchor).
+  const topics = new Map<string, { start: number; anchor: CatalogProblem }>();
   todo.forEach((problem, index) => {
     // The problems are started one after another, spread evenly over the time left.
     const startDay = (window * (index + 0.5)) / todo.length;
-    const count = offsets.filter((offset) => startDay + offset < window).length;
     newMinutes += input.estimate('new', problem.difficulty);
-    reviewMinutes += count * input.estimate('review', problem.difficulty);
-    reviews += count;
+    // A first attempt that needs a hint or fails comes back once as a re-solve.
+    if (startDay + 1 < window) {
+      retries += GOAL_RETRY_SHARE;
+      reviewMinutes += GOAL_RETRY_SHARE * input.estimate('review', problem.difficulty);
+    }
+    const topic = topics.get(problem.primaryTopic);
+    if (!topic) topics.set(problem.primaryTopic, { start: startDay, anchor: problem });
+    else if (rank[problem.difficulty] > rank[topic.anchor.difficulty]) topic.anchor = problem;
   });
+  // The pattern itself is reviewed once per rung of the ladder, through its anchor.
+  let anchorReviews = 0;
+  for (const { start, anchor } of topics.values()) {
+    const count = offsets.filter((offset) => start + offset < window).length;
+    anchorReviews += count;
+    reviewMinutes += count * input.estimate('review', anchor.difficulty);
+  }
+  const reviews = anchorReviews + Math.round(retries);
   const totalMinutes = Math.round(newMinutes + reviewMinutes);
   return {
     set,
@@ -242,7 +260,7 @@ export function goalDetail(plan: GoalPlan, set: ProblemList): string[] {
   const offsets = onTimeReviewOffsets();
   const lines = [
     `${plural(fit.remaining, 'new problem')} at your minutes per problem (${SESSION_DEFAULT_MINUTES.new.easy}, ${SESSION_DEFAULT_MINUTES.new.medium}, ${SESSION_DEFAULT_MINUTES.new.hard} for Easy, Medium, Hard until you have logged three durations of a kind) = ${formatHours(fit.newMinutes)}.`,
-    `${plural(fit.reviews, 'review')} of them before the interview (${offsets.join(', ')} days after a solve, each counted as a full re-solve, problems started evenly over the time left) = ${formatHours(fit.reviewMinutes)}.`,
+    `${plural(fit.reviews, 'review')} before the interview: each topic's pattern reviewed ${offsets.join(', ')} days after its first problem, plus a re-solve for about ${Math.round(GOAL_RETRY_SHARE * 100)}% of first attempts (hints and misses); each counted as a full re-solve, problems started evenly over the time left = ${formatHours(fit.reviewMinutes)}.`,
     `Total ${formatHours(fit.totalMinutes)}.`,
     `Time you have: ${plan.weeksLeft.toFixed(1)} weeks × ${timeAssumption(plan)} = ${formatHours(plan.availableMinutes)}.`
   ];
