@@ -259,6 +259,11 @@ export const FORECAST_MIN_NEW_PROBLEMS = 5;
 // weekly streak; the streak's own threshold (WEEKLY_STREAK_MIN_ACTIVE_DAYS) is unchanged.
 export const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 
+// Calendar reminder (.ics download): a fixed event length when no time budget is set,
+// and the time of day offered before the user picks one.
+export const REMINDER_DEFAULT_MINUTES = 45;
+export const REMINDER_DEFAULT_TIME = '18:00';
+
 // Days without a backup before the side panel quietly suggests one. With no
 // backup on record the clock starts at the first attempt, so a new user is not
 // nagged on day one.
