@@ -1,7 +1,6 @@
 # LeetCode Master
 
 [![CI](https://github.com/Avrhambi/leetcode-master/actions/workflows/ci.yml/badge.svg)](https://github.com/Avrhambi/leetcode-master/actions/workflows/ci.yml)
-[![Deploy](https://github.com/Avrhambi/leetcode-master/actions/workflows/deploy.yml/badge.svg)](https://github.com/Avrhambi/leetcode-master/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A local-first study coach for the NeetCode 75 / 150 / 250. It turns "grind

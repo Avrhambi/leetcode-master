@@ -1002,6 +1002,7 @@ Each session fills in its own entry in its PR.
 - Live URL: https://avrhambi.github.io/leetcode-master/ (expected; goes live after the owner enables Pages and the first deploy runs. Not yet checked on the live host.)
 - Decisions & deviations: `deploy.yml` runs `npm ci && npm run verify` then the official upload-pages-artifact / deploy-pages actions, on push to `master` plus manual dispatch. `ci.yml` stays manual-only. QA was done locally against `dist/` served under `/leetcode-master/`: service worker scope, manifest and all three icons resolve, offline reload works, no 4xx, page doesn't scroll. No config change was needed: the relative `base` already works under a subpath.
 - Follow-ups: Owner must set repo Settings → Pages → Source: GitHub Actions, then confirm install + offline on the live URL. T10 should link it.
+- **Superseded 2026-10-20:** `deploy.yml` was deleted at the owner's request (GitHub Actions doesn't work for them). Deploy is now manual from a `gh-pages` branch; see `CLAUDE.md` → Automation. The README Deploy badge was removed with it.
 
 ### T10
 - Status / PR / date: Done, 2026-10-19 (merged straight to `master`, no PR, at the owner's request)

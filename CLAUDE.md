@@ -122,7 +122,10 @@ Do not add a dependency without asking first, and explain why existing code can'
 
 ## Automation
 
-`.github/workflows/deploy.yml` runs `npm ci` + `npm run verify` on every push to `master`, then publishes `dist/` to GitHub Pages (needs Settings → Pages → Source: GitHub Actions).
+Deploy is manual, from the `gh-pages` branch (GitHub Actions is not used for it): run `npm run verify`,
+then push the contents of `dist/` as a fresh `gh-pages` branch (`cd dist && git init -b gh-pages && git add -A &&
+git commit -m deploy && git push -f <repo-url> gh-pages`; touching only that branch). Settings → Pages → Source:
+"Deploy from a branch" → `gh-pages` / root. The relative `base` makes it work under `/leetcode-master/`.
 
 `.github/workflows/ci.yml` runs `npm ci` then `npm run verify` on Node 22.12. It is currently disabled
 (manual `workflow_dispatch` only); restore the `pull_request` and `push` triggers to re-enable it.
