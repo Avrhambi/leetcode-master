@@ -29,6 +29,16 @@ describe('problemsInSet', () => {
     const ids150 = new Set(s150.map((p) => p.id));
     expect(s75.every((p) => ids150.has(p.id))).toBe(true);
   });
+  it('skipEasies drops every Easy from the view and nothing else, for every set', () => {
+    for (const set of ['nc75', 'nc150', 'nc250'] as const) {
+      const all = problemsInSet(catalog, set);
+      const skipped = problemsInSet(catalog, set, true);
+      expect(skipped.some((p) => p.difficulty === 'easy')).toBe(false);
+      expect(skipped).toEqual(all.filter((p) => p.difficulty !== 'easy'));
+      expect(skipped.length).toBeLessThan(all.length);
+      expect(problemsInSet(catalog, set, false)).toEqual(all);
+    }
+  });
   it('leaves catalog order intact', () => {
     const orders = problemsInSet(catalog, 'nc75').map((p) => p.neetcodeOrder);
     expect(orders).toEqual([...orders].sort((a, b) => a - b));

@@ -284,3 +284,11 @@ export const BACKUP_REMINDER_DAYS = 14;
 export const IMPORT_REVIEW_STAGE = 2;
 export const IMPORT_MIN_DAYS = 7;
 export const IMPORT_MAX_DAYS = 21;
+
+// Goal plans (see goalPlan.ts). An interview date more than INTERVIEW_MAX_DAYS away is
+// refused as a typo. With no weekly goal or time budget set, the fit assumes
+// DEADLINE_DEFAULT_DAYS_PER_WEEK sessions of DEADLINE_DEFAULT_SESSION_MINUTES minutes,
+// and says so.
+export const INTERVIEW_MAX_DAYS = 730;
+export const DEADLINE_DEFAULT_DAYS_PER_WEEK = 4;
+export const DEADLINE_DEFAULT_SESSION_MINUTES = 45;

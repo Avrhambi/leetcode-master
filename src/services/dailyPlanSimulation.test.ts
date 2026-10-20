@@ -245,13 +245,13 @@ const CADENCES: Record<string, (day: number) => boolean> = {
   gapThenResume: (day) => day < 21 || day >= 35
 };
 
-interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: number }
+interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: number; unstartedBefore: number }
 
 // Strong solves of an Easy feel easy; everything else feels manageable.
 const perceivedFor = (problem: CatalogProblem, quality: Quality): PerceivedDifficulty => (quality === 'strong' && problem.difficulty === 'easy' ? 'easy' : 'manageable');
 
-function runPersona(active: (day: number) => boolean, qualityOf: (problem: CatalogProblem, day: number) => Quality, days = 84, sessionMinutes: number | null = null) {
-  const problems = problemsInSet(catalog, 'nc250');
+function runPersona(active: (day: number) => boolean, qualityOf: (problem: CatalogProblem, day: number) => Quality, days = 84, sessionMinutes: number | null = null, goal: { set?: ProblemList; skipEasies?: boolean; favourFoundations?: boolean } = {}) {
+  const problems = problemsInSet(catalog, goal.set ?? 'nc250', goal.skipEasies ?? false);
   const progress = new Map<string, ProblemProgress>();
   const events: RecommendationEvent[] = [];
   const attempts: Attempt[] = [];
@@ -261,8 +261,8 @@ function runPersona(active: (day: number) => boolean, qualityOf: (problem: Catal
     const now = new Date(2026, 6, 1 + day, 12);
     backlog.push(dueReviewQueue(problems, [...progress.values()], now).length);
     if (!active(day)) continue;
-    const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, sessionMinutes, now });
-    records.push({ day, now, plan, dueBefore: backlog[day] });
+    const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, skillProblems: catalog, sessionMinutes, favourFoundations: goal.favourFoundations, now });
+    records.push({ day, now, plan, dueBefore: backlog[day], unstartedBefore: problems.filter((problem) => !progress.has(problem.id)).length });
     for (const item of plan) {
       const quality = qualityOf(item.problem, day);
       events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
@@ -570,5 +570,76 @@ describe('T13 light review gate (recall-decay model, 52 weeks)', () => {
       expect(withLight.minutes, name).toBeLessThan(baseline.minutes);
     }
     console.log(`LIGHT REVIEW REPORT\n${report.join('\n')}`);
+  });
+});
+
+describe('T16 goal plans: interview deadline and skip Easies', () => {
+  const tierOf = (item: DailyPlanItem) => TOPIC_TIERS[item.problem.primaryTopic];
+  const newItems = (records: DayRecord[]) => records.flatMap((record) => record.plan).filter((item) => item.kind === 'new');
+
+  it('an interview deadline favours tier-1 topics: a higher tier-1 share of new problems and fewer tier-3 ones, same plan shape', () => {
+    // Fast learner (always strong), daily, NeetCode 250, 150 days: long enough for tier 2 and 3 to open up.
+    const plain = runPersona(CADENCES.daily, () => 'strong', 150, null, { set: 'nc250' });
+    const deadline = runPersona(CADENCES.daily, () => 'strong', 150, null, { set: 'nc250', favourFoundations: true });
+    const share = (records: DayRecord[], tier: number) => newItems(records).filter((item) => tierOf(item) === tier).length / newItems(records).length;
+    console.log(`T16 DEADLINE REPORT (150 days, daily, fast): tier-1 share ${share(plain.records, 1).toFixed(2)} -> ${share(deadline.records, 1).toFixed(2)}, tier-3 share ${share(plain.records, 3).toFixed(2)} -> ${share(deadline.records, 3).toFixed(2)}`);
+    expect(share(deadline.records, 1)).toBeGreaterThan(share(plain.records, 1));
+    expect(share(deadline.records, 3)).toBeLessThan(share(plain.records, 3));
+    for (const { day, plan, dueBefore } of deadline.records) {
+      expect(plan.length, `day ${day}`).toBeLessThanOrEqual(4);
+      expect(plan.length, `day ${day}`).toBeGreaterThanOrEqual(2);
+      if (dueBefore < REVIEW_OVERLOAD_DUE) expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
+    }
+  });
+
+  it('with no deadline the plan is exactly what it was (the flag is off by default)', () => {
+    const left = runPersona(CADENCES.daily, typicalQuality, 40);
+    const right = runPersona(CADENCES.daily, typicalQuality, 40, null, { favourFoundations: false });
+    expect(right.records.map((record) => record.plan.map((item) => item.problem.id))).toEqual(left.records.map((record) => record.plan.map((item) => item.problem.id)));
+  });
+
+  it('a deadline keeps the due backlog at or under 30 over a year at every cadence', { timeout: 120000 }, () => {
+    const rows: string[] = [];
+    for (const name of ['daily', 'fourDaysAWeek', 'twoDaysAWeek']) {
+      const { backlog, records } = runPersona(CADENCES[name], typicalQuality, 364, null, { set: 'nc150', favourFoundations: true });
+      rows.push(`${name}: backlog max ${Math.max(...backlog)}`);
+      expect(Math.max(...backlog), name).toBeLessThanOrEqual(30);
+      expect(Math.max(...records.map((record) => record.plan.length)), name).toBeLessThanOrEqual(4);
+    }
+    console.log(`T16 DEADLINE BACKLOG (nc150, 52 weeks, typical)\n${rows.join('\n')}`);
+  });
+
+  it('skip Easies: no Easy is ever a new problem, a topic opens at Medium, and the backlog stays bounded', { timeout: 120000 }, () => {
+    const rows: string[] = [];
+    for (const name of ['daily', 'fourDaysAWeek', 'twoDaysAWeek']) {
+      const { backlog, records, progress } = runPersona(CADENCES[name], typicalQuality, 364, null, { set: 'nc150', skipEasies: true });
+      expect(newItems(records).some((item) => item.problem.difficulty === 'easy'), name).toBe(false);
+      for (const { day, plan, dueBefore, unstartedBefore } of records) {
+        expect(plan.length, `${name} day ${day}`).toBeLessThanOrEqual(4);
+        // A new problem every day, until the (smaller) set has nothing left to offer.
+        if (dueBefore < REVIEW_OVERLOAD_DUE && unstartedBefore > 0) expect(plan.some((item) => item.kind === 'new'), `${name} day ${day}`).toBe(true);
+      }
+      expect([...progress.keys()].every((id) => catalog.find((problem) => problem.id === id)?.difficulty !== 'easy'), name).toBe(true);
+      rows.push(`${name}: backlog max ${Math.max(...backlog)}, ${progress.size} problems started`);
+      expect(Math.max(...backlog), name).toBeLessThanOrEqual(30);
+    }
+    console.log(`T16 SKIP EASIES (nc150, 52 weeks, typical)\n${rows.join('\n')}`);
+  });
+
+  it('skip Easies: the first new problem in a fresh topic is a Medium, so there is no Easy ramp', () => {
+    const { records } = runPersona(CADENCES.daily, () => 'strong', 3, null, { set: 'nc150', skipEasies: true });
+    const firstDay = records[0].plan.filter((item) => item.kind === 'new');
+    expect(firstDay.length).toBeGreaterThan(0);
+    expect(firstDay.every((item) => item.problem.difficulty === 'medium')).toBe(true);
+  });
+
+  it('skip Easies leaves history alone: an Easy already reviewed stays in the unfiltered review queue', () => {
+    const easy = catalog.find((problem) => problem.difficulty === 'easy' && problem.lists.includes('nc150'))!;
+    const due: ProblemProgress = { problemId: easy.id, status: 'solved', reviewStage: 2, nextReviewDate: '2026-07-10', lastAttemptDate: '2026-07-03', lastQuality: 'strong', strongAttemptCount: 2, consecutiveWeak: 0, struggling: false, updatedAt: '' };
+    const now = new Date(2026, 6, 19, 12);
+    expect(dueReviewQueue(catalog, [due], now).map((entry) => entry.problem.id)).toEqual([easy.id]);
+    const view = problemsInSet(catalog, 'nc150', true);
+    expect(view.some((problem) => problem.id === easy.id)).toBe(false);
+    expect(selectDailyPlan({ problems: view, progress: [due], recommendationEvents: [], now }).some((item) => item.problem.id === easy.id)).toBe(false);
   });
 });

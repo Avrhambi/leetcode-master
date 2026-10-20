@@ -25,6 +25,10 @@ export function parseProblemSet(value: string | undefined): ProblemList {
 // The review queue deliberately gets the *unfiltered* catalog: an out-of-set
 // problem the user already attempted keeps coming due, so retention never
 // silently stops when they narrow the set.
-export function problemsInSet(problems: CatalogProblem[], set: ProblemList): CatalogProblem[] {
-  return problems.filter((problem) => problem.lists.includes(set));
+//
+// `skipEasies` (T16, for experienced users) drops the Easy problems from the same
+// view, so the plan, map and counts all follow. It is a view only: stored progress
+// and attempts are never touched, and the review queue still gets everything.
+export function problemsInSet(problems: CatalogProblem[], set: ProblemList, skipEasies = false): CatalogProblem[] {
+  return problems.filter((problem) => problem.lists.includes(set) && !(skipEasies && problem.difficulty === 'easy'));
 }
