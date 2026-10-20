@@ -186,6 +186,15 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .daily-extra { display: grid; gap: var(--space-xs); justify-items: start; margin-top: var(--space-lg); padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
 .daily-extra p { margin: 0; color: var(--color-neutral); font-size: var(--text-sm); }
 .daily-plan .attempt-form { margin-bottom: 0; }
+.quick-log, .quick-log-done { display: grid; gap: var(--space-xs); margin-top: var(--space-sm); }
+.quick-log-buttons, .quick-log-note-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.daily-plan li p.quick-log-timer, .daily-plan li p.quick-log-status { margin: 0; color: var(--color-ink); }
+.daily-plan .quick-log-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
+.daily-plan .quick-log-note { display: grid; gap: var(--space-xs); }
+.daily-plan .quick-log-note label { display: grid; gap: var(--space-2xs); color: var(--color-ink-2); font-size: var(--text-sm); }
+.daily-plan .quick-log-note textarea { width: 100%; min-height: 4rem; }
+.daily-plan button.quick-log-link { min-height: 2.75rem; padding-inline: var(--space-xs); color: var(--color-accent); background: transparent; border-color: transparent; text-decoration: underline; }
+.daily-plan button.quick-log-undo { color: var(--color-accent); border-color: var(--color-accent); }
 .struggling-badge { color: var(--color-error); font-weight: 700; }
 .attempt-notes { margin: var(--space-2xs) 0 0; color: var(--color-neutral); font-size: var(--text-sm); }
 

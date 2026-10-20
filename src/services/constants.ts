@@ -256,6 +256,9 @@ export const ATTEMPT_DURATION_MIN_MINUTES = 1;
 export const ATTEMPT_DURATION_MAX_MINUTES = 600;
 export const ATTEMPT_TIMER_STALE_HOURS = 12;
 
+// Quick log (quickLog.ts): how long the one-tap Undo stays on a plan item after a log.
+export const QUICK_LOG_UNDO_SECONDS = 10;
+
 // Finish forecast: the user's pace is the new problems (first attempts) of the last
 // FORECAST_WINDOW_DAYS divided by the calendar weeks in that window with any practice.
 // Fewer than FORECAST_MIN_NEW_PROBLEMS in the window is too little to project from.

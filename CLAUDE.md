@@ -49,7 +49,9 @@ Do not add a dependency without asking first, and explain why existing code can'
   `planReason.ts` (the one-line "why this problem today" under each plan item: only facts that hold for the stored item, never a re-run of selection; skill and "started" read attempts from before today so logging an item does not rewrite its line),
   `importKnown.ts` ("mark problems you already know": a progress row only, stage 2, first review dealt evenly over 7-21 days; no Attempt rows, so no XP/streak/badges; undo = progress rows with no attempts),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
-  enum itself is persisted and must not be renamed).
+  enum itself is persisted and must not be renamed),
+  `quickLog.ts` (the plan's three one-tap outcome buttons → a full `AttemptInput` via `attemptForm.ts`, never a light review),
+  `attemptUndo.ts` (pure plan for the quick log's 10-second Undo; `db/undoAttempt.ts` is **the only code that deletes an attempt**: it restores the progress row and recommendation stamps from the snapshot `saveAttempt` returns, recomputes XP with `replayXp`, and never un-earns badges).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
