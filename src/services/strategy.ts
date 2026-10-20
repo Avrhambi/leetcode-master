@@ -85,8 +85,6 @@ export function trainingStrategy({ daysLeft, budget }: StrategyInput): TrainingS
   };
 }
 
-export const OPEN_STRATEGY: TrainingStrategy = trainingStrategy({ daysLeft: null, budget: null });
-
 const HORIZON_LABELS: Record<Horizon, string> = {
   sprint: 'Sprint',
   focused: 'Focused',

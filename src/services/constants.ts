@@ -335,8 +335,8 @@ export const REVIEW_HARD_BRAKE_FACTOR = 2;
 // Starvation guard: under overload a one-item budget consolidates first, but once
 // this many active days have passed without a new problem, the new one goes first.
 export const EXPLORE_MAX_GAP_DAYS = 3;
-// With a deadline, a topic's priority is tier weight x (1 - readiness); a topic that
-// is already ready keeps this floor so it is not ignored outright.
+// With a deadline, a topic's priority is tier weight x (readiness gain + exploration
+// bonus); the gain never drops below this floor, so a ready topic is not ignored outright.
 export const READY_TOPIC_PRIORITY_FLOOR = 0.08;
 
 // Interview readiness (see readiness.ts): the chance, from topic skill, to solve an
