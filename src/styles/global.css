@@ -242,6 +242,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 .settings article h3 { font-size: var(--text-xl); }
 .settings article p { margin: 0; color: var(--color-neutral); }
 .settings article button { width: fit-content; }
+.settings .reminder-time { max-width: 12rem; }
 
 /* The local-first note that used to be the page footer; on a single non-scrolling
    screen it lives where someone looking for data handling actually goes. */
@@ -332,3 +333,8 @@ a.solve-button:hover { color: var(--color-accent); border-color: var(--color-acc
 
 .light-review { display: grid; gap: var(--space-2xs); }
 .light-review .field-hint { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); }
+
+/* Calendar reminder day toggles: 44px tall wherever a finger is the pointer or the screen is a phone. */
+@media (pointer: coarse), (max-width: 45rem) {
+  .settings article .reminder-days button { min-height: 2.75rem; }
+}
