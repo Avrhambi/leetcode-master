@@ -51,7 +51,7 @@ up from there.
 | T14 | Finish forecast + weekly practice-days goal | T12 | T15 | Done |
 | T15 | End-of-session wrap-up screen | T12 | T14 | Planned |
 | T16 | Goal plans: interview deadline, "skip Easies" for experienced users | T12, T14 | — | Planned |
-| T17 | Built-in attempt timer (fills the duration automatically) | T12 | T19, T20, T21 | Planned |
+| T17 | Built-in attempt timer (fills the duration automatically) | T12 | T19, T20, T21 | Done |
 | T18 | Quick log from the plan: three outcome buttons on each item | T17 | T20, T21 | Planned |
 | T19 | "Why this problem today?" line on each plan item | T12 | T17, T20, T21 | Planned |
 | T20 | Import prior history: mark problems you already know | T2 | T17, T19, T21 | Planned |
@@ -736,6 +736,8 @@ See the parking lot.
 
 ## T17. Built-in attempt timer
 
+Done; see the session log. The original brief follows.
+
 **Why:** the duration field is manual, so it's almost always empty. T12's
 per-user time estimates then never leave the defaults, and the user has to
 guess the minutes when logging.
@@ -1025,3 +1027,10 @@ Each session fills in its own entry in its PR.
 - Decisions & deviations: below 5 new problems in the window no forecast is shown at all (no placeholder), so a brand-new user sees nothing until there is a pace to project. The forecast counts weeks you practise, so skipped weeks add to it; the hover says so. The goal is display-only: it does not change the plan, XP or the weekly streak. Switching sets changes the forecast immediately (remaining is counted per set; pace counts all first attempts). At the owner's request the CLAUDE.md "atomic PRs, never commit direct to master" line was removed.
 - QA: `npm run verify` green (311 tests). Production build in Chromium at 1280 and 390 px with 12 seeded new problems over three weeks: forecast reads "about 36 weeks" (144 left ÷ 4 a week) and is hidden with no history; the goal buttons in Settings give "2 / 3 days this week", and Off removes it; no page overflow, no console errors. Not checked in Safari or Firefox.
 - Follow-ups: T16 can read `weeklyGoalDays` and the pace for its interview-deadline fit; T21 prefills its day count from the goal.
+
+### T17
+- Status / PR / date: Done / branch `worktree-agent-a998333f809c926ad`, not yet merged / 2026-10-20
+- What shipped: `services/attemptTimer.ts` (pure, no clock reads; 7 unit tests): `parseTimerStart(raw, now)` accepts a stored start only if it is finite, not in the future and at most 12 hours old; `elapsedMinutes(start, now)` rounds to whole minutes and clamps to the form's 1-600; `timerStorageKey(problemId)`. `hooks/useAttemptTimer.ts` is the only place that reads the clock and `localStorage` (key `leetcode-master.attemptTimer.<problemId>`, every access in try/catch; if storage throws, the timer still runs in memory for the life of the page). `ProblemDetail` shows "Start timer" in the solve-links row next to the LeetCode and NeetCode buttons; while running it shows "Timer N min" and a "Discard" button. `AttemptForm` takes `timerMinutes`: while the timer runs and the user has not typed in the field, the duration field shows the elapsed minutes ("Filled from the timer. Edit it if it's off."); typing replaces it. Any attempt save (full or light review) clears the start. The thresholds (`ATTEMPT_TIMER_STALE_HOURS`, `ATTEMPT_DURATION_MIN/MAX_MINUTES`) are in `constants.ts`, and the form's validation now reads the same constants. No Dexie version, no backup field, no setting key.
+- Decisions & deviations: the timer is per problem, so two problems can be timed at once; there is no Stop button, only Discard, because pause/resume is out of scope and Save already stops it. The displayed minutes refresh every 15 s and on tab focus / visibility change, because browsers throttle background timers. A start older than 12 h is dropped on load and while the page stays open; a start in the future (clock moved back) or a non-numeric value is dropped too. A very short timer logs as 1 minute, never 0. Starting the timer does not open either site; the user still clicks the existing links. Duration is only a calibration input (T12); XP and review stages ignore it, unchanged.
+- QA: `npm run verify` green (318 tests). Production build via `vite preview` in headless Chromium (Playwright, throwaway script outside the repo), 1280 x 800 and 390 x 844, 17 checks each, all passed: start stores a key; after rewriting the stored start to 14 min ago and reloading, the problem shows "Timer 14 min" and the duration field holds 14; saving logs "14 min" and removes the key; a typed 7 overrides the timer; a start 13 h old is dropped (no timer, key removed, field empty); a junk stored value is ignored; Discard clears it; no console or page errors; `scrollHeight` equals the viewport height (the page does not scroll) before, during and after. Not checked: a real multi-minute wait with the live tick (elapsed time was backdated in storage instead), a real trip to NeetCode and back (a second blank tab was opened and closed), Safari, Firefox, or localStorage being blocked.
+- Follow-ups: T18 can read `useAttemptTimer` to fill the duration for its inline outcome buttons (the hook is per problem id, so it works from the plan). No timer control exists on the plan items or outside the problem view yet.
