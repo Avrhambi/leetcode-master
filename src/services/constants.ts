@@ -249,6 +249,13 @@ export const SESSION_CALIBRATION_WINDOW = 10;
 // The time budgets on offer ("I have 30 / 45 / 60 minutes"). No budget is the default.
 export const SESSION_BUDGET_OPTIONS = [30, 45, 60] as const;
 
+// Attempt timer (see attemptTimer.ts). The form accepts 1-600 minutes; a stored start
+// older than ATTEMPT_TIMER_STALE_HOURS is a forgotten timer, so it is dropped rather
+// than logged as a day-long attempt.
+export const ATTEMPT_DURATION_MIN_MINUTES = 1;
+export const ATTEMPT_DURATION_MAX_MINUTES = 600;
+export const ATTEMPT_TIMER_STALE_HOURS = 12;
+
 // Finish forecast: the user's pace is the new problems (first attempts) of the last
 // FORECAST_WINDOW_DAYS divided by the calendar weeks in that window with any practice.
 // Fewer than FORECAST_MIN_NEW_PROBLEMS in the window is too little to project from.
