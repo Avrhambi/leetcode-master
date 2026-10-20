@@ -3,6 +3,8 @@ import { STREAK_GRACE_PER_WEEK } from '../services/constants';
 import { activeDaysThisWeek, currentStreak, parseWeeklyGoal, type StreakGraceState } from '../services/streak';
 import { finishForecast, forecastDetail, forecastText } from '../services/forecast';
 import { PROBLEM_SET_LABELS } from '../services/problemSet';
+import { buildGoalPlan, goalDetail, goalLineShort, readGoalSettings } from '../services/goalPlan';
+import { minutesEstimator } from '../services/sessionTime';
 import { backupReminderDue } from '../services/backupHealth';
 import { masteryByTopic } from '../services/mastery';
 import { dueReviewQueue, type DailyPlanItem } from '../services/dailyPlan';
@@ -19,7 +21,7 @@ import type { AppSetting, Attempt, CatalogProblem, ProblemList, ProblemProgress,
 interface WorkbenchProps {
   attempts: Attempt[];
   problems: CatalogProblem[];
-  // Unfiltered catalog — only the review queue reads it, so out-of-set problems
+  // Unfiltered catalog — only the review queue and the interview-deadline hours read it, so out-of-set problems
   // the user already attempted keep coming due.
   allProblems: CatalogProblem[];
   progress: ProblemProgress[];
@@ -99,6 +101,21 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   const forecast = finishForecast(problems.map((problem) => problem.id), attempts, today);
   const forecastLine = forecastText(PROBLEM_SET_LABELS[problemSet], forecast);
 
+  // Interview deadline (T16): hours the active set needs before the date, from the same
+  // minute estimates as the plan. Nothing is stored; the hover holds the arithmetic.
+  const goalSettings = readGoalSettings(settings, today);
+  const goalPlan = goalSettings.interview ? buildGoalPlan({
+    catalog: allProblems,
+    startedIds: new Set([...progress.map((row) => row.problemId), ...attempts.map((attempt) => attempt.problemId)]),
+    attempts,
+    estimate: minutesEstimator(attempts, allProblems, today),
+    interview: goalSettings.interview,
+    today,
+    skipEasies: goalSettings.skipEasies,
+    weeklyGoalDays: goalSettings.weeklyGoalDays,
+    budget: goalSettings.budget
+  }) : null;
+
   // Items still open today — the count on the challenge trigger, so an untouched
   // challenge is visible without opening the modal.
   const openChallenges = planItems.filter((item) => !completedProblemIds.has(item.problem.id)).length;
@@ -137,6 +154,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
       {weeklyGoal !== null && <span className="weekly-goal" data-met={daysThisWeek >= weeklyGoal} title="Days you practised this week (Monday start) against your weekly goal"><b>{daysThisWeek}</b> / {weeklyGoal} days this week{daysThisWeek >= weeklyGoal && ' · goal met'}</span>}
       <span><b>{attemptsThisWeek}</b> attempts · 7 days</span>
       {forecastLine && <span className="finish-forecast" title={forecastDetail(forecast)}>{forecastLine}</span>}
+      {goalPlan && <span className="goal-line" data-fits={goalPlan.fits.find((fit) => fit.set === problemSet)?.fits ?? true} title={goalDetail(goalPlan, problemSet).join('\n')}>{goalLineShort(goalPlan, problemSet)}</span>}
       <button
         type="button"
         className="review-trigger"

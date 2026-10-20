@@ -47,6 +47,10 @@ describe('validateBackupPayload', () => {
     const withGoal = { ...v3Backup, settings: [{ key: 'weeklyGoalDays', value: '4' }] };
     expect(validateBackupPayload(withGoal).settings).toEqual([{ key: 'weeklyGoalDays', value: '4' }]);
   });
+  it('accepts the interviewDate and skipEasies settings keys', () => {
+    const withGoals = { ...v3Backup, settings: [{ key: 'interviewDate', value: '2026-12-01' }, { key: 'skipEasies', value: '1' }] };
+    expect(validateBackupPayload(withGoals).settings).toEqual(withGoals.settings);
+  });
   it('accepts the problemSet settings key', () => {
     const withSet = { ...v2Backup, settings: [{ key: 'problemSet', value: 'nc75' }] };
     expect(validateBackupPayload(withSet)).toEqual(withSet);

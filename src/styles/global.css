@@ -342,6 +342,27 @@ a.solve-button:hover { color: var(--color-accent); border-color: var(--color-acc
 .light-review .field-hint { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); }
 .attempt-form label .field-hint { font-weight: 400; color: var(--color-ink-2); font-size: var(--text-xs); }
 
+/* Goal plans (Settings): interview deadline and skip Easies. */
+.goal-plans { display: grid; gap: var(--space-sm); }
+.goal-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.settings article .goal-secondary { color: var(--color-ink-2); background: transparent; border-color: var(--color-rule-2); }
+.settings article .goal-secondary:not(:disabled):hover { color: var(--color-accent); background: transparent; border-color: var(--color-accent); }
+.goal-result { display: grid; gap: var(--space-sm); }
+.goal-table { width: 100%; border-collapse: collapse; color: var(--color-ink-2); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.goal-table th, .goal-table td { padding: var(--space-2xs) var(--space-xs); text-align: left; border-bottom: var(--rule-hair) solid var(--color-rule); font-weight: 400; }
+.goal-table thead th { color: var(--color-muted); font-size: var(--text-xs); }
+.goal-table tr[data-active="true"] th, .goal-table tr[data-active="true"] td { color: var(--color-accent); }
+.goal-result details { color: var(--color-ink-2); font-size: var(--text-sm); }
+.goal-result summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; }
+.goal-result ul { margin: 0; padding-left: var(--space-lg); display: grid; gap: var(--space-2xs); }
+.workbench-stats .goal-line[data-fits="false"] { color: var(--color-warning); }
+.goal-line { max-width: 100%; }
+@media (pointer: coarse), (max-width: 45rem) {
+  .settings article .goal-toggle button { min-height: 2.75rem; }
+  .goal-table { font-size: var(--text-xs); }
+  .goal-table th, .goal-table td { padding-inline: var(--space-2xs); }
+}
+
 /* Calendar reminder day toggles: 44px tall wherever a finger is the pointer or the screen is a phone. */
 @media (pointer: coarse), (max-width: 45rem) {
   .settings article .reminder-days button { min-height: 2.75rem; }

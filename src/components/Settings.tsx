@@ -6,6 +6,7 @@ import { saveWeeklyGoal } from '../db/weeklyGoal';
 import { parseWeeklyGoal } from '../services/streak';
 import { WEEKLY_GOAL_OPTIONS } from '../services/constants';
 import { ProblemSetPicker } from './ProblemSetPicker';
+import { GoalPlans } from './GoalPlans';
 import { parseProblemSet, problemsInSet, PROBLEM_SETS } from '../services/problemSet';
 import type { BackupPayload, ProblemList } from '../types/models';
 import { isStoragePersistent, requestPersistentStorage } from '../pwa';
@@ -15,6 +16,7 @@ import { localDate } from '../services/reviews';
 import { buildReminderIcs, defaultReminderDays, deployedAppUrl, isReminderTime, REMINDER_FILE_NAME, WEEKDAYS, type Weekday } from '../services/calendar';
 import { REMINDER_DEFAULT_MINUTES, REMINDER_DEFAULT_TIME } from '../services/constants';
 import { parseSessionBudget } from '../services/sessionTime';
+import { parseSkipEasies } from '../services/goalPlan';
 
 type Action = 'export' | 'restore' | 'reset' | null;
 
@@ -78,9 +80,10 @@ export function Settings({ onImportKnown }: { onImportKnown?: () => void }) {
   const weeklyGoal = parseWeeklyGoal(storedGoal?.value);
   const [goalError, setGoalError] = useState<number | null | undefined>(undefined);
   const chooseGoal = (days: number | null) => { setGoalError(undefined); void saveWeeklyGoal(days).catch(() => setGoalError(days)); };
+  const skipEasies = parseSkipEasies(useLiveQuery(() => db.settings.get('skipEasies'), [])?.value);
   const lastBackup = useLiveQuery(() => db.settings.get('lastBackupOn'), []);
   const catalogRows = useLiveQuery(() => db.problems.toArray(), []);
-  const counts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, catalogRows ? problemsInSet(catalogRows, set).length : 0])) as Record<ProblemList, number>;
+  const counts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, catalogRows ? problemsInSet(catalogRows, set, skipEasies).length : 0])) as Record<ProblemList, number>;
 
   const succeed = (text: string) => {
     setFailedAction(null);
@@ -132,6 +135,7 @@ export function Settings({ onImportKnown }: { onImportKnown?: () => void }) {
         {WEEKLY_GOAL_OPTIONS.map((days) => <button key={days} type="button" aria-pressed={weeklyGoal === days} onClick={() => chooseGoal(days)}>{days} {days === 1 ? 'day' : 'days'}</button>)}
       </div>
       {goalError !== undefined && <p role="alert">The goal could not be saved. <button type="button" onClick={() => chooseGoal(goalError)}>Retry</button></p>}</article>
+    <GoalPlans />
     <CalendarReminder weeklyGoal={weeklyGoal} />
     <article><h3>Storage</h3><p role="status">{persistenceText} Export a backup regularly. {lastBackupLabel(lastBackup?.value, localDate())}.</p></article>
     <article><h3>Export backup</h3><p>Download all local study data as JSON.</p><button type="button" onClick={() => void exportBackup()}>Export JSON</button></article>

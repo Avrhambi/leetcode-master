@@ -14,6 +14,7 @@ import { seedCatalog } from './db/seedCatalog';
 import { useDailyPlan } from './hooks/useDailyPlan';
 import { useGamification } from './hooks/useGamification';
 import { parseProblemSet, problemsInSet, PROBLEM_SETS } from './services/problemSet';
+import { parseSkipEasies } from './services/goalPlan';
 import { saveSessionBudget } from './db/sessionBudget';
 import { streakEndingOn, weeklyStreakEndingOn } from './services/streak';
 import type { ProblemList } from './types/models';
@@ -36,9 +37,12 @@ export default function App() {
 
   // The problem set is filtered once, here, so the plan, map, mastery counts and
   // search all see the same problems. `allProblems` only feeds the review queue.
+  // (The badge shelf's set size stays the whole set: badge predicates in saveAttempt don't skip Easies.)
   const storedSet = settings?.find((row) => row.key === 'problemSet')?.value;
   const problemSet = parseProblemSet(storedSet);
-  const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet) : undefined), [allProblems, problemSet]);
+  // "Skip Easies" (T16) narrows the same view, so the plan, map and counts follow it.
+  const skipEasies = parseSkipEasies(settings?.find((row) => row.key === 'skipEasies')?.value);
+  const problems = useMemo(() => (allProblems ? problemsInSet(allProblems, problemSet, skipEasies) : undefined), [allProblems, problemSet, skipEasies]);
 
   const { plan, completedProblemIds, profile, addExtra, minutesOf, reviewsUntilNew, reasonOf, budget: sessionBudget } = useDailyPlan(problems, progress, attempts, allProblems);
   const gamification = useGamification();
@@ -62,7 +66,7 @@ export default function App() {
 
   // The import offer rides the first-launch banner for someone with no history at all.
   const freshStart = progress.length === 0 && attempts.length === 0;
-  const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set).length])) as Record<ProblemList, number>;
+  const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set, skipEasies).length])) as Record<ProblemList, number>;
 
   return <main>
     <header className="app-header">
@@ -70,7 +74,7 @@ export default function App() {
         <h1>LeetCode Master</h1>
       </div>
       {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} streakWeeks={streakWeeks} />}
-      {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problems.length} />}
+      {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problemsInSet(allProblems, problemSet).length} />}
       {(storedSet === undefined || freshStart) && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
         {storedSet === undefined && <><span>Which list are you working through?</span>
         <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} /></>}
