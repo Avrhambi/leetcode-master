@@ -263,3 +263,12 @@ export const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
 // backup on record the clock starts at the first attempt, so a new user is not
 // nagged on day one.
 export const BACKUP_REMINDER_DAYS = 14;
+
+// Import of prior history ("mark problems you already know"). A marked problem
+// gets a progress row only (no attempt) at this review stage, with its first
+// review spread evenly over the next IMPORT_MIN_DAYS..IMPORT_MAX_DAYS days so a
+// big import never comes due on one day. Stage 2 is the 7-day rung, the same
+// start as a confident first solve.
+export const IMPORT_REVIEW_STAGE = 2;
+export const IMPORT_MIN_DAYS = 7;
+export const IMPORT_MAX_DAYS = 21;
