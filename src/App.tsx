@@ -5,6 +5,7 @@ import { ProblemSetPicker } from './components/ProblemSetPicker';
 import { GamificationBar } from './components/GamificationBar';
 import { UpdateNotice } from './components/UpdateNotice';
 import { SettingsOverlay } from './components/SettingsOverlay';
+import { ImportKnown } from './components/ImportKnown';
 import { Workbench } from './components/Workbench';
 import { db } from './db/database';
 import { skipRecommendation } from './db/recommendations';
@@ -31,6 +32,7 @@ export default function App() {
   const settings = useLiveQuery(() => db.settings.toArray(), []);
   const [seedError, setSeedError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   // The problem set is filtered once, here, so the plan, map, mastery counts and
   // search all see the same problems. `allProblems` only feeds the review queue.
@@ -58,6 +60,8 @@ export default function App() {
   const streakDays = streakEndingOn(activeDates, localDate());
   const streakWeeks = weeklyStreakEndingOn(activeDates, localDate());
 
+  // The import offer rides the first-launch banner for someone with no history at all.
+  const freshStart = progress.length === 0 && attempts.length === 0;
   const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set).length])) as Record<ProblemList, number>;
 
   return <main>
@@ -67,9 +71,10 @@ export default function App() {
       </div>
       {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} streakWeeks={streakWeeks} />}
       {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problems.length} />}
-      {storedSet === undefined && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
-        <span>Which list are you working through?</span>
-        <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} />
+      {(storedSet === undefined || freshStart) && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
+        {storedSet === undefined && <><span>Which list are you working through?</span>
+        <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} /></>}
+        {freshStart && <span className="import-offer"><span>Already solved some of them?</span><button type="button" onClick={() => setImportOpen(true)}>Mark problems you already know</button></span>}
       </div>}
       <UpdateNotice />
       <button type="button" className="settings-toggle" onClick={() => setSettingsOpen(true)}>Settings</button>
@@ -94,6 +99,7 @@ export default function App() {
       onBudgetChange={saveSessionBudget}
       onSkip={(item) => skipRecommendation(item.problem.id, item.kind)}
     />
-    {settingsOpen && <SettingsOverlay onClose={() => setSettingsOpen(false)} />}
+    {settingsOpen && <SettingsOverlay onClose={() => setSettingsOpen(false)} onImportKnown={() => { setSettingsOpen(false); setImportOpen(true); }} />}
+    {importOpen && <ImportKnown problems={problems} progress={progress} attempts={attempts} onClose={() => setImportOpen(false)} />}
   </main>;
 }

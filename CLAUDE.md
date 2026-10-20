@@ -41,16 +41,19 @@ Do not add a dependency without asking first, and explain why existing code can'
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
   `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
+  `attemptTimer.ts` (the built-in attempt timer's pure math: stale-start parsing and rounded 1-600 elapsed minutes; the start time lives in per-device `localStorage` behind `hooks/useAttemptTimer.ts`, never in Dexie or a backup),
   `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
+  `calendar.ts` (the practice-reminder `.ics`: weekly `RRULE`, floating local `DTSTART`, CRLF, 75-octet folding, deterministic UID; start date and app URL are arguments — the Settings component passes `localDate()` and `deployedAppUrl(window.location.href)`; nothing stored),
   `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
   `planReason.ts` (the one-line "why this problem today" under each plan item: only facts that hold for the stored item, never a re-run of selection; skill and "started" read attempts from before today so logging an item does not rewrite its line),
+  `importKnown.ts` ("mark problems you already know": a progress row only, stage 2, first review dealt evenly over 7-21 days; no Attempt rows, so no XP/streak/badges; undo = progress rows with no attempts),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
   is JSON export/restore with `formatVersion` validation (current 3; 1 and 2 still restore; restore is parse → confirm → replace, and keeps rows for ids outside the catalog); `seedCatalog.ts` seeds the
-  bundled catalog on first launch. `sessionBudget.ts` saves the time budget and stamps
+  bundled catalog on first launch. `importKnown.ts` writes the imported marks (and undoes them) in one transaction each. `sessionBudget.ts` saves the time budget and stamps
   `planResetAt` (the same-day replay ignores today's unlogged recommendations made before
   it). Never re-plan by deleting today's recommendation rows, because a render still holding the old
   plan re-persists it.
@@ -59,7 +62,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   links only, **never problem text**). `topicTiers.ts` maps each topic to a curriculum
   tier. The `[INEFFECTIVE_DYNAMIC_IMPORT]` build warning for `catalog.ts` is known and benign.
 - `public/` + `src/pwa.ts` — manifest, icons and hand-written `sw.js` (all paths relative to the registration scope); the worker is registered only in production builds. `requestPersistentStorage` runs once at startup; Settings shows the result.
-- `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers).
+- `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers); `useAttemptTimer.ts` (the one place the attempt timer reads the clock and `localStorage`).
 - `src/components/` — one file per screen/panel. Plain React, no state library beyond
   Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings and the
   daily challenge both use it) — don't write a second one.
@@ -106,7 +109,7 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Conventions
 
 - IDs: `crypto.randomUUID()`. Dates: `YYYY-MM-DD` local-time string keys.
-- IndexedDB only — no server, auth, external API, telemetry, AI model, scraping, or
+- IndexedDB only (the one per-device exception: the attempt timer's start time in `localStorage`, always in try/catch) — no server, auth, external API, telemetry, AI model, scraping, or
   browser extension.
 - External problem links: new tab, `rel="noreferrer"`.
 - Caught failures render inline with a single explicit Retry button.
