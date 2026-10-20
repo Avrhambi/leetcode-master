@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from './dailyPlan';
+import { dueReviewQueue, planDueCount, selectDailyPlan, selectExtraProblem, type DailyPlanItem } from './dailyPlan';
 import { cadenceFor } from './cadence';
-import { REVIEW_OVERLOAD_DUE } from './constants';
+import { REVIEW_HARD_BRAKE_FACTOR, REVIEW_OVERLOAD_DUE } from './constants';
+
+// T23: past the overload line the plan keeps one new problem (the exploration
+// floor); only at the hard brake is it all reviews.
+const HARD_BRAKE_DUE = REVIEW_OVERLOAD_DUE * REVIEW_HARD_BRAKE_FACTOR;
 import { coreRank } from './coreRank';
 import { lightReviewEligible, progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
@@ -89,9 +93,13 @@ describe('daily plan simulation over the real catalog', () => {
   });
 
   it('keeps new problems inside tier-1 foundations over the first two weeks', () => {
+    // T22 changed this from "every new problem is tier 1": a review slot freed by
+    // pattern coverage on day 3 lets one Greedy Easy (tier 2, its only prerequisite
+    // Arrays & Hashing already met) in on day 4. Tier 3 still never appears.
     const { perDay } = simulate(14);
     const newTopics = perDay.flat().filter((item) => item.kind === 'new').map((item) => item.topic);
-    expect(newTopics.every((topic) => TOPIC_TIERS[topic] === 1)).toBe(true);
+    expect(newTopics.filter((topic) => TOPIC_TIERS[topic] === 1).length / newTopics.length).toBeGreaterThanOrEqual(0.9);
+    expect(newTopics.some((topic) => TOPIC_TIERS[topic] === 3)).toBe(false);
   });
 
   it('progresses to tier-2 and tier-3 topics once foundations are worked through', () => {
@@ -245,7 +253,10 @@ const CADENCES: Record<string, (day: number) => boolean> = {
   gapThenResume: (day) => day < 21 || day >= 35
 };
 
-interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: number; unstartedBefore: number }
+// `dueBefore` is what the plan owes (T22): due reviews that are not covered by a
+// fresher solve of the same pattern and not parked above the learner's level.
+// `rawDueBefore` is every due row, covered or not.
+interface DayRecord { day: number; now: Date; plan: DailyPlanItem[]; dueBefore: number; rawDueBefore: number; unstartedBefore: number }
 
 // Strong solves of an Easy feel easy; everything else feels manageable.
 const perceivedFor = (problem: CatalogProblem, quality: Quality): PerceivedDifficulty => (quality === 'strong' && problem.difficulty === 'easy' ? 'easy' : 'manageable');
@@ -257,12 +268,14 @@ function runPersona(active: (day: number) => boolean, qualityOf: (problem: Catal
   const attempts: Attempt[] = [];
   const records: DayRecord[] = [];
   const backlog: number[] = [];
+  const rawBacklog: number[] = [];
   for (let day = 0; day < days; day += 1) {
     const now = new Date(2026, 6, 1 + day, 12);
-    backlog.push(dueReviewQueue(problems, [...progress.values()], now).length);
+    backlog.push(planDueCount({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, skillProblems: catalog, now }));
+    rawBacklog.push(dueReviewQueue(problems, [...progress.values()], now).length);
     if (!active(day)) continue;
     const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, skillProblems: catalog, sessionMinutes, favourFoundations: goal.favourFoundations, now });
-    records.push({ day, now, plan, dueBefore: backlog[day], unstartedBefore: problems.filter((problem) => !progress.has(problem.id)).length });
+    records.push({ day, now, plan, dueBefore: backlog[day], rawDueBefore: rawBacklog[day], unstartedBefore: problems.filter((problem) => !progress.has(problem.id)).length });
     for (const item of plan) {
       const quality = qualityOf(item.problem, day);
       events.push({ id: `${item.problem.id}-${day}`, problemId: item.problem.id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
@@ -271,21 +284,23 @@ function runPersona(active: (day: number) => boolean, qualityOf: (problem: Catal
       progress.set(item.problem.id, { ...next, problemId: item.problem.id });
     }
   }
-  return { records, attempts, backlog, progress, events, problems };
+  return { records, attempts, backlog, rawBacklog, progress, events, problems };
 }
 
 describe('T4 cadence personas (12 simulated weeks)', () => {
   for (const [cadenceName, active] of Object.entries(CADENCES)) {
     for (const [personaName, qualityOf] of [['fast', () => 'strong' as Quality], ['typical', typicalQuality]] as const) {
-      it(`${personaName} / ${cadenceName}: a new problem on every active day unless reviews are overloaded, never more than four items`, () => {
+      it(`${personaName} / ${cadenceName}: a new problem on every active day unless the review hard brake is on, never more than four items`, () => {
         const { records, attempts } = runPersona(active, qualityOf);
         expect(records.length).toBeGreaterThan(0);
         for (const { day, now, plan, dueBefore } of records) {
           expect(plan.length, `day ${day}`).toBeLessThanOrEqual(4);
           expect(plan.length, `day ${day}`).toBeGreaterThanOrEqual(2);
-          if (dueBefore < REVIEW_OVERLOAD_DUE) expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
+          if (dueBefore < HARD_BRAKE_DUE) expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
           else if (cadenceFor(attempts, localDate(0, now)).profile === 'returning') expect(plan.filter((item) => item.kind === 'new'), `day ${day} (returning)`).toHaveLength(1);
-          else expect(plan.every((item) => item.kind === 'review'), `day ${day} (overloaded)`).toBe(true);
+          else expect(plan.every((item) => item.kind === 'review'), `day ${day} (hard brake)`).toBe(true);
+          // Past the overload line, the exploration floor: all reviews but exactly one new problem.
+          if (dueBefore >= REVIEW_OVERLOAD_DUE && dueBefore < HARD_BRAKE_DUE && plan.some((item) => item.kind === 'new' && item.reason !== 'reinforce')) expect(plan.filter((item) => item.kind === 'new').length, `day ${day} (overloaded)`).toBeLessThanOrEqual(2);
         }
       });
     }
@@ -308,7 +323,7 @@ describe('T4 cadence personas (12 simulated weeks)', () => {
     // The profile clears itself: the next active day is a normal plan — still review-heavy while the backlog is
     // overloaded (new problems pause), otherwise with a new problem.
     const next = records.find((record) => record.day === 36)!;
-    if (next.dueBefore >= REVIEW_OVERLOAD_DUE) expect(next.plan.every((item) => item.kind === 'review')).toBe(true);
+    if (next.dueBefore >= HARD_BRAKE_DUE) expect(next.plan.every((item) => item.kind === 'review')).toBe(true);
     else expect(next.plan.filter((item) => item.kind === 'new').length).toBeGreaterThanOrEqual(1);
   });
 
@@ -489,10 +504,19 @@ describe('time budget keeps the backlog bounded over a year', () => {
     for (const budget of [30, 45]) {
       for (const name of ['daily', 'fourDaysAWeek', 'twoDaysAWeek']) {
         const { backlog, records, progress } = runPersona(CADENCES[name], typicalQuality, 364, budget);
-        for (const { day, plan, dueBefore } of records) {
+        for (const { day, plan, dueBefore, unstartedBefore } of records) {
           if (plan.length > 1) expect(planMinutes(plan, minutes), `${budget}/${name} day ${day}`).toBeLessThanOrEqual(budget);
           expect(plan.length, `${budget}/${name} day ${day}`).toBeLessThanOrEqual(4);
-          if (dueBefore < REVIEW_OVERLOAD_DUE) expect(plan.some((item) => item.kind === 'new'), `${budget}/${name} day ${day}`).toBe(true);
+          // A new problem every day below the overload line until the set has nothing left to
+          // start (T22's pattern reviews free enough time that a 30-minute user can start all 250
+          // within the year). Past the line a one-item budget consolidates first (T23).
+          if (dueBefore < REVIEW_OVERLOAD_DUE && unstartedBefore > 0) expect(plan.some((item) => item.kind === 'new'), `${budget}/${name} day ${day}`).toBe(true);
+        }
+        // No crash either way: never a week of active days without new material while some is left.
+        let since = 0;
+        for (const { day, plan, unstartedBefore } of records) {
+          since = plan.some((item) => item.kind === 'new') || unstartedBefore === 0 ? 0 : since + 1;
+          expect(since, `${budget}/${name} day ${day}: active days without a new problem`).toBeLessThan(7);
         }
         const solved = [...progress.values()].filter((row) => row.status === 'solved' || row.status === 'mastered').length;
         rows.push(`${budget} min / ${name}: backlog max ${Math.max(...backlog)}, ${solved} solved in a year`);
@@ -577,18 +601,25 @@ describe('T16 goal plans: interview deadline and skip Easies', () => {
   const tierOf = (item: DailyPlanItem) => TOPIC_TIERS[item.problem.primaryTopic];
   const newItems = (records: DayRecord[]) => records.flatMap((record) => record.plan).filter((item) => item.kind === 'new');
 
-  it('an interview deadline favours tier-1 topics: a higher tier-1 share of new problems and fewer tier-3 ones, same plan shape', () => {
-    // Fast learner (always strong), daily, NeetCode 250, 150 days: long enough for tier 2 and 3 to open up.
-    const plain = runPersona(CADENCES.daily, () => 'strong', 150, null, { set: 'nc250' });
-    const deadline = runPersona(CADENCES.daily, () => 'strong', 150, null, { set: 'nc250', favourFoundations: true });
-    const share = (records: DayRecord[], tier: number) => newItems(records).filter((item) => tierOf(item) === tier).length / newItems(records).length;
-    console.log(`T16 DEADLINE REPORT (150 days, daily, fast): tier-1 share ${share(plain.records, 1).toFixed(2)} -> ${share(deadline.records, 1).toFixed(2)}, tier-3 share ${share(plain.records, 3).toFixed(2)} -> ${share(deadline.records, 3).toFixed(2)}`);
-    expect(share(deadline.records, 1)).toBeGreaterThan(share(plain.records, 1));
-    expect(share(deadline.records, 3)).toBeLessThan(share(plain.records, 3));
+  it('an interview deadline favours tier-1 topics: tier 2 opens later and tier 1 keeps at least its share, same plan shape', () => {
+    // Fast learner (always strong), daily, NeetCode 250. Since T22 this learner starts all
+    // 250 problems within 150 days, so shares over that window converge for both runs;
+    // what the weighting changes is how long the foundations hold the plan alone.
+    const plain = runPersona(CADENCES.daily, () => 'strong', 60, null, { set: 'nc250' });
+    const deadline = runPersona(CADENCES.daily, () => 'strong', 60, null, { set: 'nc250', favourFoundations: true });
+    const firstDay = (records: DayRecord[], tier: number) => records.find((record) => record.plan.some((item) => item.kind === 'new' && tierOf(item) === tier))?.day ?? Infinity;
+    const share = (records: DayRecord[], tier: number, days: number) => {
+      const items = newItems(records.filter((record) => record.day < days));
+      return items.filter((item) => tierOf(item) === tier).length / items.length;
+    };
+    console.log(`T16 DEADLINE REPORT (daily, fast): first tier-2 day ${firstDay(plain.records, 2)} -> ${firstDay(deadline.records, 2)}, tier-1 share over 30 days ${share(plain.records, 1, 30).toFixed(2)} -> ${share(deadline.records, 1, 30).toFixed(2)}`);
+    expect(firstDay(deadline.records, 2)).toBeGreaterThan(firstDay(plain.records, 2));
+    expect(share(deadline.records, 1, 30)).toBeGreaterThanOrEqual(share(plain.records, 1, 30));
+    expect(firstDay(deadline.records, 3)).toBeGreaterThanOrEqual(firstDay(plain.records, 3));
     for (const { day, plan, dueBefore } of deadline.records) {
       expect(plan.length, `day ${day}`).toBeLessThanOrEqual(4);
       expect(plan.length, `day ${day}`).toBeGreaterThanOrEqual(2);
-      if (dueBefore < REVIEW_OVERLOAD_DUE) expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
+      if (dueBefore < HARD_BRAKE_DUE) expect(plan.some((item) => item.kind === 'new'), `day ${day}`).toBe(true);
     }
   });
 
@@ -617,7 +648,7 @@ describe('T16 goal plans: interview deadline and skip Easies', () => {
       for (const { day, plan, dueBefore, unstartedBefore } of records) {
         expect(plan.length, `${name} day ${day}`).toBeLessThanOrEqual(4);
         // A new problem every day, until the (smaller) set has nothing left to offer.
-        if (dueBefore < REVIEW_OVERLOAD_DUE && unstartedBefore > 0) expect(plan.some((item) => item.kind === 'new'), `${name} day ${day}`).toBe(true);
+        if (dueBefore < HARD_BRAKE_DUE && unstartedBefore > 0) expect(plan.some((item) => item.kind === 'new'), `${name} day ${day}`).toBe(true);
       }
       expect([...progress.keys()].every((id) => catalog.find((problem) => problem.id === id)?.difficulty !== 'easy'), name).toBe(true);
       rows.push(`${name}: backlog max ${Math.max(...backlog)}, ${progress.size} problems started`);

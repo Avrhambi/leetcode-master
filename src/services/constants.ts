@@ -17,6 +17,9 @@ export const STRUGGLE_BACKOFF_DAYS = [2, 4, 7] as const;
 // attempt, so it is not served two days in a row.
 export const REINFORCE_CONSECUTIVE_WEAK = 2;
 export const REINFORCE_MIN_GAP_DAYS = 2;
+// A solved warm-up candidate at this review stage or above is already well
+// retained, so it is not served as a warm-up (T22).
+export const REINFORCE_MAX_SOLVED_STAGE = 3;
 
 // Review stage rules (see progressAfterAttempt). A strong recall at least
 // LATE_RECALL_GAP_RATIO x later than scheduled advances LATE_RECALL_STAGE_JUMP
@@ -247,7 +250,7 @@ export const SESSION_DEFAULT_MINUTES = {
 export const SESSION_CALIBRATION_MIN_SAMPLES = 3;
 export const SESSION_CALIBRATION_WINDOW = 10;
 // The time budgets on offer ("I have 30 / 45 / 60 minutes"). No budget is the default.
-export const SESSION_BUDGET_OPTIONS = [30, 45, 60] as const;
+export const SESSION_BUDGET_OPTIONS = [30, 45, 60, 90, 120] as const;
 
 // Attempt timer (see attemptTimer.ts). The form accepts 1-600 minutes; a stored start
 // older than ATTEMPT_TIMER_STALE_HOURS is a forgotten timer, so it is dropped rather
@@ -295,3 +298,61 @@ export const IMPORT_MAX_DAYS = 21;
 export const INTERVIEW_MAX_DAYS = 730;
 export const DEADLINE_DEFAULT_DAYS_PER_WEEK = 4;
 export const DEADLINE_DEFAULT_SESSION_MINUTES = 45;
+
+// Training strategy (see strategy.ts). The automatic plan holds PLAN_DEFAULT_MAX_ITEMS
+// items with no time budget; with one it holds one item per PLAN_MINUTES_PER_ITEM
+// minutes of budget (at least 2, at most PLAN_MAX_ITEMS), and new problems fill
+// whatever minutes the reviews leave. Review overload scales with the cap: new
+// problems pause at REVIEW_OVERLOAD_DUE x (cap / 4) uncovered reviews due.
+export const PLAN_DEFAULT_MAX_ITEMS = 4;
+// Pattern-level reviews (see patternReview.ts): a mastered problem keeps its topic's
+// easier-or-equal reviews covered for this many days after its last attempt.
+export const MASTERED_ANCHOR_FRESH_DAYS = 60;
+export const PLAN_MAX_ITEMS = 8;
+export const PLAN_MINUTES_PER_ITEM = 15;
+// Interview horizons: a date this many days away or fewer is a sprint / a focused run.
+export const STRATEGY_SPRINT_DAYS = 14;
+export const STRATEGY_FOCUSED_DAYS = 60;
+// The last days before the interview: no new Hards, gaps and mock interviews only.
+export const STRATEGY_TAPER_DAYS = 3;
+// Explore vs consolidate (see strategy.ts). New problems explore: a new variant of
+// a pattern is what teaches an unseen interview problem. Reviews consolidate. The
+// plan never lets either crash the other:
+//   - reviews take at most REVIEW_SHARE_MAX[horizon] of the automatic plan, so new
+//     material keeps flowing;
+//   - past the overload line one new problem still comes every day (the
+//     exploration floor), and only at twice the line is the plan all reviews.
+// Topic choice under a deadline adds a UCB-style exploration bonus,
+// EXPLORE_WEIGHT[horizon] x sqrt(ln(1 + attempts) / (1 + attempts in the topic)),
+// to the readiness gain, so a topic that has had little practice gets its turn
+// without the plan being spread thin over every topic.
+export const REVIEW_SHARE_MAX = { sprint: 0.5, focused: 0.5, steady: 0.6, open: 0.75 } as const;
+export const EXPLORE_WEIGHT = { sprint: 0.5, focused: 0.35, steady: 0.2, open: 0 } as const;
+export const REVIEW_HARD_BRAKE_FACTOR = 2;
+// Starvation guard: under overload a one-item budget consolidates first, but once
+// this many active days have passed without a new problem, the new one goes first.
+export const EXPLORE_MAX_GAP_DAYS = 3;
+// With a deadline, a topic's priority is tier weight x (1 - readiness); a topic that
+// is already ready keeps this floor so it is not ignored outright.
+export const READY_TOPIC_PRIORITY_FLOOR = 0.08;
+
+// Interview readiness (see readiness.ts): the chance, from topic skill, to solve an
+// unseen Medium of the topic. A topic is "ready" at READY_TOPIC_CHANCE or above.
+export const READY_TOPIC_CHANCE = 0.7;
+// The skill one more problem at the right level is expected to add, for the
+// deadline plan's look-ahead (see readinessGain).
+export const READINESS_LOOKAHEAD_SKILL = 0.1;
+
+// Mock interviews (see mockInterview.ts). Problems per mock and the minutes each
+// gets; a mock is suggested every MOCK_EVERY_DAYS[horizon] days.
+export const MOCK_PROBLEM_COUNTS = [1, 2, 3] as const;
+export const MOCK_MINUTES_PER_PROBLEM = { easy: 15, medium: 25, hard: 40 } as const;
+export const MOCK_EVERY_DAYS = { sprint: 2, focused: 4, steady: 7, open: 14 } as const;
+// A mock problem counts as solved (strong) when every test passed in time; with at
+// least MOCK_PARTIAL_PASS_RATIO of the tests passing it is partial, else weak.
+export const MOCK_PARTIAL_PASS_RATIO = 0.5;
+// A mock attempt is timed, unseen and unaided, so it moves topic skill this much
+// more than a practice attempt.
+export const SKILL_MOCK_WEIGHT = 1.5;
+// A mock does not reuse a problem attempted in the last MOCK_RECENT_DAYS days.
+export const MOCK_RECENT_DAYS = 14;

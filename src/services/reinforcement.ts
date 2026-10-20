@@ -1,7 +1,7 @@
 import type { CatalogProblem, ProblemProgress } from '../types/models';
 import { coreRank } from './coreRank';
 import { daysBetween } from './cadence';
-import { REINFORCE_CONSECUTIVE_WEAK, REINFORCE_MIN_GAP_DAYS } from './constants';
+import { REINFORCE_CONSECUTIVE_WEAK, REINFORCE_MAX_SOLVED_STAGE, REINFORCE_MIN_GAP_DAYS } from './constants';
 import { prerequisitesOf } from './topicGraph';
 
 const LEVEL = { easy: 0, medium: 1, hard: 2 } as const;
@@ -39,11 +39,16 @@ function relates(problem: CatalogProblem, target: CatalogProblem): boolean {
 
 // The one warm-up for the day, or undefined when nothing is struggling or no
 // suitable problem exists. For the most-failed problem that has a candidate:
-//   1. an already-solved easier problem from the same topic (hardest first, so
+//   1. an unsolved problem one level easier from the same topic (core-first): a
+//      new variant of the pattern is the stepping stone that teaches the most, else
+//   2. an already-solved easier problem from the same topic (hardest first, so
 //      it is the closest stepping stone), else
-//   2. an already-solved problem from a prerequisite topic (nearest topic, then
+//   3. an already-solved problem from a prerequisite topic (nearest topic, then
 //      hardest first), else
-//   3. an unsolved Easy from the same topic, core-first.
+//   4. an unsolved Easy from the same topic, core-first.
+// A solved candidate must not already be well retained (stage below
+// REINFORCE_MAX_SOLVED_STAGE): re-solving a problem you know cold teaches nothing,
+// and a struggling Hard would otherwise bring the same mastered Easy back for weeks.
 // A solved problem attempted in the last REINFORCE_MIN_GAP_DAYS - 1 days is
 // skipped so it is not served two days running. `excluded` holds skipped ids.
 export function selectReinforcement(problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, excluded: Set<string>, today: string): Reinforcement | undefined {
@@ -58,8 +63,15 @@ export function selectReinforcement(problems: CatalogProblem[], progressByProble
     (progressByProblem.get(left.id)?.lastAttemptDate ?? '').localeCompare(progressByProblem.get(right.id)?.lastAttemptDate ?? '') ||
     left.neetcodeOrder - right.neetcodeOrder;
 
+  const unsolved = (problem: CatalogProblem) => !isSolved(progressByProblem.get(problem.id)) && usable(problem);
+  const coreFirst = (left: CatalogProblem, right: CatalogProblem) => coreRank(left) - coreRank(right) || left.neetcodeOrder - right.neetcodeOrder;
   for (const target of reinforcementTargets(problems, progressByProblem)) {
-    const solved = problems.filter((problem) => relates(problem, target) && isSolved(progressByProblem.get(problem.id)) && usable(problem) && rested(problem));
+    const stepDown = problems
+      .filter((problem) => problem.primaryTopic === target.primaryTopic && LEVEL[problem.difficulty] === LEVEL[target.difficulty] - 1 && unsolved(problem))
+      .sort(coreFirst)[0];
+    if (stepDown) return { problem: stepDown, kind: 'new', target };
+    const solved = problems.filter((problem) => relates(problem, target) && isSolved(progressByProblem.get(problem.id)) && usable(problem) && rested(problem)
+      && (progressByProblem.get(problem.id)?.reviewStage ?? 0) < REINFORCE_MAX_SOLVED_STAGE);
     const sameTopic = solved.filter((problem) => problem.primaryTopic === target.primaryTopic && LEVEL[problem.difficulty] < LEVEL[target.difficulty]).sort(stepping)[0];
     if (sameTopic) return { problem: sameTopic, kind: 'review', target };
     for (const prerequisite of prerequisitesOf(target.primaryTopic)) {
@@ -67,8 +79,8 @@ export function selectReinforcement(problems: CatalogProblem[], progressByProble
       if (fromPrerequisite) return { problem: fromPrerequisite, kind: 'review', target };
     }
     const unsolvedEasy = problems
-      .filter((problem) => problem.primaryTopic === target.primaryTopic && problem.difficulty === 'easy' && problem.id !== target.id && !isSolved(progressByProblem.get(problem.id)) && usable(problem))
-      .sort((left, right) => coreRank(left) - coreRank(right) || left.neetcodeOrder - right.neetcodeOrder)[0];
+      .filter((problem) => problem.primaryTopic === target.primaryTopic && problem.difficulty === 'easy' && problem.id !== target.id && unsolved(problem))
+      .sort(coreFirst)[0];
     if (unsolvedEasy) return { problem: unsolvedEasy, kind: 'new', target };
   }
   return undefined;

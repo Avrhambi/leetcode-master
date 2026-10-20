@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dueReviewQueue, reviewsUntilNewProblems, selectDailyPlan } from './dailyPlan';
+import { activeDaysSinceNew, dueReviewQueue, planDueCount, reviewsUntilNewProblems, selectDailyPlan } from './dailyPlan';
 import { minutesEstimator, planMinutes } from './sessionTime';
 import { catalog } from '../data/catalog';
 import type { CatalogProblem, ProblemProgress, RecommendationEvent } from '../types/models';
@@ -128,17 +128,29 @@ describe('daily plan selection', () => {
     expect(sizes).toEqual([2, 3, 3, 3, 4, 4, 4, 4]);
   });
 
-  it('pauses new problems under review overload: 12+ due gives four reviews and nothing new', () => {
-    const due = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'strong' }));
-    const calm = selectDailyPlan({ problems: catalog, progress: due(11), recommendationEvents: [], now });
-    const overloaded = selectDailyPlan({ problems: catalog, progress: due(12), recommendationEvents: [], now });
+  // Partial (hint-needed) reviews: real gaps, so each one is owed (strong ones of one
+  // topic would be a single owed review since T22, see patternReview.ts).
+  const owed = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'partial' }));
+  it('past the overload line keeps one new problem (the exploration floor); at twice the line the plan is all reviews', () => {
+    const calm = selectDailyPlan({ problems: catalog, progress: owed(11), recommendationEvents: [], now });
+    const overloaded = selectDailyPlan({ problems: catalog, progress: owed(12), recommendationEvents: [], now });
+    const braked = selectDailyPlan({ problems: catalog, progress: owed(24), recommendationEvents: [], now });
     expect(calm.some((item) => item.kind === 'new')).toBe(true);
     expect(overloaded).toHaveLength(4);
-    expect(overloaded.every((item) => item.kind === 'review')).toBe(true);
+    expect(overloaded.filter((item) => item.kind === 'new')).toHaveLength(1);
+    expect(braked).toHaveLength(4);
+    expect(braked.every((item) => item.kind === 'review')).toBe(true);
+  });
+  it('owes one maintenance review per topic: strong due reviews of one topic count once', () => {
+    const strong = catalog.filter((problem) => problem.primaryTopic === 'Arrays & Hashing').slice(0, 6)
+      .map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastAttemptDate: '2026-07-11', lastQuality: 'strong', reviewStage: 2 }));
+    expect(planDueCount({ problems: catalog, progress: strong, recommendationEvents: [], now })).toBe(1);
+    const plan = selectDailyPlan({ problems: catalog, progress: strong, recommendationEvents: [], now });
+    expect(plan.filter((item) => item.kind === 'review')).toHaveLength(1);
   });
   it('keeps an overloaded plan stable across the day as reviews are logged', () => {
-    const due = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'strong' }));
-    const plan = selectDailyPlan({ problems: catalog, progress: due(14), recommendationEvents: [], now });
+    const due = owed;
+    const plan = selectDailyPlan({ problems: catalog, progress: due(26), recommendationEvents: [], now });
     const stored = plan.map((item) => event(item.problem.id, item.kind, now.toISOString()));
     const later = selectDailyPlan({ problems: catalog, progress: due(10), recommendationEvents: stored, now });
     expect(later.map((item) => item.problem.id)).toEqual(plan.map((item) => item.problem.id));
@@ -172,11 +184,13 @@ describe('time budget', () => {
     expect(withExtra.map((item) => item.problem.id)).toContain(extra.id);
   });
   it('counts the reviews left to clear before new problems come back', () => {
-    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(11), recommendationEvents: [], now })).toBe(0);
-    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(12), recommendationEvents: [], now })).toBe(1);
-    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(15), recommendationEvents: [], now })).toBe(4);
+    // New problems pause only at the hard brake (24 owed reviews with no budget, T23).
+    const owed = (count: number) => catalog.slice(0, count).map((problem) => progress(problem.id, { nextReviewDate: '2026-07-18', lastQuality: 'partial' }));
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: owed(23), recommendationEvents: [], now })).toBe(0);
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: owed(24), recommendationEvents: [], now })).toBe(1);
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: owed(27), recommendationEvents: [], now })).toBe(4);
     const skipped = event(catalog[0].id, 'review', now.toISOString(), new Date(2026, 6, 20, 12).toISOString());
-    expect(reviewsUntilNewProblems({ problems: catalog, progress: due(15), recommendationEvents: [skipped], now })).toBe(3);
+    expect(reviewsUntilNewProblems({ problems: catalog, progress: owed(27), recommendationEvents: [skipped], now })).toBe(3);
   });
   it('re-plans the rest of the day after the budget changes, keeping what was logged', () => {
     const before = selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: [], now });
@@ -188,5 +202,17 @@ describe('time budget', () => {
     expect(after.length).toBeLessThan(before.length);
     // Without a reset the stored plan is replayed as before.
     expect(selectDailyPlan({ problems: catalog, progress: due(4), recommendationEvents: stored, sessionMinutes: 30, now })).toHaveLength(before.length);
+  });
+});
+
+describe('activeDaysSinceNew', () => {
+  const attempt = (problemId: string, attemptedOn: string) => ({ id: `${problemId}-${attemptedOn}`, problemId, attemptedOn, outcome: 'solved_independently' as const, perceivedDifficulty: 'manageable' as const, helpType: null, durationMinutes: null, notes: '', quality: 'strong' as const, createdAt: `${attemptedOn}T12:00:00.000Z` });
+  it('counts the active days before today since the last first attempt on any problem', () => {
+    const attempts = [attempt('a', '2026-07-10'), attempt('b', '2026-07-12'), attempt('a', '2026-07-14'), attempt('b', '2026-07-16'), attempt('a', '2026-07-18')];
+    expect(activeDaysSinceNew(attempts, '2026-07-19')).toBe(3);
+    expect(activeDaysSinceNew([...attempts, attempt('c', '2026-07-18')], '2026-07-19')).toBe(0);
+    // Today's attempts do not count yet, so the plan's shape holds through the day.
+    expect(activeDaysSinceNew([...attempts, attempt('c', '2026-07-19')], '2026-07-19')).toBe(3);
+    expect(activeDaysSinceNew([], '2026-07-19')).toBe(0);
   });
 });

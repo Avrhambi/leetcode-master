@@ -2,12 +2,15 @@ import type { Attempt, CatalogProblem, ProblemProgress, Quality, RecommendationE
 import { tierWeight } from '../data/topicTiers';
 import { coreRank } from './coreRank';
 import { cadenceFor, daysBetween, type CadenceProfile } from './cadence';
-import { FAILING_TOPIC_PRIORITY_PENALTY, OCCASIONAL_RECENT_TOPIC_PENALTY, RETURNING_MAX_REVIEW_SLOTS, REVIEW_OVERLOAD_DUE, REVIEW_OVERLOAD_SLOTS, SKILL_MEDIUM_THRESHOLD } from './constants';
+import { FAILING_TOPIC_PRIORITY_PENALTY, OCCASIONAL_RECENT_TOPIC_PENALTY, PLAN_DEFAULT_MAX_ITEMS, READY_TOPIC_PRIORITY_FLOOR, RETURNING_MAX_REVIEW_SLOTS, EXPLORE_MAX_GAP_DAYS, REVIEW_HARD_BRAKE_FACTOR, REVIEW_OVERLOAD_DUE, REVIEW_OVERLOAD_SLOTS, SKILL_MEDIUM_THRESHOLD } from './constants';
 import { targetDifficulty, topicSkills } from './skill';
 import { importedIds } from './importKnown';
 import { prerequisitePenalty } from './topicGraph';
 import { selectReinforcement, warmUpTargetFor } from './reinforcement';
 import { fitPlanToBudget, minutesEstimator, planMinutes, type MinutesEstimator } from './sessionTime';
+import { anchorFirst, coveredReviews, isMaintenanceReview, isParked } from './patternReview';
+import { readinessGain } from './readiness';
+import { trainingStrategy, type TrainingStrategy } from './strategy';
 
 export interface DailyPlanItem {
   problem: CatalogProblem;
@@ -39,11 +42,13 @@ interface DailyPlanInput {
   // An interview deadline is set (T16): new-problem topics are weighted towards the
   // tier-1 foundations (see `tierWeight`). Nothing else about the plan changes.
   favourFoundations?: boolean;
+  // Days until the interview (T23), or null with no date. Together with the budget
+  // it picks the training strategy (see strategy.ts).
+  interviewDaysLeft?: number | null;
   now?: Date;
 }
 
 const MAX_REVIEW_STAGE = 5;
-const MAX_PLAN_ITEMS = 4;
 const QUALITY_RANK: Record<Quality, number> = { weak: 0, partial: 1, strong: 2 };
 const DIFFICULTY_ORDER = ['easy', 'medium', 'hard'] as const;
 
@@ -70,20 +75,46 @@ function jitter(seed: string): number {
   return ((hash >>> 0) / 0xffffffff) * 0.05;
 }
 
-// Number of review / new slots given how many reviews are due today. At least one
-// new problem so fresh material does not disappear — except under review overload
-// (REVIEW_OVERLOAD_DUE or more due), when new problems pause and the plan is all
-// reviews until the backlog clears. The plan never *shrinks* as the backlog grows —
-// total slots step 2 → 3 → 3 → 4 → 4 as due count rises — and never passes four;
-// a large backlog is also drained through the review-queue panel.
+// Number of review / new slots given how many uncovered reviews are due today:
+// explore (new problems) vs consolidate (reviews), with neither allowed to crash
+// the other (T23).
+//   - Base mix by due count: total slots step 2 -> 3 -> 3 -> 4 -> 4 as the due
+//     count rises, so the plan never *shrinks* as the backlog grows.
+//   - `maxReviewShare` (by horizon, see strategy.ts) caps the reviews' share; the
+//     slots it frees go to new problems.
+//   - Past the overload line (REVIEW_OVERLOAD_DUE, scaled with the cap) the plan
+//     is all reviews but one: the exploration floor keeps one new problem a day.
+//   - Only at REVIEW_HARD_BRAKE_FACTOR x that line does the plan go all-review
+//     until the backlog clears. Pattern-level reviews (patternReview.ts) make
+//     that rare; a large backlog is also drained through the review-queue panel.
 //
 // A `returning` user (7+ days away) gets a re-entry plan: reviews fill every slot
 // but one, so the backlog is eased into instead of dumped, and the single new
 // problem keeps fresh material alive. The rest of the backlog stays in the
 // review queue — the plan itself is never inflated.
-function planSlots(dueCount: number, profile: CadenceProfile): { reviewSlots: number; newSlots: number } {
-  if (profile === 'returning' && dueCount > 0) return { reviewSlots: Math.min(dueCount, RETURNING_MAX_REVIEW_SLOTS), newSlots: 1 };
-  if (dueCount >= REVIEW_OVERLOAD_DUE) return { reviewSlots: REVIEW_OVERLOAD_SLOTS, newSlots: 0 };
+//
+// With a time budget the cap grows with the minutes (`maxItems`, see strategy.ts)
+// and the thresholds with it; with none the cap is four.
+function overloadDue(maxItems: number): number {
+  return Math.round(REVIEW_OVERLOAD_DUE * Math.max(1, maxItems / PLAN_DEFAULT_MAX_ITEMS));
+}
+
+function hardBrakeDue(maxItems: number): number {
+  return overloadDue(maxItems) * REVIEW_HARD_BRAKE_FACTOR;
+}
+
+function planSlots(dueCount: number, profile: CadenceProfile, maxItems = PLAN_DEFAULT_MAX_ITEMS, maxReviewShare = 0.75): { reviewSlots: number; newSlots: number } {
+  const scale = Math.max(1, maxItems / PLAN_DEFAULT_MAX_ITEMS);
+  if (profile === 'returning' && dueCount > 0) return { reviewSlots: Math.min(dueCount, Math.round(RETURNING_MAX_REVIEW_SLOTS * scale)), newSlots: 1 };
+  if (dueCount >= hardBrakeDue(maxItems)) return { reviewSlots: Math.round(REVIEW_OVERLOAD_SLOTS * scale), newSlots: 0 };
+  const shareCap = Math.max(1, Math.floor(maxItems * maxReviewShare));
+  if (dueCount >= overloadDue(maxItems)) return { reviewSlots: maxItems - 1, newSlots: 1 };
+  const slots = baseSlots(dueCount);
+  const reviewSlots = Math.min(slots.reviewSlots, shareCap);
+  return { reviewSlots, newSlots: slots.newSlots + (slots.reviewSlots - reviewSlots) };
+}
+
+function baseSlots(dueCount: number): { reviewSlots: number; newSlots: number } {
   if (dueCount === 0) return { reviewSlots: 0, newSlots: 2 };
   if (dueCount <= 2) return { reviewSlots: 1, newSlots: 2 };
   if (dueCount <= 5) return { reviewSlots: 2, newSlots: 1 };
@@ -134,27 +165,90 @@ function hiddenIds(recommendationEvents: RecommendationEvent[], now: Date): Set<
   return new Set(recommendationEvents.filter((event) => event.skippedUntil !== null && new Date(event.skippedUntil) > now).map((event) => event.problemId));
 }
 
-// How many more due reviews have to be cleared before new problems come back
-// under review overload (0 when they are not paused). Counts what the plan
-// counts: due reviews minus the ones skipped for today.
-export function reviewsUntilNewProblems({ problems, progress, recommendationEvents, now = new Date() }: DailyPlanInput): number {
+// The due reviews the plan works from (T22): not skipped, not covered by a
+// fresher strong solve of the same pattern, not parked above the learner's level
+// (see patternReview.ts); essential gaps first, then one maintenance review per
+// topic before a second one. `coverageProblems` is the unfiltered catalog, so
+// out-of-set solves count as evidence.
+function planDueReviews(problems: CatalogProblem[], progress: ProblemProgress[], recommendationEvents: RecommendationEvent[], coverageProblems: CatalogProblem[], skills: Map<string, number>, now: Date): DueReview[] {
   const hidden = hiddenIds(recommendationEvents, now);
-  const due = dueReviewQueue(problems, progress, now).filter((entry) => !hidden.has(entry.problem.id)).length;
-  return Math.max(0, due - REVIEW_OVERLOAD_DUE + 1);
+  const covered = coveredReviews(coverageProblems, progress, localToday(now));
+  return anchorFirst(dueReviewQueue(problems, progress, now).filter((entry) => !hidden.has(entry.problem.id) && !covered.has(entry.problem.id) && !isParked(entry.problem, entry.progress, skills)));
 }
 
-export function selectDailyPlan({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, sessionMinutes = null, planResetAt = null, favourFoundations = false, now = new Date() }: DailyPlanInput): DailyPlanItem[] {
-  const progressByProblem = new Map(progress.map((item) => [item.problemId, item]));
-  const problemById = new Map(problems.map((problem) => [problem.id, problem]));
-  const hiddenProblemIds = hiddenIds(recommendationEvents, now);
+function skillsOf(progress: ProblemProgress[], attempts: Attempt[], skillProblems: CatalogProblem[]): Map<string, number> {
+  return topicSkills(attempts, skillProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
+}
 
-  const skills = topicSkills(attempts, skillProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
-  const profile = cadenceFor(attempts, localToday(now)).profile;
+export function strategyOf(input: Pick<DailyPlanInput, 'interviewDaysLeft' | 'sessionMinutes'>): TrainingStrategy {
+  return trainingStrategy({ daysLeft: input.interviewDaysLeft ?? null, budget: input.sessionMinutes ?? null });
+}
+
+// Reviews the plan counts as due: skipped ones and pattern-covered ones left out.
+export function planDueCount({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, now = new Date() }: DailyPlanInput): number {
+  return planDueReviews(problems, progress, recommendationEvents, skillProblems, skillsOf(progress, attempts, skillProblems), now).length;
+}
+
+// How many more due reviews have to be cleared before new problems come back
+// under the review hard brake (0 when they are not paused). Counts what the plan
+// counts: due reviews minus the ones skipped for today and the covered ones.
+export function reviewsUntilNewProblems(input: DailyPlanInput): number {
+  return Math.max(0, planDueCount(input) - hardBrakeDue(strategyOf(input).maxItems) + 1);
+}
+
+// Everything new-problem selection reads, gathered once per plan.
+interface SelectionContext {
+  problems: CatalogProblem[];
+  progressByProblem: Map<string, ProblemProgress>;
+  // Attempts per topic and in total, for the exploration bonus.
+  topicAttempts: Map<string, number>;
+  totalAttempts: number;
+  events: RecommendationEvent[];
+  hiddenProblemIds: Set<string>;
+  problemById: Map<string, CatalogProblem>;
+  skills: Map<string, number>;
+  profile: CadenceProfile;
+  now: Date;
+  favourFoundations: boolean;
+  strategy: TrainingStrategy;
+}
+
+function selectionContext({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, favourFoundations = false, now = new Date() }: DailyPlanInput, strategy: TrainingStrategy): SelectionContext {
+  const topicOf = new Map(skillProblems.map((problem) => [problem.id, problem.primaryTopic]));
+  const topicAttempts = new Map<string, number>();
+  for (const attempt of attempts) {
+    const topic = topicOf.get(attempt.problemId);
+    if (topic !== undefined) topicAttempts.set(topic, (topicAttempts.get(topic) ?? 0) + 1);
+  }
+  return {
+    problems,
+    progressByProblem: new Map(progress.map((item) => [item.problemId, item])),
+    topicAttempts,
+    totalAttempts: attempts.length,
+    events: recommendationEvents,
+    hiddenProblemIds: hiddenIds(recommendationEvents, now),
+    problemById: new Map(problems.map((problem) => [problem.id, problem])),
+    skills: skillsOf(progress, attempts, skillProblems),
+    profile: cadenceFor(attempts, localToday(now)).profile,
+    now,
+    favourFoundations,
+    strategy
+  };
+}
+
+export function selectDailyPlan(input: DailyPlanInput): DailyPlanItem[] {
+  const { problems, progress, recommendationEvents, attempts = [], skillProblems = problems, sessionMinutes = null, planResetAt = null, now = new Date() } = input;
+  const strategy = strategyOf(input);
+  const context = selectionContext(input, strategy);
+  const { progressByProblem, problemById, hiddenProblemIds, profile, skills } = context;
   const estimate = minutesEstimator(attempts, skillProblems, localToday(now));
 
-  const dueReviews = dueReviewQueue(problems, progress, now).filter((entry) => !hiddenProblemIds.has(entry.problem.id));
+  const allDue = planDueReviews(problems, progress, recommendationEvents, skillProblems, skills, now);
+  // In a sprint, maintenance reviews (strong last attempt) only fill spare minutes.
+  const dueReviews = strategy.maintenanceLast ? allDue.filter((entry) => !isMaintenanceReview(entry.progress)) : allDue;
+  const maintenanceSpare = strategy.maintenanceLast ? allDue.filter((entry) => isMaintenanceReview(entry.progress)) : [];
 
-  const { newSlots } = planSlots(dueReviews.length, profile);
+  const { newSlots } = planSlots(dueReviews.length, profile, strategy.maxItems, strategy.maxReviewShare);
 
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayRecommendations = recommendationEvents.filter((event) => new Date(event.recommendedAt) >= startOfToday && event.skippedUntil === null
@@ -185,8 +279,8 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
     const storedNew = plan.filter((item) => item.kind === 'new' || item.reason === 'reinforce').length;
     let target = plan.length + Math.max(0, newSlots - storedNew);
     if (target < 2) target = 2;
-    if (target > 4) target = 4;
-    fillNewProblems(plan, target, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now, favourFoundations, budgetFits(sessionMinutes, estimate));
+    if (target > strategy.maxItems) target = strategy.maxItems;
+    fillNewProblems(plan, target, context, budgetFits(sessionMinutes, estimate));
     return plan;
   }
 
@@ -195,18 +289,44 @@ export function selectDailyPlan({ problems, progress, recommendationEvents, atte
   // of the plan while it has room, otherwise in place of the last review.
   const warmUp = selectReinforcement(problems, progressByProblem, hiddenProblemIds, localToday(now));
   const queue = warmUp ? dueReviews.filter((entry) => entry.problem.id !== warmUp.problem.id) : dueReviews;
-  const slots = planSlots(queue.length, profile);
+  const slots = planSlots(queue.length, profile, strategy.maxItems, strategy.maxReviewShare);
   let reviewCount = slots.reviewSlots;
   let newCount = slots.newSlots;
+  // New material starved for EXPLORE_MAX_GAP_DAYS active days goes first (T23).
+  const starved = activeDaysSinceNew(attempts, localToday(now)) >= EXPLORE_MAX_GAP_DAYS;
   if (warmUp) {
     if (newCount >= 2) newCount -= 1;
-    else if (reviewCount + newCount >= MAX_PLAN_ITEMS) reviewCount -= 1;
+    // A small plan (one review + one new) keeps its review: the warm-up takes the new slot.
+    else if (newCount === 1 && reviewCount === 1 && reviewCount + newCount >= strategy.maxItems && !starved) newCount -= 1;
+    else if (reviewCount + newCount >= strategy.maxItems) reviewCount -= 1;
   }
   const plan: DailyPlanItem[] = queue.slice(0, reviewCount).map(({ problem }) => ({ problem, kind: 'review' as const }));
   if (warmUp) plan.push({ problem: warmUp.problem, kind: warmUp.kind, reason: 'reinforce', reinforces: warmUp.target });
-  fillNewProblems(plan, plan.length + newCount, problems, progressByProblem, recommendationEvents, hiddenProblemIds, problemById, skills, profile, now, favourFoundations);
-  const spareReviews = queue.slice(reviewCount).map(({ problem }) => ({ problem, kind: 'review' as const }));
-  return fitPlanToBudget(plan, sessionMinutes, estimate, spareReviews, MAX_PLAN_ITEMS);
+  fillNewProblems(plan, plan.length + newCount, context);
+  // Spare due reviews fill leftover minutes. With a budget that grows the plan past
+  // four items, they take at most half of it, so new material keeps coming.
+  const spare = [...queue.slice(reviewCount), ...maintenanceSpare.filter((entry) => entry.problem.id !== warmUp?.problem.id)];
+  const spareLimit = strategy.maxItems > PLAN_DEFAULT_MAX_ITEMS ? Math.max(0, Math.floor(strategy.maxItems * strategy.maxReviewShare) - reviewCount) : spare.length;
+  // Under overload a budget that fits one item consolidates first, unless new
+  // material has been starved for EXPLORE_MAX_GAP_DAYS active days.
+  const reviewFirst = queue.length >= overloadDue(strategy.maxItems) && !starved;
+  const fitted = fitPlanToBudget(plan, sessionMinutes, estimate, spare.slice(0, spareLimit).map(({ problem }) => ({ problem, kind: 'review' as const })), strategy.maxItems, reviewFirst);
+  // With a budget, new problems fill whatever minutes are left (not under overload).
+  if (strategy.fillToBudget && slots.newSlots > 0) fillNewProblems(fitted, strategy.maxItems, context, budgetFits(sessionMinutes, estimate));
+  return fitted;
+}
+
+// Active days before `today` since the last first attempt on any problem (all of
+// them when there has never been one): how long new material has been starved.
+export function activeDaysSinceNew(attempts: Attempt[], today: string): number {
+  const seen = new Set<string>();
+  let lastNew = '';
+  for (const attempt of [...attempts].sort((left, right) => left.attemptedOn.localeCompare(right.attemptedOn))) {
+    if (attempt.attemptedOn >= today) break;
+    if (!seen.has(attempt.problemId)) lastNew = attempt.attemptedOn;
+    seen.add(attempt.problemId);
+  }
+  return new Set(attempts.filter((attempt) => attempt.attemptedOn > lastNew && attempt.attemptedOn < today).map((attempt) => attempt.attemptedOn)).size;
 }
 
 // Same-day top-up under a budget: a new problem joins only while it still fits.
@@ -219,25 +339,17 @@ function budgetFits(budget: number | null, estimate: MinutesEstimator): ((plan: 
 // today's plan (so on a topic other than today's, when one is available). The
 // caller persists it as an ordinary `new` recommendation, which the same-day
 // replay then keeps in the plan. This is an explicit user action, so it may take
-// the plan past the automatic cap of four.
-export function selectExtraProblem({ problems, progress, recommendationEvents, attempts = [], skillProblems = problems, favourFoundations = false, now = new Date() }: DailyPlanInput, plan: DailyPlanItem[]): CatalogProblem | undefined {
-  const progressByProblem = new Map(progress.map((item) => [item.problemId, item]));
-  const problemById = new Map(problems.map((problem) => [problem.id, problem]));
-  const hiddenProblemIds = hiddenIds(recommendationEvents, now);
-  const skills = topicSkills(attempts, skillProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId)));
-  const profile = cadenceFor(attempts, localToday(now)).profile;
-  return selectNewProblem(
-    problems, progressByProblem, recommendationEvents, hiddenProblemIds,
-    new Set(plan.map((item) => item.problem.id)), new Set(plan.map((item) => item.problem.primaryTopic)),
-    problemById, skills, profile, now, favourFoundations
-  );
+// the plan past the automatic cap.
+export function selectExtraProblem(input: DailyPlanInput, plan: DailyPlanItem[]): CatalogProblem | undefined {
+  const context = selectionContext(input, strategyOf(input));
+  return selectNewProblem(context, new Set(plan.map((item) => item.problem.id)), new Set(plan.map((item) => item.problem.primaryTopic)));
 }
 
-function fillNewProblems(plan: DailyPlanItem[], target: number, problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, profile: CadenceProfile, now: Date, favourFoundations: boolean, fits?: (plan: DailyPlanItem[], problem: CatalogProblem) => boolean): void {
+function fillNewProblems(plan: DailyPlanItem[], target: number, context: SelectionContext, fits?: (plan: DailyPlanItem[], problem: CatalogProblem) => boolean): void {
   while (plan.length < target) {
     const usedProblemIds = new Set(plan.map((item) => item.problem.id));
     const usedTopics = new Set(plan.map((item) => item.problem.primaryTopic));
-    const nextProblem = selectNewProblem(problems, progressByProblem, events, hiddenProblemIds, usedProblemIds, usedTopics, problemById, skills, profile, now, favourFoundations);
+    const nextProblem = selectNewProblem(context, usedProblemIds, usedTopics);
     if (!nextProblem || (fits && !fits(plan, nextProblem))) break;
     plan.push({ problem: nextProblem, kind: 'new' });
   }
@@ -264,11 +376,13 @@ export function topicMastery(topic: string, problems: CatalogProblem[], progress
   return total / topicProblems.length;
 }
 
-function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<string, ProblemProgress>, events: RecommendationEvent[], hiddenProblemIds: Set<string>, selectedProblemIds: Set<string>, selectedTopics: Set<string>, problemById: Map<string, CatalogProblem>, skills: Map<string, number>, profile: CadenceProfile, now: Date, favourFoundations = false): CatalogProblem | undefined {
+function selectNewProblem({ problems, progressByProblem, topicAttempts, totalAttempts, events, hiddenProblemIds, problemById, skills, profile, now, favourFoundations, strategy }: SelectionContext, selectedProblemIds: Set<string>, selectedTopics: Set<string>): CatalogProblem | undefined {
   let candidates = problems.filter((problem) => {
     const status = progressByProblem.get(problem.id)?.status;
     return !hiddenProblemIds.has(problem.id) && !selectedProblemIds.has(problem.id) && status !== 'solved' && status !== 'mastered';
   });
+  // The last days before an interview are for closing gaps, not for a first Hard.
+  if (strategy.taper && candidates.some((problem) => problem.difficulty !== 'hard')) candidates = candidates.filter((problem) => problem.difficulty !== 'hard');
   // Occasional users have few sessions, so they spend them strictly core-first
   // across topics: no problem outside the best remaining list (NeetCode 75, then
   // the rest of the 150, then the extra 100) is offered while a better one is left.
@@ -309,10 +423,17 @@ function selectNewProblem(problems: CatalogProblem[], progressByProblem: Map<str
 
   const chosenTopic = eligibleTopics
     .map((topic) => {
-      const mastery = topicMastery(topic, problems, progressByProblem, true);
+      // With a deadline (T23) a topic is worth what one more problem adds to the
+      // chance of solving an unseen Medium in it; without one, what is left of the
+      // set's topic.
+      const gap = strategy.readinessPriority
+        ? Math.max(READY_TOPIC_PRIORITY_FLOOR, readinessGain(skills.get(topic) ?? 0))
+        : 1 - topicMastery(topic, problems, progressByProblem, true);
+      // Explore: a little-practised topic gets a UCB-style bonus (0 with no date).
+      const explore = strategy.exploreWeight * Math.sqrt(Math.log(1 + totalAttempts) / (1 + (topicAttempts.get(topic) ?? 0)));
       const recencyPenalty = selectedTopics.has(topic) ? 0.35 : recentTopics.has(topic) ? (profile === 'occasional' ? OCCASIONAL_RECENT_TOPIC_PENALTY : 0.35) : 1;
       const failingPenalty = failedTopics.has(topic) && (skills.get(topic) ?? 0) < SKILL_MEDIUM_THRESHOLD ? FAILING_TOPIC_PRIORITY_PENALTY : 1;
-      const priority = tierWeight(topic, favourFoundations) * (1 - mastery) * recencyPenalty * failingPenalty * prerequisitePenalty(topic, skills, workingTopics) + jitter(today + topic);
+      const priority = tierWeight(topic, favourFoundations) * (gap + explore) * recencyPenalty * failingPenalty * prerequisitePenalty(topic, skills, workingTopics) + jitter(today + topic);
       return { topic, priority };
     })
     .sort((left, right) => right.priority - left.priority)[0]?.topic;

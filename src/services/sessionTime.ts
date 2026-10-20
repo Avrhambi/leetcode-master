@@ -64,12 +64,15 @@ export function planMinutes(items: DailyPlanItem[], estimate: MinutesEstimator):
 // so they can only shrink the backlog. The first item is always kept, even
 // alone over budget, so a plan is never empty. With no budget the plan is
 // returned unchanged. The result lists reviews first, then the rest in plan order.
-export function fitPlanToBudget(plan: DailyPlanItem[], budget: number | null, estimate: MinutesEstimator, spareReviews: DailyPlanItem[] = [], maxItems = plan.length): DailyPlanItem[] {
+// `reviewFirst` (under review overload, T23) puts the top review ahead of the new
+// problem, so a budget that fits one item consolidates before it explores.
+export function fitPlanToBudget(plan: DailyPlanItem[], budget: number | null, estimate: MinutesEstimator, spareReviews: DailyPlanItem[] = [], maxItems = plan.length, reviewFirst = false): DailyPlanItem[] {
   if (budget === null || plan.length === 0) return plan;
   const reviews = plan.filter((item) => item.kind === 'review' && item.reason !== 'reinforce');
   const fresh = plan.filter((item) => item.kind === 'new' && item.reason !== 'reinforce');
   const warmUps = plan.filter((item) => item.reason === 'reinforce');
-  const priority = [...fresh.slice(0, 1), ...reviews.slice(0, 1), ...warmUps, ...reviews.slice(1), ...fresh.slice(1), ...spareReviews];
+  const head = reviewFirst ? [...reviews.slice(0, 1), ...fresh.slice(0, 1)] : [...fresh.slice(0, 1), ...reviews.slice(0, 1)];
+  const priority = [...head, ...warmUps, ...reviews.slice(1), ...fresh.slice(1), ...spareReviews];
   const kept = new Set<DailyPlanItem>();
   let spent = 0;
   for (const item of priority) {
