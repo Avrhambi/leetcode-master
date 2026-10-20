@@ -6,7 +6,7 @@ import type { HelpType, Outcome, PerceivedDifficulty } from '../types/models';
 
 const outcomeOrder: Outcome[] = ['solved_independently', 'solved_with_hint', 'watched_solution', 'could_not_solve'];
 
-export function AttemptForm({ problemId, onSaved }: { problemId: string; onSaved: () => void }) {
+export function AttemptForm({ problemId, onSaved, lightReviewOffered = false }: { problemId: string; onSaved: () => void; lightReviewOffered?: boolean }) {
   const [attemptedOn, setAttemptedOn] = useState(localDate());
   const [outcome, setOutcome] = useState<Outcome>('solved_independently');
   const [difficulty, setDifficulty] = useState<PerceivedDifficulty>('manageable');
@@ -53,9 +53,27 @@ export function AttemptForm({ problemId, onSaved }: { problemId: string; onSaved
     }
   }
 
+  // "I recalled the approach": a short review that skips the re-solve. If the
+  // recall fails, the user re-solves and records a normal attempt below.
+  async function saveLightReview() {
+    setError('');
+    try {
+      await saveAttempt({ problemId, attemptedOn: localDate(), outcome: 'solved_independently', perceivedDifficulty: 'manageable', helpType: null, durationMinutes: null, notes: notes.trim(), lightReview: true });
+      onSaved();
+    } catch {
+      setError('The review could not be saved. Retry.');
+    }
+  }
+
   return (
     <form className="attempt-form" onSubmit={submit}>
       <h2>Record attempt</h2>
+      {lightReviewOffered && (
+        <div className="light-review">
+          <button type="button" onClick={saveLightReview}>I recalled the approach (about 5 min)</button>
+          <p className="field-hint">Walk through the idea and the edge cases without coding. If you can't, re-solve it and record the attempt below. A recall counts like a solve and moves the review forward.</p>
+        </div>
+      )}
       {error && <p role="alert">{error}</p>}
       <label>Date <input type="date" value={attemptedOn} onChange={(event) => setAttemptedOn(event.target.value)} required /></label>
       <label>Outcome

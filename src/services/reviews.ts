@@ -1,5 +1,5 @@
 import type { Outcome, PerceivedDifficulty, ProblemProgress, ProgressStatus, Quality } from '../types/models';
-import { CONFIDENT_FIRST_SOLVE_STAGE, LATE_RECALL_GAP_RATIO, LATE_RECALL_STAGE_JUMP, STRUGGLE_BACKOFF_DAYS, STRUGGLE_THRESHOLD } from './constants';
+import { CONFIDENT_FIRST_SOLVE_STAGE, LATE_RECALL_GAP_RATIO, LATE_RECALL_STAGE_JUMP, LIGHT_REVIEW_MIN_STAGE, STRUGGLE_BACKOFF_DAYS, STRUGGLE_THRESHOLD } from './constants';
 
 export function qualityFor(outcome: Outcome, perceivedDifficulty: PerceivedDifficulty): Quality {
   if (outcome === 'solved_independently') return perceivedDifficulty === 'hard' ? 'partial' : 'strong';
@@ -34,6 +34,14 @@ function isLateRecall(existing: ProblemProgress | undefined, attemptedOn: string
   return scheduled > 0 && actual >= scheduled * LATE_RECALL_GAP_RATIO;
 }
 
+// True when the "I recalled the approach" shortcut is offered: a due review at
+// stage 3 or 4 (the 14- and 30-day reviews). Earlier stages are too fragile to
+// trust a recall without code.
+export function lightReviewEligible(progress: ProblemProgress | undefined, today: string): boolean {
+  return progress !== undefined && progress.reviewStage >= LIGHT_REVIEW_MIN_STAGE && progress.reviewStage <= 4
+    && progress.nextReviewDate !== null && progress.nextReviewDate <= today;
+}
+
 // Days until the next review, backing off once a problem is `struggling` so a
 // persistent blind spot is not served every single day. `consecutiveWeak` is the
 // count *including* this attempt.
@@ -53,6 +61,9 @@ function weakReviewDate(consecutiveWeak: number, today: Date): string {
 //   partial  -1 stage (minimum 1), so a hint at stage 4 returns in 14 days, not 3.
 //   weak     reset to 0.
 //   first attempt ever, solved independently and felt easy: starts at stage 2.
+//   light review (recalled the approach, no re-solve): stored as a strong attempt
+//            with `lightReview: true`, so it advances exactly like a full solve; the
+//            flag only records what the UI offered and how long it took.
 // Existing progress rows are not rewritten; the rules apply from each problem's next attempt.
 //
 // `alreadyAttemptedToday` is true when an attempt for this problem already exists

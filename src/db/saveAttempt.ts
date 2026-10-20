@@ -18,7 +18,7 @@ function graceStateFrom(settings: { key: string; value: string }[]): StreakGrace
   };
 }
 
-export interface AttemptInput { problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; }
+export interface AttemptInput { problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; lightReview?: boolean; }
 
 export async function saveAttempt(input: AttemptInput): Promise<void> {
   const createdAt = new Date().toISOString();

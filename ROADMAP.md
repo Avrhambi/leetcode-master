@@ -47,7 +47,7 @@ up from there.
 | T9 | Live demo on GitHub Pages | T0, T7 | T4, T5, T6, T8 | Done |
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Done |
 | T12 | Session time: plan estimate, time budget, "your note" before a review | T11 | T14, T15 | Done |
-| T13 | Light review: "recalled the approach" instead of a full re-solve | T12 | — | Planned |
+| T13 | Light review: "recalled the approach" instead of a full re-solve | T12 | — | Done |
 | T14 | Finish forecast + weekly practice-days goal | T12 | T15 | Planned |
 | T15 | End-of-session wrap-up screen | T12 | T14 | Planned |
 | T16 | Goal plans: interview deadline, "skip Easies" for experienced users | T12, T14 | — | Planned |
@@ -185,7 +185,7 @@ To keep two sessions from editing the same logic:
 | Problem-set setting + filtering of the problem list fed to the app | T2 |
 | `src/services/dailyPlan.ts` selection rules, new `skill.ts`, `topicGraph.ts` | T3 → T4 → T5, in that order |
 | New `src/services/cadence.ts` | T4 (T6 reads it and doesn't change it) |
-| `src/services/reviews.ts` stage and interval rules | T11 |
+| `src/services/reviews.ts` stage and interval rules | T11 (T13 adds `lightReviewEligible` and the `lightReview` attempt flag) |
 | XP formula, streak multiplier, badges, map "cleared" star, `gamification*.ts`, Dexie v5 | T6 |
 | `public/`, manifest, service worker, `navigator.storage.persist()` | T7 |
 | `src/db/backup.ts` (beyond adding a settings key, see below) | T8 |
@@ -697,6 +697,8 @@ Done; see the session log.
 
 ## T13. Light review
 
+Done; see the session log. The original brief follows.
+
 **Problem:** every review asks for a full re-solve (~10–30 min), and reviews are
 ~88% of plan items. **Scope:** offer "I recalled the approach" (3–5 min) on a
 review, with a full re-solve only if that recall fails. Model it as an `Attempt`
@@ -1006,3 +1008,11 @@ Each session fills in its own entry in its PR.
   - No schema change. Two new setting keys were added to `settingKeys`. `formatVersion` stays 3; an older app would reject a backup that contains them.
 - QA: Chromium, dev build, 1280 and 390 px. Plan shows ~65 min and 4 items; picking 30 min re-plans it to 1 item with the over-budget note; "Any" restores 4. Notes render on review items. No page scroll at either width.
 - Follow-ups: T13–T16 above; the parking-lot lines.
+
+### T13
+- Status / PR / date: Done / pushed to `master` at the owner's request / 2026-10-20
+- What shipped: an optional `lightReview?: boolean` on `Attempt` (no Dexie version: it is not indexed; backup validation accepts it and old backups without it still restore). `reviews.ts` gains `lightReviewEligible` (a due review at stage 3 or 4; `LIGHT_REVIEW_MIN_STAGE` in `constants.ts`). `AttemptForm` shows "I recalled the approach (about 5 min)" for an eligible problem; it saves a `solved_independently` / `manageable` / `strong` attempt flagged `lightReview`, so stages, XP and badges replay exactly like a full solve and `replayXp` is unchanged. A failed recall logs nothing: the user re-solves and records a normal attempt. History shows "recalled the approach". `sessionTime.ts` skips light attempts when calibrating minutes, so a 5-minute recall doesn't shrink the full-solve estimate.
+- Gate (`dailyPlanSimulation.test.ts`, "T13 light review gate"): a recall-decay model (recall chance 55/65/75/82/88% by stage, the same fixed rolls in both runs), 52 weeks, `nc250`. Progress is identical to the baseline (backlog max 21 / 20 / 18, mastered 81 / 48 / 27, same attempts per mastered problem at daily / 4 days / 2 days a week), and minutes drop 7% / 9% / 5% (26,520→24,645; 14,340→13,120; 7,510→7,105 at 5 min per light review).
+- Decisions & deviations: a first version capped a recall at stage 4 so only a full solve could master a problem, and offered it at stage 3 only. The same simulation showed that made things worse (mastered 81→72, backlog 21→23 daily; 48→39 and 20→29 at four days a week) and saved only ~3% of minutes, so the cap was dropped. The roadmap's fallback of stage ≥ 3 is what shipped. The model assumes a recall predicts a re-solve equally well, so it can't show whether real recall is weaker; that is untested. Light reviews earn full XP; no separate XP rule.
+- QA: production build in Chromium at 390 px. Seeded a due stage-3 problem; the button appeared, saved a flagged attempt, moved the problem to stage 4 with the next review in 30 days, and the button then disappeared. The page didn't scroll. Not checked at other widths, Safari or Firefox.
+- Follow-ups: T17 (timer) and T18 (quick log) could offer the light review inline on the plan; the form button is the only entry point today.

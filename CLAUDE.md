@@ -30,7 +30,7 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Key files
 
 - `src/services/` — pure, **deterministic, unit-tested** rules. No I/O. `reviews.ts`
-  (quality + review stage; late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection; with 12+ reviews due the plan is all reviews and new problems pause — the only thing that bounds the backlog), `mastery.ts` (incl. `proficientTopics`: the one definition behind the map star and the topic badges),
+  (quality + review stage; `lightReviewEligible` and the `lightReview` attempt flag (a recalled review replays as a plain strong attempt, so XP stays reconstructible); late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection; with 12+ reviews due the plan is all reviews and new problems pause — the only thing that bounds the backlog), `mastery.ts` (incl. `proficientTopics`: the one definition behind the map star and the topic badges),
   `streak.ts` (grace days; grace-free daily and weekly streaks for XP), `gamification.ts` (XP/levels; `attemptXpAwards` is the one fold that `replayXp` and the live award both read, `stagesBeforeEach` replays prior review stage), `badges.ts` (predicates + set-aware `badgeHint`),
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),

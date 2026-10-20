@@ -36,7 +36,7 @@ export function minutesEstimator(attempts: Attempt[], problems: CatalogProblem[]
     const role: ItemRole = seen.has(attempt.problemId) ? 'review' : 'new';
     seen.add(attempt.problemId);
     const difficulty = difficultyById.get(attempt.problemId);
-    if (!difficulty || attempt.durationMinutes === null) continue;
+    if (!difficulty || attempt.durationMinutes === null || attempt.lightReview) continue;
     const key = `${role}|${difficulty}`;
     samples.set(key, [...(samples.get(key) ?? []), attempt.durationMinutes]);
   }

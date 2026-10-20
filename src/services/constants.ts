@@ -26,6 +26,13 @@ export const LATE_RECALL_GAP_RATIO = 2;
 export const LATE_RECALL_STAGE_JUMP = 2;
 export const CONFIDENT_FIRST_SOLVE_STAGE = 2;
 
+// Light review ("I recalled the approach", ~5 min instead of a full re-solve),
+// offered for a due review at stage >= LIGHT_REVIEW_MIN_STAGE. It advances like
+// a strong solve (the T13 simulation showed a cap below 'mastered' made mastery
+// and the backlog worse). A failed recall is not logged as a light review; the
+// user re-solves and logs a normal attempt.
+export const LIGHT_REVIEW_MIN_STAGE = 3;
+
 // Streak grace: a returning user does not lose the streak on the first missed
 // day. One grace day is granted per rolling 7 active days.
 export const STREAK_GRACE_PER_WEEK = 1;

@@ -315,3 +315,15 @@ describe('the v5 re-replay never lowers XP', () => {
     expect(xpAfterReplay(0, history)).toBe(replayed);
   });
 });
+
+describe('light review replay', () => {
+  it('replays a flagged recall exactly like a strong solve, so XP and stages stay reconstructible', () => {
+    const row = (id: string, attemptedOn: string, extra: Partial<Attempt> = {}): Attempt => attempt({ id, attemptedOn, createdAt: `${attemptedOn}T12:00:00.000Z`, ...extra });
+    const base = [row('a', '2026-08-01'), row('b', '2026-08-04'), row('c', '2026-08-11')];
+    const full = [...base, row('e', '2026-08-25'), row('f', '2026-09-24')];
+    const light = [...base, row('e', '2026-08-25', { lightReview: true }), row('f', '2026-09-24', { lightReview: true })];
+    expect(stagesBeforeEach(light).get('f')?.reviewStage).toBe(4);
+    expect([...stagesBeforeEach(light)]).toEqual([...stagesBeforeEach(full)]);
+    expect([...attemptXpAwards(light)]).toEqual([...attemptXpAwards(full)]);
+  });
+});

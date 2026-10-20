@@ -75,3 +75,11 @@ describe('fit plan to budget', () => {
     }
   });
 });
+
+describe('light reviews and calibration', () => {
+  it('ignores light-review durations, so a 5-minute recall does not shrink the full-solve estimate', () => {
+    const p = [problem('a', 'medium')];
+    const logged = [attempt('a', '2026-07-01', 30), ...[2, 3, 4].map((day) => ({ ...attempt('a', `2026-07-0${day}`, 5), lightReview: true }))];
+    expect(minutesEstimator(logged, p, '2026-07-20')('review', 'medium')).toBe(SESSION_DEFAULT_MINUTES.review.medium);
+  });
+});

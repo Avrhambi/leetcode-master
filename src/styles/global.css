@@ -327,3 +327,6 @@ input:invalid, select:invalid, textarea:invalid { border-color: var(--color-erro
 .solve-links { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 a.solve-button { display: inline-flex; align-items: center; min-height: 2.5rem; padding: var(--space-2xs) var(--space-md); color: var(--color-ink); background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-none); text-decoration: none; font-weight: 600; }
 a.solve-button:hover { color: var(--color-accent); border-color: var(--color-accent); }
+
+.light-review { display: grid; gap: var(--space-2xs); }
+.light-review .field-hint { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); }

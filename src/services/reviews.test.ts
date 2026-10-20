@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { localDate, progressAfterAttempt, qualityFor, reviewDate } from './reviews';
+import { lightReviewEligible, localDate, progressAfterAttempt, qualityFor, reviewDate } from './reviews';
 import type { ProblemProgress, Quality } from '../types/models';
 
 const progress = (changes: Partial<ProblemProgress> = {}): ProblemProgress => ({
@@ -146,5 +146,18 @@ describe('review progress', () => {
       const afterWeak = progress({ reviewStage: 0, lastAttemptDate: '2026-07-18', nextReviewDate: '2026-07-19', lastQuality: 'weak', consecutiveWeak: 1 });
       expect(progressAfterAttempt(afterWeak, 'strong', '2026-07-19', 'now', false, today, 'easy').reviewStage).toBe(1);
     });
+  });
+});
+
+describe('light review (recalled the approach)', () => {
+  const due = (stage: ProblemProgress['reviewStage']) => progress({ status: 'solved', reviewStage: stage, lastQuality: 'strong', lastAttemptDate: '2026-07-01', nextReviewDate: '2026-07-19' });
+
+  it('is offered only for a due review at stage 3 or 4', () => {
+    expect(lightReviewEligible(due(3), '2026-07-19')).toBe(true);
+    expect(lightReviewEligible(due(4), '2026-07-19')).toBe(true);
+    expect(lightReviewEligible(due(2), '2026-07-19')).toBe(false);
+    expect(lightReviewEligible(due(5), '2026-07-19')).toBe(false);
+    expect(lightReviewEligible({ ...due(3), nextReviewDate: '2026-07-20' }, '2026-07-19')).toBe(false);
+    expect(lightReviewEligible(undefined, '2026-07-19')).toBe(false);
   });
 });

@@ -34,7 +34,7 @@ function isProgress(value: unknown): value is ProblemProgress {
 }
 
 function isAttempt(value: unknown): value is Attempt {
-  return isRecord(value) && isString(value.id) && isString(value.problemId) && isString(value.attemptedOn) && isOneOf(value.outcome, outcomes) && isOneOf(value.perceivedDifficulty, perceivedDifficulties) && (value.helpType === null || isOneOf(value.helpType, helpTypes)) && (value.durationMinutes === null || (isInteger(value.durationMinutes) && value.durationMinutes >= 1 && value.durationMinutes <= 600)) && isString(value.notes) && isOneOf(value.quality, qualities) && isString(value.createdAt);
+  return isRecord(value) && isString(value.id) && isString(value.problemId) && isString(value.attemptedOn) && isOneOf(value.outcome, outcomes) && isOneOf(value.perceivedDifficulty, perceivedDifficulties) && (value.helpType === null || isOneOf(value.helpType, helpTypes)) && (value.durationMinutes === null || (isInteger(value.durationMinutes) && value.durationMinutes >= 1 && value.durationMinutes <= 600)) && isString(value.notes) && isOneOf(value.quality, qualities) && isString(value.createdAt) && (value.lightReview === undefined || typeof value.lightReview === 'boolean');
 }
 
 function isRecommendationEvent(value: unknown): value is RecommendationEvent {

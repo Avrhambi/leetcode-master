@@ -3,7 +3,7 @@ import { dueReviewQueue, selectDailyPlan, selectExtraProblem, type DailyPlanItem
 import { cadenceFor } from './cadence';
 import { REVIEW_OVERLOAD_DUE } from './constants';
 import { coreRank } from './coreRank';
-import { progressAfterAttempt, localDate } from './reviews';
+import { lightReviewEligible, progressAfterAttempt, localDate } from './reviews';
 import { catalog } from '../data/catalog';
 import { TOPIC_TIERS } from '../data/topicTiers';
 import { problemsInSet } from './problemSet';
@@ -500,5 +500,75 @@ describe('time budget keeps the backlog bounded over a year', () => {
       }
     }
     console.log(`BUDGET REPORT\n${rows.join('\n')}`);
+  });
+});
+
+describe('T13 light review gate (recall-decay model, 52 weeks)', () => {
+  // The chance the learner recalls the approach of a due review, by the stage it
+  // sits at. Each roll is a fixed function of (problem, attempt number), so the
+  // two runs below face the same forgetting; only the review format differs.
+  const RECALL_PERCENT = [55, 65, 75, 82, 88];
+  const rollFor = (problemId: string, attemptNumber: number) => {
+    let hash = 11;
+    for (const char of `${problemId}|${attemptNumber}`) hash = (hash * 37 + char.charCodeAt(0)) % 10007;
+    return hash % 100;
+  };
+  const LIGHT_MINUTES = 5;
+
+  function runRecallModel(light: boolean, active: (day: number) => boolean, days = 364) {
+    const problems = problemsInSet(catalog, 'nc250');
+    const progress = new Map<string, ProblemProgress>();
+    const events: RecommendationEvent[] = [];
+    const attempts: Attempt[] = [];
+    const counts = new Map<string, number>();
+    const full = minutesEstimator([], catalog, '2026-01-01');
+    const backlog: number[] = [];
+    let minutes = 0;
+    let lightCount = 0;
+    for (let day = 0; day < days; day += 1) {
+      const now = new Date(2026, 6, 1 + day, 12);
+      backlog.push(dueReviewQueue(problems, [...progress.values()], now).length);
+      if (!active(day)) continue;
+      const plan = selectDailyPlan({ problems, progress: [...progress.values()], recommendationEvents: events, attempts, now });
+      for (const item of plan) {
+        const id = item.problem.id;
+        const existing = progress.get(id);
+        const attemptNumber = counts.get(id) ?? 0;
+        counts.set(id, attemptNumber + 1);
+        let quality: Quality;
+        if (item.kind === 'new') quality = typicalQuality(item.problem, day);
+        else quality = rollFor(id, attemptNumber) < RECALL_PERCENT[existing?.reviewStage ?? 0] ? 'strong' : 'weak';
+        const useLight = light && item.kind === 'review' && quality === 'strong' && lightReviewEligible(existing, localDate(0, now));
+        minutes += useLight ? LIGHT_MINUTES : full(item.kind, item.problem.difficulty);
+        if (useLight) lightCount += 1;
+        events.push({ id: `${id}-${day}`, problemId: id, kind: item.kind, recommendedAt: now.toISOString(), skippedUntil: null });
+        attempts.push({ ...attemptRow(item.problem, quality, now, day), ...(useLight ? { lightReview: true } : {}) });
+        const next = progressAfterAttempt(existing, quality, localDate(0, now), now.toISOString(), false, now, perceivedFor(item.problem, quality));
+        progress.set(id, { ...next, problemId: id });
+      }
+    }
+    const rows = [...progress.values()];
+    return {
+      backlogMax: Math.max(...backlog),
+      mastered: rows.filter((row) => row.status === 'mastered').length,
+      solved: rows.filter((row) => row.status === 'solved' || row.status === 'mastered').length,
+      attemptsPerMastered: attempts.length / Math.max(1, rows.filter((row) => row.status === 'mastered').length),
+      minutes, lightCount
+    };
+  }
+
+  it('light reviews at stage 3 do not worsen mastery or the due backlog, and they save minutes', { timeout: 120000 }, () => {
+    const report: string[] = [];
+    for (const name of ['daily', 'fourDaysAWeek', 'twoDaysAWeek']) {
+      const baseline = runRecallModel(false, CADENCES[name]);
+      const withLight = runRecallModel(true, CADENCES[name]);
+      report.push(`${name}: baseline ${JSON.stringify(baseline)}\n${' '.repeat(name.length)}  light    ${JSON.stringify(withLight)}`);
+      expect(withLight.backlogMax, name).toBeLessThanOrEqual(baseline.backlogMax);
+      expect(withLight.mastered, name).toBeGreaterThanOrEqual(baseline.mastered);
+      expect(withLight.attemptsPerMastered, name).toBeLessThanOrEqual(baseline.attemptsPerMastered);
+      expect(withLight.lightCount, name).toBeGreaterThan(0);
+      expect(withLight.minutes, name).toBeLessThan(baseline.minutes);
+    }
+    console.log(`LIGHT REVIEW REPORT\n${report.join('\n')}`);
   });
 });
