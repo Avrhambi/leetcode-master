@@ -107,3 +107,21 @@ describe('strugglingProblems', () => {
     expect(strugglingProblems(rows).map((p) => p.problemId)).toEqual(['c', 'a']);
   });
 });
+
+describe('pattern-covered reviews in proficiency and the map (T22)', () => {
+  const core = problems.map((problem) => ({ ...problem, lists: ['nc75', 'nc150', 'nc250'] as CatalogProblem['lists'] }));
+  // A: an Easy at stage 1, due since the 13th. B: a Medium solved after it, stage 3, fresh until the 30th.
+  const rows = [
+    progress({ problemId: 'a', status: 'solved', reviewStage: 1, lastQuality: 'strong', lastAttemptDate: '2026-07-10', nextReviewDate: '2026-07-13' }),
+    progress({ problemId: 'b', status: 'solved', reviewStage: 3, lastQuality: 'strong', lastAttemptDate: '2026-07-16', nextReviewDate: '2026-07-30' })
+  ];
+
+  it('counts a covered review at its anchor\'s stage when the day is given, and as stored without it', () => {
+    expect(proficientTopics(core, rows, 'nc75', '2026-07-19').has('Arrays')).toBe(true);
+    expect(proficientTopics(core, rows, 'nc75').has('Arrays')).toBe(false);
+    const withDay = masteryByTopic(core, rows, 'nc75', '2026-07-19').find((cell) => cell.topic === 'Arrays')!;
+    const without = masteryByTopic(core, rows, 'nc75').find((cell) => cell.topic === 'Arrays')!;
+    expect(withDay.mastery).toBeGreaterThan(without.mastery);
+    expect(withDay.proficient).toBe(true);
+  });
+});

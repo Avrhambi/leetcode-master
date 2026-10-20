@@ -2,6 +2,7 @@ import type { Attempt, CatalogProblem, ProblemList, ProblemProgress, Quality } f
 import { PROFICIENT_STAGE } from './constants';
 import { coreRank } from './coreRank';
 import { topicMastery } from './dailyPlan';
+import { effectiveStages } from './patternReview';
 
 // "Is the practice actually helping?" signals, derived entirely from the recorded
 // attempts and progress — no extra stored state.
@@ -50,11 +51,21 @@ function coreCap(set: ProblemList): 0 | 1 {
   return set === 'nc75' ? 0 : 1;
 }
 
+// Progress with each pattern-covered problem standing at its anchor's stage (T22,
+// see patternReview.ts). Without `today` the stored stages are used as they are.
+function withEffectiveStages(problems: CatalogProblem[], progress: ProblemProgress[], today?: string): ProblemProgress[] {
+  if (today === undefined) return progress;
+  const stages = effectiveStages(problems, progress, today);
+  return progress.map((row) => ({ ...row, reviewStage: stages.get(row.problemId) ?? row.reviewStage }));
+}
+
 // Topics where every core problem of the active set has reached
 // PROFICIENT_STAGE. One definition for the map star and the topic badges, so the
-// two can never disagree. A topic with no core problems never counts.
-export function proficientTopics(problems: CatalogProblem[], progress: ProblemProgress[], set: ProblemList): Set<string> {
-  const stageById = new Map(progress.map((row) => [row.problemId, row.reviewStage]));
+// two can never disagree. A topic with no core problems never counts. With
+// `today`, a due review covered by a fresher solve of the same pattern counts at
+// its anchor's stage (pattern-level reviews never re-solve it, T22).
+export function proficientTopics(problems: CatalogProblem[], progress: ProblemProgress[], set: ProblemList, today?: string): Set<string> {
+  const stageById = new Map(withEffectiveStages(problems, progress, today).map((row) => [row.problemId, row.reviewStage]));
   const cap = coreCap(set);
   const byTopic = new Map<string, CatalogProblem[]>();
   for (const problem of problems) {
@@ -73,9 +84,9 @@ export function proficientTopics(problems: CatalogProblem[], progress: ProblemPr
 // Per-topic mastery for the constellation visual — the display view (forPriority
 // false, so a struggling problem counts as its real low stage, not the 0.5 the
 // queue uses to relieve pressure). Ordered by the catalog's topic order.
-export function masteryByTopic(problems: CatalogProblem[], progress: ProblemProgress[], set: ProblemList = 'nc150'): TopicMasteryCell[] {
-  const progressByProblem = new Map(progress.map((row) => [row.problemId, row]));
-  const proficient = proficientTopics(problems, progress, set);
+export function masteryByTopic(problems: CatalogProblem[], progress: ProblemProgress[], set: ProblemList = 'nc150', today?: string): TopicMasteryCell[] {
+  const progressByProblem = new Map(withEffectiveStages(problems, progress, today).map((row) => [row.problemId, row]));
+  const proficient = proficientTopics(problems, progress, set, today);
   const topics: string[] = [];
   for (const problem of problems) if (!topics.includes(problem.primaryTopic)) topics.push(problem.primaryTopic);
 

@@ -29,6 +29,8 @@ export interface BadgeInput {
   currentStreakDays: number;
   weeklyStreakWeeks?: number;
   level: number;
+  // The day the check runs: lets topic proficiency count pattern-covered reviews (T22).
+  today?: string;
 }
 
 // True when the attempt dates contain a break of CADENCE_RETURNING_GAP_DAYS or
@@ -71,7 +73,7 @@ export function badgesEarned(input: BadgeInput): BadgeId[] {
   const retained = progress.filter((row) => row.reviewStage >= BADGE_RETAINED_STAGE).length;
   const inSetIds = new Set(problems.map((problem) => problem.id));
   const attemptedInSet = new Set(attempts.map((attempt) => attempt.problemId).filter((id) => inSetIds.has(id))).size;
-  const proficient = proficientTopics(problems, progress, problemSet).size;
+  const proficient = proficientTopics(problems, progress, problemSet, input.today).size;
   const volume = volumeTargets(problems.length);
 
   const earned = new Set<BadgeId>();

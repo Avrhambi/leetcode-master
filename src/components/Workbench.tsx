@@ -235,7 +235,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         </div>
       : <div className={`workbench-map${panel ? ' has-panel' : ''}`}>
           <TopicMap
-            cells={masteryByTopic(problems, progress, problemSet)}
+            cells={masteryByTopic(problems, progress, problemSet, today)}
             strugglingTopics={strugglingTopics}
             selectedTopic={selectedTopic}
             onSelectTopic={toggleTopic}

@@ -57,7 +57,7 @@ export async function saveAttempt(input: AttemptInput): Promise<AttemptUndoSnaps
     const weeklyStreakWeeks = weeklyStreakEndingOn(activeDates, localDate(0, now));
     const level = levelForXp((await readGamification()).xp);
     const problemSet = parseProblemSet(settings.find((row) => row.key === 'problemSet')?.value);
-    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, problemSet, parseSkipEasies(settings.find((row) => row.key === 'skipEasies')?.value)), allProblems: problems, problemSet, currentStreakDays: streak, weeklyStreakWeeks, level }), now);
+    await recordBadges(badgesEarned({ progress, attempts, problems: problemsInSet(problems, problemSet, parseSkipEasies(settings.find((row) => row.key === 'skipEasies')?.value)), allProblems: problems, problemSet, currentStreakDays: streak, weeklyStreakWeeks, level, today: localDate(0, now) }), now);
     // Recording an attempt from either entry point (daily plan or catalog)
     // completes any matching open daily recommendation for this problem today.
     const openEvents = await db.recommendationEvents.where('problemId').equals(input.problemId).toArray();
