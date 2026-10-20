@@ -43,13 +43,14 @@ Do not add a dependency without asking first, and explain why existing code can'
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
   `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
   `reviewNotes.ts` (latest non-empty note per problem, shown before a review),
+  `importKnown.ts` ("mark problems you already know": a progress row only, stage 2, first review dealt evenly over 7-21 days; no Attempt rows, so no XP/streak/badges; undo = progress rows with no attempts),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
   is JSON export/restore with `formatVersion` validation (current 3; 1 and 2 still restore; restore is parse → confirm → replace, and keeps rows for ids outside the catalog); `seedCatalog.ts` seeds the
-  bundled catalog on first launch. `sessionBudget.ts` saves the time budget and stamps
+  bundled catalog on first launch. `importKnown.ts` writes the imported marks (and undoes them) in one transaction each. `sessionBudget.ts` saves the time budget and stamps
   `planResetAt` (the same-day replay ignores today's unlogged recommendations made before
   it). Never re-plan by deleting today's recommendation rows, because a render still holding the old
   plan re-persists it.
