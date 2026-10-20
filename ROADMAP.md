@@ -893,7 +893,6 @@ your task ID. Don't implement them.
 - (T20) A very large import (over ~180 marks) puts 12+ reviews on a day inside the 7-21 day window, which pauses new problems. A wider window for big imports, or a per-day cap, would avoid that.
 - (T18) Undoing a quick log on a review leaves any extra new-problem row the planner topped up while the review was logged (stored plan rows are never deleted), so the plan can keep one more item than before the log. Also the timer's start is not restored by Undo.
 - (T19) A logged review's line falls back to "Was due for today" because its old schedule and last quality are gone once it is logged. Showing the original overdue count would mean replaying the attempt sequence before today's attempt; only worth it if users miss it.
-- (T16) The Settings "Import prior history" button (`white-space: nowrap`) is wider than its card at 390 px, so the modal body scrolls sideways by about 47 px. Let `.settings article button` wrap.
 - (T16) The deadline hours leave out reviews already scheduled for problems the user has started, and count every review as a full re-solve (no light reviews). Both make the number lower or higher than reality; add them if users find the hours off.
 
 ## Session log

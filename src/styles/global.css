@@ -376,3 +376,6 @@ a.solve-button:hover { color: var(--color-accent); border-color: var(--color-acc
 @media (pointer: coarse), (max-width: 45rem) {
   .settings article .reminder-days button { min-height: 2.75rem; }
 }
+
+/* Long Settings button labels wrap instead of pushing the modal body wider than the phone screen. */
+.settings article button { white-space: normal; }
