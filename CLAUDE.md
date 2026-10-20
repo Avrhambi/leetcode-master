@@ -30,7 +30,11 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Key files
 
 - `src/services/` — pure, **deterministic, unit-tested** rules. No I/O. `reviews.ts`
-  (quality + review stage; `lightReviewEligible` and the `lightReview` attempt flag (a recalled review replays as a plain strong attempt, so XP stays reconstructible); late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection; with 12+ reviews due the plan is all reviews and new problems pause — the only thing that bounds the backlog), `mastery.ts` (incl. `proficientTopics`: the one definition behind the map star and the topic badges),
+  (quality + review stage; `lightReviewEligible` and the `lightReview` attempt flag (a recalled review replays as a plain strong attempt, so XP stays reconstructible); late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection; explore vs consolidate: the plan counts only *owed* reviews (see `patternReview.ts`), reviews take at most `maxReviewShare` of it, past the overload line (12 owed, scaled with the cap) one new problem stays as the exploration floor, only at twice the line is it all reviews (the hard brake that bounds the backlog), and under overload a one-item budget consolidates first unless new material has been starved for 3 active days),
+  `patternReview.ts` (pattern-level reviews, T22: a due strong/partial review is *covered* while a harder-or-equal problem of the same topic (a Medium for a Hard) was solved cleanly after it and is still inside its own interval (a mastered anchor for 60 days); one maintenance review per topic is owed, the hardest; a failed problem above the topic skill's target difficulty is *parked*; all derived from progress rows, stage rules and XP untouched),
+  `strategy.ts` (training strategy, T23, derived from the interview date and the time budget, never stored: horizon sprint ≤14 days / focused ≤60 / steady / open, plan cap one item per 15 budget minutes (2-8, 4 with no budget), review-share cap, UCB-style exploration weight for topic choice, taper in the last 3 days, mock cadence),
+  `readiness.ts` (interview readiness: the chance on an unseen Medium per topic from skill, tier-weighted; `readinessGain` is the deadline plan's one-step look-ahead),
+  `mockInterview.ts` (mock interviews, T24: unseen problems from distinct started topics at the interview level, one clock, report → attempt fields through `qualityFor`, history and the "mock due" nudge; results are ordinary attempts with an optional `mock` field, weighted `SKILL_MOCK_WEIGHT` in `skill.ts`), `mastery.ts` (incl. `proficientTopics`: the one definition behind the map star and the topic badges),
   `streak.ts` (grace days; grace-free daily and weekly streaks for XP; `activeDaysThisWeek` and `parseWeeklyGoal` — the weekly practice-days goal is a display-only setting, `weeklyGoalDays`, and never touches the streak, plan or XP),
   `forecast.ts` (finish forecast: remaining problems ÷ the user's new problems per practised week over the last 28 days; null under 5 new problems, so no number is shown on thin history), `gamification.ts` (XP/levels; `attemptXpAwards` is the one fold that `replayXp` and the live award both read, `stagesBeforeEach` replays prior review stage), `badges.ts` (predicates + set-aware `badgeHint`),
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
@@ -40,7 +44,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `cadence.ts` (practice profile — new/returning/regular/occasional — derived from attempt dates, never stored; only days before today count so the day's plan shape is stable),
   `skill.ts` (per-topic skill replayed from `attempts`, never stored; sets the plan's difficulty target),
   `topicGraph.ts` (prerequisite edges: a soft priority penalty, never a lock),
-  `reinforcement.ts` (the one daily warm-up for a struggling problem; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
+  `reinforcement.ts` (the one daily warm-up for a struggling problem: an unsolved problem one level easier first, never a well-retained (stage 3+) one; `DailyPlanItem.reason` is in-memory only and recomputed on replay — never add it to `RecommendationEvent.kind`),
   `backupHealth.ts` (backup reminder rule, "last backup" wording, restore summary — pure),
   `attemptTimer.ts` (the built-in attempt timer's pure math: stale-start parsing and rounded 1-600 elapsed minutes; the start time lives in per-device `localStorage` behind `hooks/useAttemptTimer.ts`, never in Dexie or a backup),
   `sessionTime.ts` (per-item minute estimates, calibrated from durations logged *before today*, and `fitPlanToBudget`: new problem first, then top review, then spare due reviews fill leftover minutes, never past four items),
@@ -57,7 +61,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
   progress + recommendation completion + XP + badges in **one transaction**; `backup.ts`
   is JSON export/restore with `formatVersion` validation (current 3; 1 and 2 still restore; restore is parse → confirm → replace, and keeps rows for ids outside the catalog); `seedCatalog.ts` seeds the
-  bundled catalog on first launch. `importKnown.ts` writes the imported marks (and undoes them) in one transaction each. `goals.ts` saves the interview date (with the set that fits it, in one transaction) and the skip-Easies flag as plain `settings` rows. `sessionBudget.ts` saves the time budget and stamps
+  bundled catalog on first launch. `mockInterview.ts` keeps the running mock in the `activeMock` setting and saves a finished mock (one `saveAttempt` per problem plus clearing `activeMock`) in one transaction. `importKnown.ts` writes the imported marks (and undoes them) in one transaction each. `goals.ts` saves the interview date (with the set that fits it, in one transaction) and the skip-Easies flag as plain `settings` rows. `sessionBudget.ts` saves the time budget and stamps
   `planResetAt` (the same-day replay ignores today's unlogged recommendations made before
   it). Never re-plan by deleting today's recommendation rows, because a render still holding the old
   plan re-persists it.
@@ -66,10 +70,11 @@ Do not add a dependency without asking first, and explain why existing code can'
   links only, **never problem text**). `topicTiers.ts` maps each topic to a curriculum
   tier. The `[INEFFECTIVE_DYNAMIC_IMPORT]` build warning for `catalog.ts` is known and benign.
 - `public/` + `src/pwa.ts` — manifest, icons and hand-written `sw.js` (all paths relative to the registration scope); the worker is registered only in production builds. `requestPersistentStorage` runs once at startup; Settings shows the result.
+- `src/test/learnerModel.ts` — the simulated learner (ability grows with practice, most from new variants; fades without it) behind `trainingOutcome.test.ts`. Test-only; a model, not data.
 - `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers); `useAttemptTimer.ts` (the one place the attempt timer reads the clock and `localStorage`).
 - `src/components/` — one file per screen/panel. Plain React, no state library beyond
-  Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings and the
-  daily challenge both use it) — don't write a second one.
+  Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings, the
+  daily challenge and the mock interview use it) — don't write a second one.
 - `src/styles/` — `../../tokens.css` (oklch dark "phosphor green" design tokens),
   `global.css`, `gamification.css` (`@import`ed from `global.css`). Plain CSS.
 
@@ -113,6 +118,7 @@ Do not add a dependency without asking first, and explain why existing code can'
 ## Conventions
 
 - IDs: `crypto.randomUUID()`. Dates: `YYYY-MM-DD` local-time string keys.
+- Mock results are attempts: never add a second store or a second quality rule for them; the `mock` field only records what the mock was.
 - IndexedDB only (the one per-device exception: the attempt timer's start time in `localStorage`, always in try/catch) — no server, auth, external API, telemetry, AI model, scraping, or
   browser extension.
 - External problem links: new tab, `rel="noreferrer"`.

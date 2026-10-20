@@ -45,13 +45,36 @@ effort, and no feedback loop to correct course.
 
 This wraps the NeetCode 75 / 150 / 250 in a coaching loop that reacts to your results.
 
-**A daily plan, not a list.** Each day you get two to four problems: at least one
-new one, plus reviews that are actually due. New problems are chosen by a
-priority score per topic — how foundational the topic is, how far along you are
-in it, and how recently you last touched it — so you get breadth early and depth
-where you need it, not a fixed march down the list. If reviews pile up (12 or
-more due), new problems pause and the plan is all reviews until you are caught
-up, so you never build review debt faster than you can pay it.
+**A daily plan, not a list.** Each day you get a short plan: two to four problems,
+or as many as your daily time budget fits (30 to 120 minutes, up to eight
+problems). It mixes new problems (exploring: a new variant of a pattern is what
+prepares you for an unseen interview problem) with the reviews you actually owe
+(consolidating), and neither is allowed to crash the other. Reviews take at most
+a share of the plan, at least one new problem stays even when reviews pile up,
+and only at twice the overload line is a day all reviews. New problems are chosen
+by a priority score per topic — how foundational the topic is, how far along you
+are in it, and how recently you last touched it — not a fixed march down the list.
+
+**Patterns, not answers.** An interview asks a problem you have not seen, so the
+app keeps *patterns* fresh rather than making you re-solve every problem five
+times. A review is skipped (marked optional, still in the queue) while you have
+solved a harder problem of the same topic since; each topic owes one review at a
+time, its hardest; and a failed problem above your current level waits until
+easier problems in the topic have brought you up to it.
+
+**Built around your interview date.** Set a date and the plan changes strategy:
+a *sprint* (two weeks or less) touches every pattern and keeps reviews for real
+gaps; a *focused* or *steady* run spends new problems where one more raises your
+odds most, with a bonus for topics you have barely practised (explore vs
+exploit). In the last three days there are no new Hards: close gaps and run mock
+interviews. **Interview readiness** — your estimated chance on an unseen Medium
+in each topic — is shown on the main screen.
+
+**Mock interviews.** Pick one to three problems you have not seen, at your level,
+under one clock. Afterwards report each one: all tests passed, some passed (and
+how many), or not working, and whether you used a hint. The results are saved as
+ordinary attempts, count more toward your readiness than practice does, and
+anything you missed comes back as a review.
 
 **Every attempt steers the next one.** You record how a problem went — solved it
 cleanly, needed a hint, watched the solution, couldn't do it — and that outcome
@@ -59,9 +82,10 @@ feeds back in. A weak result pulls the topic back up the priority list and
 schedules a near-term review; a strong result lets the topic fade and pushes the
 next review further out.
 
-**Spaced repetition for retention.** Solved problems come back on an expanding
-schedule (3 days → 1 week → 2 weeks → 1 month → mastered), so a topic you learned
-three weeks ago resurfaces before you've lost it, not after.
+**Spaced repetition for retention.** Problems come back on an expanding schedule
+(3 days → 1 week → 2 weeks → 1 month → mastered), so a topic you learned three
+weeks ago resurfaces before you've lost it, not after; with pattern reviews, one
+problem per topic carries that schedule for the rest.
 
 **Blind-spot handling.** After a few failed attempts a problem is flagged as
 *struggling*: its reviews back off to a 2/4/7-day ladder instead of hitting you
@@ -95,6 +119,10 @@ for problems outside the chosen list keep coming due.
 - **Returning after a gap**: a gentle re-entry plan instead of a wall of overdue
   reviews. No XP or badge is ever lost.
 - **New**: easy wins in foundation topics first, guided by a prerequisite graph.
+- **Job hunting on a deadline**: an interview date, a daily time budget and mock
+  interviews turn the plan into a training plan for the time you have.
+- **Experienced**: "skip Easies" and "mark problems you already know" start you
+  where you are.
 
 Your profile and per-topic skill are derived from your attempt history, never
 stored, so they cannot drift.
@@ -107,7 +135,7 @@ tested; Dexie calls are direct.
 ```mermaid
 flowchart LR
   UI[React components] --> Hooks[useLiveQuery hooks]
-  Hooks --> Services[Pure services<br/>reviews, dailyPlan, mastery, skill, gamification]
+  Hooks --> Services[Pure services<br/>reviews, dailyPlan, patternReview, strategy, mockInterview, skill, gamification]
   UI --> DB[src/db: direct Dexie calls]
   Hooks --> DB
   DB --> IDB[(IndexedDB)]

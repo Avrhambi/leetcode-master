@@ -56,6 +56,9 @@ up from there.
 | T19 | "Why this problem today?" line on each plan item | T12 | T17, T20, T21 | Done |
 | T20 | Import prior history: mark problems you already know | T2 | T17, T19, T21 | Done |
 | T21 | Calendar reminder: download a recurring .ics event | — | anything | Done |
+| T22 | Pattern-level reviews: keep patterns fresh, not answers | T11, T13 | — | Done |
+| T23 | Training strategy: deadline- and budget-aware plan, explore vs consolidate, interview readiness | T22, T16 | — | Done |
+| T24 | Mock interviews: timed sets of unseen problems, reported results feed the plan | T23 | — | Done |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
@@ -79,6 +82,16 @@ session is free.
   estimates never calibrate to the user.
 - **`DailyPlan.tsx`:** T15, T18 and T19 all edit it, so they run one after
   another, never in parallel.
+
+**Fourth wave (T22–T24), from the owner's review of 2026-10-20.** "Even a year is
+not enough to master the 150, and there is a 250": the per-problem ladder (about
+five re-solves of every problem) made reviews ~88% of plan items, and the 12-due
+overload rule paused new problems for most of a year. The target user is job
+hunting on a deadline of weeks to a few months, so the plan must be a focused
+training plan for the time they have, for every kind of user, with "a good mix of
+newness and repetition without a crash" (explore vs exploit, reduced to this use
+case), plus a timed mock interview whose results feed the engine. T22, T23 and
+T24 change plan selection, so they ran one after another in one session.
 
 ## Decisions already made (don't relitigate)
 
@@ -161,8 +174,10 @@ target records why in its log entry. It never loosens a target silently.
 | A succeeding learner is offered a Hard in a topic after at most **3 strong Medium** solves in that topic. | T3 |
 | Once Medium is unlocked, a succeeding learner's new problems in that topic are Medium or harder. Easies only come back as warm-ups (T5). | T3 |
 | A struggling learner's ceiling drops back again, and they're never pushed into a Hard while failing Mediums. | T3 |
-| Every persona gets ≥ 1 new problem per active day unless 12+ reviews are due (then the plan is all reviews), and the plan never exceeds 4 items. | T4 |
-| A typical learner's due backlog stays ≤ 30 over 52 simulated weeks at every cadence. | T4 (review overload) |
+| Every persona gets ≥ 1 new problem per active day unless 24+ owed reviews are due (the hard brake; then the plan is all reviews), and the automatic plan never exceeds 4 items without a time budget. Was "unless 12+ reviews are due"; T23 changed it, see its log entry. | T4, T23 |
+| A typical learner's owed backlog (due reviews not covered by a fresher solve of the pattern and not parked above their level) stays ≤ 30 over 52 simulated weeks at every cadence. Was measured over every due row before T22. | T4 (review overload), T22 |
+| No learner type (beginner, typical, experienced) at any cadence or budget goes 7 active days without a new problem while the set has unstarted problems, and reviews stay under 80% of plan items. | T23 |
+| Under the learner model (`src/test/learnerModel.ts`), the typical learner on the NeetCode 150 reaches 60% interview readiness sooner than the per-problem engine did: before day 73 at 120 min daily, day 81 with no budget daily, day 158 at four days a week, day 353 at two days a week and 120 min. | T22, T23 |
 | A strong-every-time learner masters a problem in **≤ 5 attempts** at every cadence. A learner who's late on reviews but still recalls strongly needs *fewer* attempts than on time, never more. The simulation records the mean attempts-to-mastery per persona before and after T11. | T11 |
 | The same problem is never in the plan on two active days in a row unless its last attempt was weak. A weak problem returns at most 3 sessions in a row before backing off. | T11 |
 | The 2-days-a-week persona's due backlog stays bounded over 12 simulated weeks. The session records the measured bound in the test. | T11 |
@@ -198,6 +213,9 @@ To keep two sessions from editing the same logic:
 | New `services/planReason.ts` + the reason line in `DailyPlan.tsx` | T19 |
 | Import screen + new `services/importKnown.ts`, `db/importKnown.ts` | T20 |
 | New `services/calendar.ts` + the reminder control in `Settings.tsx` | T21 |
+| New `services/patternReview.ts`; the owed/optional review queue in `SidePanel.tsx` | T22 |
+| New `services/strategy.ts`, `services/readiness.ts`; plan slots, topic priority and the strategy line | T23 |
+| New `services/mockInterview.ts`, `db/mockInterview.ts`, `components/MockInterview.tsx`; the `mock` attempt field and the `activeMock` setting | T24 |
 
 **Shared rule:** any task that adds a persisted `AppSettingKey` must also add it to
 `settingKeys` in `src/db/backup.ts` and to the `AppSettingKey` type. That's a
@@ -881,6 +899,31 @@ deletes it in their calendar and downloads a new one).
 endings `\r\n`, escaping) + a check that the file imports into a calendar app,
 done by the owner since the session can't.
 
+## T22. Pattern-level reviews
+
+Done; see the session log. **Why:** interviews ask unseen problems, so what must
+stay fresh is the pattern, not each answer. **Scope:** a due review is covered
+while a harder-or-equal problem of its topic was solved cleanly after it and is
+still in its interval; one maintenance review per topic is owed; a failed problem
+above the topic's level is parked; the plan, the overload count, the "for review"
+count and the wrap-up count owed reviews only; the queue lists the rest as
+optional with the reason. Derived from progress rows: no schema change, stage
+rules, XP and badges untouched.
+
+## T23. Training strategy
+
+Done; see the session log. **Scope:** a strategy derived from the interview date
+and the time budget (sprint / focused / steady / open), plan size from the budget,
+explore vs consolidate (review share cap, exploration floor, hard brake,
+starvation guard, UCB-style topic exploration under a date), taper before the
+date, interview readiness on the main screen, deadline hours on the pattern model.
+
+## T24. Mock interviews
+
+Done; see the session log. **Scope:** pick 1–3 unseen problems, one clock, report
+each (tests passed of total, hint), saved as attempts that feed skill (weighted),
+reviews and readiness; a nudge when a mock is due by the strategy.
+
 ## Parking lot
 
 Ideas noticed during sessions that aren't in any task. Add one line each, with
@@ -894,6 +937,11 @@ your task ID. Don't implement them.
 - (T15) The wrap-up needs every stored item logged, so when the same-day rule tops up another new problem right after the last item is logged, the summary waits for that one too (and "Items done" counts it).
 - (T19) A logged review's line falls back to "Was due for today" because its old schedule and last quality are gone once it is logged. Showing the original overdue count would mean replaying the attempt sequence before today's attempt; only worth it if users miss it.
 - (T16) The deadline hours leave out reviews already scheduled for problems the user has started, and count every review as a full re-solve (no light reviews). Both make the number lower or higher than reality; add them if users find the hours off.
+- (T22) Pattern coverage leaves the stored `reviewStage` of covered problems where it was, so "mastered", `retained-*` and "all mastered" still count per-problem stages; the map ring, the proficiency star and the topic badges count covered reviews at their anchor's stage (`effectiveStages`). If owners want "mastered" to mean pattern mastery, it needs its own definition, not a rewrite of stored rows.
+- (T23) The learner model is an assumption (new variants teach more than re-solves, forgetting with a spacing effect). The engine comparisons are only as good as it; a real-user check of readiness against mock results would calibrate it.
+- (T23) The finish forecast (T14) still counts new problems per week; with a deadline the readiness line is the better measure. Consider hiding the forecast while a date is set.
+- (T24) A mock's minutes are not logged as `durationMinutes` (per-problem time is unknown), so mocks do not calibrate the T12 estimates. Per-problem lap times would fix that.
+- (T24) Undo is not offered for a saved mock (the quick log's Undo is per attempt). A mistaken report is corrected with a normal attempt.
 - (T20, closed) Forecast now counts imported marks as done, and `topicSkills` seeds one strong result per imported mark (`importedIds` in `importKnown.ts`), so an imported topic no longer restarts at Easy. Backup validation now drops setting keys it does not know instead of rejecting the file (an older build still rejects a newer file; `formatVersion` stays 3).
 
 ## Session log
@@ -1099,3 +1147,24 @@ Each session fills in its own entry in its PR.
 - Tests: `dayWrapUp.test.ts` (17): null until every item is logged or with no plan; items, minutes, untimed wording; other days ignored; a catalog log counted; XP equal to the `attemptXpAwards`/`replayXp` entries (including a retention-bonus day and a same-day repeat pass); recompute after an undo; next review (earliest after today, skips due and null, ignores ids outside the catalog, none); reviews still due; the date wording.
 - QA (production build via `vite preview`, Chromium via Playwright, throwaway script outside the repo, 1280 x 800 and 390 x 844 with touch, history seeded through the app's restore, 3 plan items): logged all items once with the quick buttons (one with a 7.4-minute stored timer) and once through the full form ("Give feedback", typed minutes); the block never showed while an item was open; items, minutes, "N of M timed" and the next review matched the IndexedDB attempt and progress rows; the XP shown (+41 quick, +50 form) equalled the change in the gamification row. After the last quick log the Undo button was on screen, not covered, and clickable with the block showing; Undo removed the block and put XP back to its pre-log value; re-logging and waiting out the 10 s left the block up and Undo gone. "One more problem" added an item and hid the block; logging it brought the block back with 4 items and updated minutes and XP (after the Undo and re-log the stored timer was gone, so it correctly read "No time logged" in the quick run). With a second review left due the block showed "1 more review is still due" and, by the existing rule, no extra button. The page never scrolled (document, body and horizontal overflow all 0) in either state; no console errors. Not checked: Safari, Firefox, a screen reader reading the block, reduced motion.
 - Follow-ups: none for T16, which does not touch this block.
+
+### T22
+- Status / PR / date: Done / branch `claude/leetcode-master-roadmap-znri4s`, merged to `master` at the owner's request / 2026-10-20
+- What shipped: `services/patternReview.ts` (`coveredReviews`, `effectiveStages`, `anchorFirst`, `isMaintenanceReview`, `isParked`) with tests. A due review whose last attempt was strong (or partial, then only by a solve on a later day) is covered while a harder-or-equal problem of the same topic (a Medium also covers a Hard; an Easy never covers a Medium) was solved cleanly after it and is still inside its own interval; a mastered anchor vouches for 60 days (`MASTERED_ANCHOR_FRESH_DAYS`). Failed and struggling problems are never covered. One maintenance review per topic is owed, the hardest; the topic's other strong reviews wait (they are re-covered when the anchor comes back strong). A failed problem harder than the topic skill's target difficulty is parked until skill reaches it. `dailyPlan.ts` plans from owed reviews only (`planDueCount`, `reviewQueueSections`); the "for review" count, the wrap-up's "still due" and "One more problem" use them; the review queue lists owed reviews and then "Optional" ones with the reason ("Covered: you solved X since, same pattern", "Above your level for now", "After this topic's owed review"). The map ring, the proficiency star and the topic badges count covered reviews at their anchor's stage (`proficientTopics(..., today)`). Warm-ups (T5) now prefer an unsolved problem one level easier and never serve a stage-3+ problem: a struggling Hard used to bring the same mastered Easy back for weeks.
+- Decisions & deviations: **Derived, not stored.** No stored row is rewritten, the stage rules are unchanged, so `replayXp` and the badges replay exactly as before; no Dexie version, no backup change. **Targets changed explicitly:** the backlog targets now measure the owed backlog (every due row includes covered ones by design); the "tier 1 only for two weeks" test became "≥ 90% tier 1, no tier 3" because a review slot freed on day 3 lets one Greedy Easy (tier 2, prerequisite met) in on day 4; overload unit fixtures use partial reviews, since twelve strong reviews of one topic are now one owed review.
+- Measured: see T23 (the two were tuned together under one learner model).
+
+### T23
+- Status / PR / date: Done / same branch and merge / 2026-10-20
+- What shipped: `services/strategy.ts` (horizon, plan cap from the budget: one item per 15 min, 2–8, four with no budget; review-share cap 0.5/0.5/0.6/0.75; exploration weight 0.5/0.35/0.2/0; sprint keeps maintenance reviews for spare minutes; taper in the last 3 days serves no new Hard; mock cadence 2/4/7/14 days) and `services/readiness.ts` (chance on an unseen Medium per topic from skill; `readinessGain`, a one-step look-ahead). Explore vs consolidate in `planSlots`: base mix by owed count, reviews capped at the share, past the overload line (12 owed, scaled with the cap) all reviews but one new problem (the exploration floor), all reviews only at twice the line (`REVIEW_HARD_BRAKE_FACTOR`, `reviewsUntilNewProblems` counts to that), under overload a one-item budget puts the top review first unless new material has been starved 3 active days (`activeDaysSinceNew`), and a warm-up takes the new slot instead of the only review in a two-item plan. With a budget, new problems fill the minutes reviews leave; spare reviews take at most the share. Under a date, topic choice is tier weight × (readiness gain + exploration bonus √(ln(1+N)/(1+n_topic))) instead of the set-diluted mastery. Budget options gain 90 and 120 min. UI: "Interview readiness N% · k of 18 topics ready" (per-topic numbers in the hover), the strategy line in the plan header. `goalPlan.ts` hours: one pattern ladder per topic plus a re-solve for 40% of first attempts (`GOAL_RETRY_SHARE`), instead of four re-solves per problem.
+- Measured (`trainingOutcome.test.ts`, learner model in `src/test/learnerModel.ts`, NeetCode 150, typical learner, days to 60 / 70 / 80% readiness; the old engine measured under the same model in a worktree of `master`): daily, 120 min 73/93/112 → 52/78/105; daily, no budget 81/102/163 → 67/106/121; daily, 60 min 119/169/209 → 102/183/206; 4 days a week, no budget 158/192/235 → 113/180/228; 4 days a week, 120 min 130/158/186 → 85/141/177; 2 days a week, 120 min 353/never/never → 239/331/never. Reviews 86–90% of items → 50–72%. Year-end readiness 97–98% at daily and 4-day cadences with no budget or 120 min (old 94–99%); at 4 days a week and 60 min it is 75% (old 77%), the one cell slightly below the old engine. Experienced learner, daily 120 min: 23/42/62. No learner/cadence/budget combination goes more than 3 active days without a new problem. With a date, readiness on the day is within 5 points of the no-date plan (14 days 27→28%, 45 days 56→59%, 90 days 74→70%). The existing persona suites still pass (backlog ≤ 30 owed at every cadence, budgets fit, plans ≤ 4 without a budget).
+- Decisions & deviations: **Breadth first lost.** A first version boosted untouched topics under a date; under the model it was worse (40% vs 58% at day 60 for a 60-day date) because a short runway spread thin leaves every topic shaky. The look-ahead gain plus a UCB-style bonus replaced it. **Never-review is worse too:** dropping reviews altogether gave 39% at day 60 against 56%, so consolidation stays in the mix; the cap keeps it from crowding out new material. **The model is an assumption** (documented in its file), and time per problem is the hard limit: at 60 min a day the plan fits ~1.5 new problems, so the gain there is smaller than at 120 min. **Tier test for T16** now asserts that tier 2 opens later with a date (day 41 vs 4) and the 30-day tier-1 share is not lower: a fast learner starts all 250 within 150 days, so 150-day shares converge for both runs.
+- QA: see T24.
+
+### T24
+- Status / PR / date: Done / same branch and merge / 2026-10-20
+- What shipped: `services/mockInterview.ts` (selection: distinct topics, started topics first, unseen problems first, nothing attempted in the last 14 days, difficulty at the topic's interview level, deterministic per day and seed; 15/25/40 min per Easy/Medium/Hard; report → attempt fields through `qualityFor`: all tests and no hint in time strong, over time / with a hint / at least half the tests partial, else weak; history; "mock due" after practice in 3+ topics and the strategy's interval), `db/mockInterview.ts` (`startMock` writes the `activeMock` setting; `finishMock` saves one `saveAttempt` per problem and clears it in one transaction), `components/MockInterview.tsx` (count 1–3, topics shown and titles revealed when the clock starts, "Different problems", countdown that survives a reload, NeetCode/LeetCode links, report form with optional test counts that decide the result, hint box, inline Retry on failure, past mocks). `Attempt.mock` (session id, tests passed/total, time limit, over time) is optional and unindexed: no Dexie version; backup validation accepts it and `activeMock` (`formatVersion` stays 3). Mock results move topic skill 1.5× (`SKILL_MOCK_WEIGHT`). The workbench has a "Mock interview" button (lit when one is due or running) and the plan header a nudge.
+- Measured: weekly mocks (2 problems) for the typical learner at 90 min a day: readiness day 60 58% → 63%, day 120 74% → 79%; every missed mock problem was among the owed reviews by the next active day.
+- QA (production build via `vite preview`, Chromium via Playwright, throwaway script outside the repo, 1280 × 800 and 390 × 844 with touch, IndexedDB seeded from a same-origin page that does not run the app): 72 checks, all passing. Readiness line and its per-topic hover; "2 for review" with a covered Easy, a parked Medium, a hint review and two strong Linked List reviews (one owed, one "after this topic's owed review"); the queue's reasons; the plan holds the owed hint review and none of the optional ones; a 120-min budget plans 5–8 items; the open-ended strategy line and, with a date 10 days out, "Sprint · 10 days left"; the mock nudge; mock setup (2 by default, 3 on request, time limit, reroll), the clock and revealed titles, `_blank` + `noreferrer` links, the running mock in `activeMock`, the same mock after a reload ("Mock running" in the header), invalid test counts blocking Save, a saved report writing two attempts with the `mock` field (7 of 10 + hint → partial with `small_hint`, not working → weak), progress rows with a next review, XP up, `activeMock` cleared, the history line "0 of 2 solved · 70% of tests"; the page never scrolls in any of these states; no console or page errors. Screenshots checked by eye at both widths. Not checked: Safari, Firefox, a real 40-minute wait (the clock was checked by reading it), a screen reader.
+- Follow-ups: the parking-lot lines marked T22–T24.
+
