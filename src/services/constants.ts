@@ -249,6 +249,13 @@ export const SESSION_CALIBRATION_WINDOW = 10;
 // The time budgets on offer ("I have 30 / 45 / 60 minutes"). No budget is the default.
 export const SESSION_BUDGET_OPTIONS = [30, 45, 60] as const;
 
+// Attempt timer (see attemptTimer.ts). The form accepts 1-600 minutes; a stored start
+// older than ATTEMPT_TIMER_STALE_HOURS is a forgotten timer, so it is dropped rather
+// than logged as a day-long attempt.
+export const ATTEMPT_DURATION_MIN_MINUTES = 1;
+export const ATTEMPT_DURATION_MAX_MINUTES = 600;
+export const ATTEMPT_TIMER_STALE_HOURS = 12;
+
 // Finish forecast: the user's pace is the new problems (first attempts) of the last
 // FORECAST_WINDOW_DAYS divided by the calendar weeks in that window with any practice.
 // Fewer than FORECAST_MIN_NEW_PROBLEMS in the window is too little to project from.
@@ -258,6 +265,11 @@ export const FORECAST_MIN_NEW_PROBLEMS = 5;
 // The "N days a week" goals on offer. The goal is a personal target shown beside the
 // weekly streak; the streak's own threshold (WEEKLY_STREAK_MIN_ACTIVE_DAYS) is unchanged.
 export const WEEKLY_GOAL_OPTIONS = [1, 2, 3, 4, 5, 6, 7] as const;
+
+// Calendar reminder (.ics download): a fixed event length when no time budget is set,
+// and the time of day offered before the user picks one.
+export const REMINDER_DEFAULT_MINUTES = 45;
+export const REMINDER_DEFAULT_TIME = '18:00';
 
 // Days without a backup before the side panel quietly suggests one. With no
 // backup on record the clock starts at the first attempt, so a new user is not

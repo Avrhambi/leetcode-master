@@ -243,6 +243,7 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 .settings article h3 { font-size: var(--text-xl); }
 .settings article p { margin: 0; color: var(--color-neutral); }
 .settings article button { width: fit-content; }
+.settings .reminder-time { max-width: 12rem; }
 
 /* The local-first note that used to be the page footer; on a single non-scrolling
    screen it lives where someone looking for data handling actually goes. */
@@ -330,6 +331,17 @@ input:invalid, select:invalid, textarea:invalid { border-color: var(--color-erro
 .solve-links { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
 a.solve-button { display: inline-flex; align-items: center; min-height: 2.5rem; padding: var(--space-2xs) var(--space-md); color: var(--color-ink); background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-none); text-decoration: none; font-weight: 600; }
 a.solve-button:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.solve-links button.solve-button { display: inline-flex; align-items: center; min-height: 2.5rem; padding: var(--space-2xs) var(--space-md); color: var(--color-ink); background: transparent; border: var(--rule-hair) dashed var(--color-rule-2); border-radius: var(--radius-none); font-weight: 600; cursor: pointer; }
+.solve-links button.solve-button:hover { color: var(--color-accent); border-color: var(--color-accent); }
+.timer-running { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); min-height: 2.5rem; font-weight: 600; color: var(--color-accent); font-variant-numeric: tabular-nums; }
+.timer-running button { min-height: 2.5rem; padding: var(--space-2xs) var(--space-sm); color: var(--color-ink-2); background: transparent; border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-none); cursor: pointer; }
+.timer-running button:hover { color: var(--color-accent); border-color: var(--color-accent); }
 
 .light-review { display: grid; gap: var(--space-2xs); }
 .light-review .field-hint { margin: 0; color: var(--color-ink-2); font-size: var(--text-sm); }
+.attempt-form label .field-hint { font-weight: 400; color: var(--color-ink-2); font-size: var(--text-xs); }
+
+/* Calendar reminder day toggles: 44px tall wherever a finger is the pointer or the screen is a phone. */
+@media (pointer: coarse), (max-width: 45rem) {
+  .settings article .reminder-days button { min-height: 2.75rem; }
+}
