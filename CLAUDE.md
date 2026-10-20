@@ -31,7 +31,8 @@ Do not add a dependency without asking first, and explain why existing code can'
 
 - `src/services/` — pure, **deterministic, unit-tested** rules. No I/O. `reviews.ts`
   (quality + review stage; `lightReviewEligible` and the `lightReview` attempt flag (a recalled review replays as a plain strong attempt, so XP stays reconstructible); late-recall credit, one-stage partial demotion and confident-first-solve rules depend only on the attempt sequence, so they can be replayed), `dailyPlan.ts` (adaptive plan selection; with 12+ reviews due the plan is all reviews and new problems pause — the only thing that bounds the backlog), `mastery.ts` (incl. `proficientTopics`: the one definition behind the map star and the topic badges),
-  `streak.ts` (grace days; grace-free daily and weekly streaks for XP), `gamification.ts` (XP/levels; `attemptXpAwards` is the one fold that `replayXp` and the live award both read, `stagesBeforeEach` replays prior review stage), `badges.ts` (predicates + set-aware `badgeHint`),
+  `streak.ts` (grace days; grace-free daily and weekly streaks for XP; `activeDaysThisWeek` and `parseWeeklyGoal` — the weekly practice-days goal is a display-only setting, `weeklyGoalDays`, and never touches the streak, plan or XP),
+  `forecast.ts` (finish forecast: remaining problems ÷ the user's new problems per practised week over the last 28 days; null under 5 new problems, so no number is shown on thin history), `gamification.ts` (XP/levels; `attemptXpAwards` is the one fold that `replayXp` and the live award both read, `stagesBeforeEach` replays prior review stage), `badges.ts` (predicates + set-aware `badgeHint`),
   `attemptForm.ts` (outcome→field rules), `constants.ts` (every threshold and curve),
   `topicPath.ts` (topic-map route geometry — pure, so placement is deterministic),
   `problemSet.ts` (75/150/250 scope: the one filter, `problemsInSet`; the review queue is fed the unfiltered catalog),
@@ -131,6 +132,5 @@ It does not build or run tests — do that yourself via `npm run verify` before 
 Planned work lives in `ROADMAP.md`: one task per session/PR, with a status board, an
 ownership map and a session log that each PR updates.
 
-Atomic PRs off `master`, one workstream each, never commit direct to `master`. Each PR
-passes `npm run verify`. Commit messages: `<module>: <what and why>`, one logical change
-per commit.
+One workstream per change; each passes `npm run verify`. Commit messages:
+`<module>: <what and why>`, one logical change per commit.

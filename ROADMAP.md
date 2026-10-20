@@ -48,7 +48,7 @@ up from there.
 | T10 | Open-source packaging: README, CONTRIBUTING, license, name | T1–T9 | — | Done |
 | T12 | Session time: plan estimate, time budget, "your note" before a review | T11 | T14, T15 | Done |
 | T13 | Light review: "recalled the approach" instead of a full re-solve | T12 | — | Done |
-| T14 | Finish forecast + weekly practice-days goal | T12 | T15 | Planned |
+| T14 | Finish forecast + weekly practice-days goal | T12 | T15 | Done |
 | T15 | End-of-session wrap-up screen | T12 | T14 | Planned |
 | T16 | Goal plans: interview deadline, "skip Easies" for experienced users | T12, T14 | — | Planned |
 | T17 | Built-in attempt timer (fills the duration automatically) | T12 | T19, T20, T21 | Planned |
@@ -710,6 +710,8 @@ the overload rule.
 
 ## T14. Finish forecast + weekly practice-days goal
 
+Done; see the session log. The original brief follows.
+
 **Scope:** (1) "At this pace you finish the NeetCode 75 in about N weeks",
 from the user's own new-problems-per-active-week rate (pure, in `services/`, no
 wall-clock reads). (2) An optional "N days a week" goal stored as a setting, with
@@ -1016,3 +1018,10 @@ Each session fills in its own entry in its PR.
 - Decisions & deviations: a first version capped a recall at stage 4 so only a full solve could master a problem, and offered it at stage 3 only. The same simulation showed that made things worse (mastered 81→72, backlog 21→23 daily; 48→39 and 20→29 at four days a week) and saved only ~3% of minutes, so the cap was dropped. The roadmap's fallback of stage ≥ 3 is what shipped. The model assumes a recall predicts a re-solve equally well, so it can't show whether real recall is weaker; that is untested. Light reviews earn full XP; no separate XP rule.
 - QA: production build in Chromium at 390 px. Seeded a due stage-3 problem; the button appeared, saved a flagged attempt, moved the problem to stage 4 with the next review in 30 days, and the button then disappeared. The page didn't scroll. Not checked at other widths, Safari or Firefox.
 - Follow-ups: T17 (timer) and T18 (quick log) could offer the light review inline on the plan; the form button is the only entry point today.
+
+### T14
+- Status / PR / date: Done / pushed to `master` at the owner's request / 2026-10-20
+- What shipped: `services/forecast.ts` (pure, `today` passed in): pace = problems first attempted in the last 28 days ÷ calendar weeks (Monday start) in that window with any attempt; weeks left = ceil(problems in the set with no attempt ÷ pace). The workbench stats show "At this pace you finish the NeetCode 150 in about N weeks.", with the arithmetic in the hover title, and "You have attempted every problem in the …" once the set is done. Weekly goal: optional `weeklyGoalDays` setting (1–7, Settings → "Weekly goal", Off by default), shown as "2 / 4 days this week" beside the weekly streak, with "goal met" once reached. `streak.ts` gained `activeDaysThisWeek` and `parseWeeklyGoal`; `weeklyStreakEndingOn` now shares the same week-counting helper, so there is still one weekly definition and the streak's 3-day threshold is unchanged. `weeklyGoalDays` was added to the backup's accepted setting keys (`formatVersion` stays 3; an older app rejects a backup containing it, as with T12's keys). No Dexie version.
+- Decisions & deviations: below 5 new problems in the window no forecast is shown at all (no placeholder), so a brand-new user sees nothing until there is a pace to project. The forecast counts weeks you practise, so skipped weeks add to it; the hover says so. The goal is display-only: it does not change the plan, XP or the weekly streak. Switching sets changes the forecast immediately (remaining is counted per set; pace counts all first attempts). At the owner's request the CLAUDE.md "atomic PRs, never commit direct to master" line was removed.
+- QA: `npm run verify` green (311 tests). Production build in Chromium at 1280 and 390 px with 12 seeded new problems over three weeks: forecast reads "about 36 weeks" (144 left ÷ 4 a week) and is hidden with no history; the goal buttons in Settings give "2 / 3 days this week", and Off removes it; no page overflow, no console errors. Not checked in Safari or Firefox.
+- Follow-ups: T16 can read `weeklyGoalDays` and the pace for its interview-deadline fit; T21 prefills its day count from the goal.
