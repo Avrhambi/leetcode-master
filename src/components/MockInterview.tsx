@@ -96,7 +96,7 @@ export function MockInterview({ problems, allProblems, progress, attempts, activ
       <p>Problems you have not seen, at your interview level, one clock for all of them. Open each on NeetCode or LeetCode, solve it, then report how it went: the results go into your plan like any attempt, and count more toward your readiness.</p>
       <div className="session-budget" role="group" aria-label="Number of problems">
         <span>Problems:</span>
-        {MOCK_PROBLEM_COUNTS.map((option) => <button type="button" key={option} aria-pressed={count === option} onClick={() => { setCount(option); setSeed(0); }}>{option}</button>)}
+        {MOCK_PROBLEM_COUNTS.map((option) => <button type="button" key={option} aria-pressed={count === option} onClick={() => { setCount(option); setSeed(0); }}>{option === 1 ? '1 problem · 30 min' : '2 problems · 60–90 min'}</button>)}
       </div>
       {proposal.length === 0
         ? <p>No problems are available for a mock right now.</p>
@@ -104,7 +104,7 @@ export function MockInterview({ problems, allProblems, progress, attempts, activ
             <ol className="mock-proposal">
               {proposal.map((problem) => <li key={problem.id}>{problem.primaryTopic} · {problem.difficulty}</li>)}
             </ol>
-            <p className="plan-time">Time limit: {mockMinutes(proposal)} min. Titles are revealed when the clock starts.</p>
+            <p className="plan-time">Time limit: {mockMinutes(proposal)} min{proposal.length === 2 && (mockMinutes(proposal) === 60 ? ' (two Easies)' : ' (a Medium or Hard takes longer)')}. Titles are revealed when the clock starts.</p>
             <div className="mock-actions">
               <button type="button" className="solve-button" disabled={busy} onClick={start}>Start the clock</button>
               <button type="button" disabled={busy} onClick={() => setSeed((value) => value + 1)}>Different problems</button>

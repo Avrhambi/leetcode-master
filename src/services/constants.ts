@@ -346,10 +346,11 @@ export const READY_TOPIC_CHANCE = 0.7;
 // deadline plan's look-ahead (see readinessGain).
 export const READINESS_LOOKAHEAD_SKILL = 0.1;
 
-// Mock interviews (see mockInterview.ts). Problems per mock and the minutes each
-// gets; a mock is suggested every MOCK_EVERY_DAYS[horizon] days.
-export const MOCK_PROBLEM_COUNTS = [1, 2, 3] as const;
-export const MOCK_MINUTES_PER_PROBLEM = { easy: 15, medium: 25, hard: 40 } as const;
+// Mock interviews (see mockInterview.ts). Problems per mock and the time limit:
+// one problem gets 30 min; two get 60 when both are Easy, else 90 (a Medium or
+// Hard takes longer). A mock is suggested every MOCK_EVERY_DAYS[horizon] days.
+export const MOCK_PROBLEM_COUNTS = [1, 2] as const;
+export const MOCK_MINUTES = { single: 30, pairEasy: 60, pair: 90 } as const;
 export const MOCK_EVERY_DAYS = { sprint: 2, focused: 4, steady: 7, open: 14 } as const;
 // A mock problem counts as solved (strong) when every test passed in time; with at
 // least MOCK_PARTIAL_PASS_RATIO of the tests passing it is partial, else weak.

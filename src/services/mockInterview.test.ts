@@ -69,9 +69,14 @@ describe('selectMockProblems', () => {
     expect(mockDifficulty(0.7)).toBe('hard');
   });
 
-  it('gives each problem its interview minutes', () => {
+  it('times one problem at 30 min, two Easies at 60 and any other pair at 90', () => {
     const [easy, medium, hard] = ['easy', 'medium', 'hard'].map((difficulty) => problems.find((problem) => problem.difficulty === difficulty)!);
-    expect(mockMinutes([easy, medium, hard])).toBe(15 + 25 + 40);
+    const otherEasy = problems.find((problem) => problem.difficulty === 'easy' && problem.id !== easy.id)!;
+    expect(mockMinutes([easy])).toBe(30);
+    expect(mockMinutes([hard])).toBe(30);
+    expect(mockMinutes([easy, otherEasy])).toBe(60);
+    expect(mockMinutes([easy, medium])).toBe(90);
+    expect(mockMinutes([medium, hard])).toBe(90);
   });
 });
 
