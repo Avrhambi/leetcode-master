@@ -18,6 +18,8 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false, ti
   const duration = typedDuration ?? (timerMinutes === null ? '' : String(timerMinutes));
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+  // In flight: a second click during the async save would write a second attempt (and XP award).
+  const [saving, setSaving] = useState(false);
 
   const helpTypeChoices = outcomeOptions[outcome].helpTypes;
   const difficultyChoices = difficultiesFor(outcome, helpType);
@@ -35,12 +37,14 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false, ti
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     setError('');
     const durationMinutes = duration === '' ? null : Number(duration);
     if (!attemptedOn || (helpTypeChoices && !helpType) || !Number.isInteger(durationMinutes ?? 1) || (durationMinutes !== null && (durationMinutes < ATTEMPT_DURATION_MIN_MINUTES || durationMinutes > ATTEMPT_DURATION_MAX_MINUTES))) {
       setError('Please complete all required fields with a duration from 1 to 600 minutes.');
       return;
     }
+    setSaving(true);
     try {
       await saveAttempt({
         problemId,
@@ -54,18 +58,24 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false, ti
       onSaved();
     } catch {
       setError('The attempt could not be saved. Retry.');
+    } finally {
+      setSaving(false);
     }
   }
 
   // "I recalled the approach": a short review that skips the re-solve. If the
   // recall fails, the user re-solves and records a normal attempt below.
   async function saveLightReview() {
+    if (saving) return;
     setError('');
+    setSaving(true);
     try {
       await saveAttempt({ problemId, attemptedOn: localDate(), outcome: 'solved_independently', perceivedDifficulty: 'manageable', helpType: null, durationMinutes: null, notes: notes.trim(), lightReview: true });
       onSaved();
     } catch {
       setError('The review could not be saved. Retry.');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -74,7 +84,7 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false, ti
       <h2>Record attempt</h2>
       {lightReviewOffered && (
         <div className="light-review">
-          <button type="button" onClick={saveLightReview}>I recalled the approach (about 5 min)</button>
+          <button type="button" onClick={saveLightReview} disabled={saving}>I recalled the approach (about 5 min)</button>
           <p className="field-hint">Walk through the idea and the edge cases without coding. If you can't, re-solve it and record the attempt below. A recall counts like a solve and moves the review forward.</p>
         </div>
       )}
@@ -104,7 +114,7 @@ export function AttemptForm({ problemId, onSaved, lightReviewOffered = false, ti
         {typedDuration === null && timerMinutes !== null && <span className="field-hint">Filled from the timer. Edit it if it's off.</span>}
       </label>
       <label>Notes for your next attempt (optional) <textarea maxLength={500} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
-      <button type="submit">Save attempt</button>
+      <button type="submit" disabled={saving}>Save attempt</button>
     </form>
   );
 }
