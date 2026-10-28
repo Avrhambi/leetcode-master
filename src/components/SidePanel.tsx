@@ -18,6 +18,9 @@ export type Panel =
   | { kind: 'topic'; topic: string }
   | { kind: 'search'; query: string }
   | { kind: 'review' }
+  // Only ever a `back` target: Back from a problem opened from today's
+  // challenge reopens that overlay (T25).
+  | { kind: 'plan' }
   | { kind: 'problem'; problem: CatalogProblem; back: Panel | null };
 
 interface SidePanelProps {
@@ -53,7 +56,7 @@ function ProblemRow({ problem, status, showTopic, onSelect }: {
 
 export function SidePanel({ panel, problems, progressByProblem, backupReminder, onSelectProblem, onClose }: SidePanelProps) {
   // `problem` and `review` never reach here — Workbench renders them full-screen.
-  if (panel.kind === 'problem' || panel.kind === 'review') return null;
+  if (panel.kind === 'problem' || panel.kind === 'review' || panel.kind === 'plan') return null;
 
   const reminder = backupReminder ? <p className="backup-reminder" role="note">It has been a while since your last backup. Export one from Settings.</p> : null;
 
