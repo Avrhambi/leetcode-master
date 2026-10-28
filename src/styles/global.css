@@ -58,7 +58,9 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .focus-chip { padding: var(--space-2xs) var(--space-sm); color: var(--color-ink-2); border: var(--rule-hair) solid var(--color-rule); font-size: var(--text-xs); }
 .focus-chip[data-urgent="true"] { color: var(--color-warning); border-color: color-mix(in oklch, var(--color-warning) 55%, transparent); }
 .workbench-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
-.workbench-actions .workbench-search { width: 14rem; min-height: 2.25rem; }
+.search-slot { position: relative; width: 14rem; height: 2.25rem; }
+.search-slot .workbench-search { position: absolute; top: 0; right: 0; width: 100%; min-height: 2.25rem; transition: width var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out); }
+.search-slot .workbench-search:focus, .search-slot .workbench-search:not(:placeholder-shown) { z-index: 5; width: min(36rem, calc(100vw - 2rem)); background: var(--color-paper-3); border-color: var(--color-accent); box-shadow: 0 0.5rem 1.5rem color-mix(in oklch, black 55%, transparent); font-size: var(--text-base); }
 .workbench-search { width: 100%; padding: var(--space-xs) var(--space-md); color: var(--color-ink); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-none); font: inherit; font-size: var(--text-sm); }
 .workbench-search:focus-visible { outline: var(--rule-hair) solid var(--color-accent); border-color: var(--color-accent); }
 .workbench-map { display: grid; gap: var(--space-md); min-height: 0; overflow: hidden; }
@@ -69,7 +71,8 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 /* One small line, so the drawing gets the box (T25). */
 .topic-map-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2xs) var(--space-sm); }
 .topic-map-head > .eyebrow { margin: 0; }
-.topic-map-hint { margin: 0; color: var(--color-muted); font-size: var(--text-xs); }
+.topic-map-head > .eyebrow { font-size: var(--text-base); }
+.topic-map-hint { margin: 0; color: var(--color-neutral); font-size: var(--text-sm); }
 
 /* The quest path. The SVG carries a fixed viewBox, so it scales into whatever
    box the map region gets and can never overflow or reflow — that is what makes
@@ -325,7 +328,10 @@ input:invalid, select:invalid, textarea:invalid { border-color: var(--color-erro
   .workbench { gap: var(--space-sm); }
   .workbench-actions { width: 100%; }
   .workbench-actions button { flex: 1 1 auto; justify-content: center; }
-  .workbench-actions .workbench-search { flex: 1 1 100%; width: auto; }
+  /* Phone: search already spans the row, so it stays in place. */
+  .search-slot { flex: 1 1 100%; width: auto; height: auto; }
+  .search-slot .workbench-search { position: static; }
+  .search-slot .workbench-search:focus, .search-slot .workbench-search:not(:placeholder-shown) { width: 100%; box-shadow: none; }
   /* Two chips on a phone: the most urgent ones, so the map keeps the screen. */
   .focus-chip:nth-child(n+3) { display: none; }
   .app-header h1 { font-size: var(--text-base); }

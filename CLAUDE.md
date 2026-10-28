@@ -104,7 +104,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   hidden` on `html`/`body`; anything that can grow scrolls inside its own box (the
   side panel, the full-screen problem view, a modal body). The topic map instead
   *scales*: it is an SVG on a fixed viewBox, so it fits any box by construction. The
-  one exception is phones (≤ 720 px): the wide route shrinks to unreadable there, so
+  one exception is phones (≤ 720 px *and* a touch pointer, since T25 — a narrow desktop window keeps the wide route): the wide route shrinks to unreadable there, so
   `TopicMap` switches to `PORTRAIT_SHAPE` (6 legs of 3), drawn at full width and
   scrolling vertically inside its own canvas. Also on phones, `main` keeps an explicit
   `minmax(0, 1fr)` column (an auto column grew to the badge strip's width), an open

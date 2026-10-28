@@ -227,14 +227,18 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         >
           {activeMock ? 'Mock running' : 'Mock interview'}
         </button>
-        <input
-          type="search"
-          className="workbench-search"
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search problems"
-          aria-label="Search problems"
-        />
+        {/* A fixed slot: while focused or holding text the box widens over the
+            buttons beside it, so a long query reads cleanly without reflowing the strip. */}
+        <span className="search-slot">
+          <input
+            type="search"
+            className="workbench-search"
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="Search problems"
+            aria-label="Search problems"
+          />
+        </span>
       </div>
     </div>
 
