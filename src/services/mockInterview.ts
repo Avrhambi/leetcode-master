@@ -2,11 +2,11 @@ import type { Attempt, CatalogProblem, Difficulty, HelpType, MockResult, Outcome
 import { tierWeight } from '../data/topicTiers';
 import { coreRank } from './coreRank';
 import { daysBetween } from './cadence';
-import { MOCK_MINUTES_PER_PROBLEM, MOCK_PARTIAL_PASS_RATIO, MOCK_PROBLEM_COUNTS, MOCK_RECENT_DAYS, SKILL_HARD_THRESHOLD, SKILL_MEDIUM_THRESHOLD } from './constants';
+import { MOCK_MINUTES, MOCK_PARTIAL_PASS_RATIO, MOCK_PROBLEM_COUNTS, MOCK_RECENT_DAYS, SKILL_HARD_THRESHOLD, SKILL_MEDIUM_THRESHOLD } from './constants';
 import { qualityFor } from './reviews';
 import { topicReadiness } from './readiness';
 
-// Mock interviews (T24): one to three problems under one time limit, then an
+// Mock interviews (T24, timing T25): one or two problems under one time limit, then an
 // honest report per problem (solved / some tests / not solved, how many tests
 // passed, any hint). Each problem is saved as an ordinary Attempt with a `mock`
 // field, so the review rules, XP and badges replay from attempts exactly as
@@ -92,8 +92,11 @@ export function selectMockProblems({ problems, progress, attempts, skills, count
   return picked.sort((left, right) => DIFFICULTY_ORDER.indexOf(left.difficulty) - DIFFICULTY_ORDER.indexOf(right.difficulty) || left.neetcodeOrder - right.neetcodeOrder);
 }
 
+// The time limit (MOCK_MINUTES): 30 for one problem, 60 for two Easies, 90 for
+// two with a Medium or Hard among them.
 export function mockMinutes(problems: CatalogProblem[]): number {
-  return problems.reduce((sum, problem) => sum + MOCK_MINUTES_PER_PROBLEM[problem.difficulty], 0);
+  if (problems.length <= 1) return MOCK_MINUTES.single;
+  return problems.every((problem) => problem.difficulty === 'easy') ? MOCK_MINUTES.pairEasy : MOCK_MINUTES.pair;
 }
 
 // ---- the running mock -------------------------------------------------------
@@ -115,6 +118,7 @@ export function parseActiveMock(value: string | undefined, now: Date): ActiveMoc
   if (typeof parsed !== 'object' || parsed === null) return null;
   const { id, startedAt, minutes, problemIds } = parsed as Record<string, unknown>;
   if (typeof id !== 'string' || typeof startedAt !== 'string' || typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 1 || minutes > 600) return null;
+  // Up to 3: a mock started before T25 dropped the 3-problem option still finishes.
   if (!Array.isArray(problemIds) || problemIds.length === 0 || problemIds.length > 3 || !problemIds.every((item) => typeof item === 'string')) return null;
   const started = Date.parse(startedAt);
   if (!Number.isFinite(started) || started > now.getTime()) return null;

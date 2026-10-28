@@ -415,10 +415,11 @@ a.solve-button:hover { color: var(--color-accent); border-color: var(--color-acc
 .mock-outcomes, .mock-tests { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-md); }
 .mock-report .field-error { color: var(--color-error); }
 .mock-trigger[data-due="true"] { color: var(--color-accent); border-color: var(--color-accent); }
+/* Due or running: a dot, so the nudge is visible without a second entry point. */
+.mock-trigger[data-due="true"]::before { content: ''; width: 0.45rem; height: 0.45rem; background: var(--color-accent); border-radius: 50%; }
 .mock-trigger { margin-left: 0; }
 .readiness-line b { color: var(--color-accent); }
 .daily-plan .strategy-line { color: var(--color-ink); font-size: var(--text-sm); }
-.daily-plan .mock-nudge { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); color: var(--color-accent); font-size: var(--text-sm); }
 @media (max-width: 720px) {
   .mock-actions button, .mock-report label { min-height: 2.75rem; }
   .mock-report input[type="radio"], .mock-report input[type="checkbox"] { width: 1.25rem; height: 1.25rem; }

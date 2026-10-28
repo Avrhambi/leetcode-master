@@ -105,7 +105,8 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   const dueReviews = reviewSections.owed.length;
   // Interview readiness (T23): chance on an unseen Medium per topic, from skill.
   const readiness = readinessSummary(problems, topicSkills(attempts, allProblems, importedIds(progress.map((row) => row.problemId), attempts.map((attempt) => attempt.problemId))));
-  // Mock interviews (T24): the running one (a setting) and whether one is due.
+  // Mock interviews (T24): the running one (a setting) and whether one is due. The
+  // main-screen button is the only way in (T25); the nudge rides on its hover.
   const activeMock = parseActiveMock(settings.find((row) => row.key === 'activeMock')?.value, new Date());
   const mockIsDue = mockDue(attempts, allProblems, today, strategy.mockEveryDays);
   const lastMock = daysSinceLastMock(attempts, today);
@@ -190,6 +191,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         type="button"
         className="challenge-trigger mock-trigger"
         data-due={activeMock !== null || mockIsDue}
+        title={mockNudge ?? undefined}
         onClick={() => setMockOpen(true)}
       >
         {activeMock ? 'Mock running' : 'Mock interview'}
@@ -265,8 +267,6 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         budget={sessionBudget}
         onBudgetChange={onBudgetChange}
         strategyLine={strategyLine(strategy)}
-        mockNudge={mockNudge}
-        onOpenMock={() => { setChallengeOpen(false); setMockOpen(true); }}
         today={localDate()}
         wrapUp={dayWrapUp({ today: localDate(), planProblemIds: planItems.map((item) => item.problem.id), completedProblemIds, attempts, progress, catalogIds: new Set(allProblems.map((problem) => problem.id)), optionalIds: new Set(reviewSections.optional.map((entry) => entry.problem.id)) })}
         onOpenProblem={(problem) => {
