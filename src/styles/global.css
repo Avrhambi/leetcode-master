@@ -166,11 +166,19 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .challenge-trigger:hover { color: var(--color-accent); border-color: var(--color-rule-2); }
 .challenge-count { display: inline-grid; place-items: center; min-width: 1.25rem; height: 1.25rem; padding-inline: 0.25rem; color: var(--color-accent-ink); background: var(--color-accent); font-family: var(--font-display); font-size: var(--text-xs); font-weight: 700; }
 .daily-plan ol { display: grid; gap: var(--space-sm); padding: 0; margin: var(--space-md) 0 0; list-style: none; }
-.daily-plan li { padding-top: var(--space-lg); border-top: var(--rule-hair) solid var(--color-rule); }
-.daily-plan li strong { color: var(--color-ink); }
-.daily-plan li p { margin: var(--space-2xs) 0; color: var(--color-neutral); font-size: var(--text-sm); }
-.daily-challenge-header { display: flex; justify-content: space-between; gap: var(--space-md); align-items: start; }
-.daily-challenge-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-xs); }
+.daily-plan li { display: grid; gap: var(--space-2xs); padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); }
+.daily-plan li p { margin: 0; color: var(--color-neutral); font-size: var(--text-sm); }
+.daily-plan li p.daily-challenge-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-xs); margin: 0; color: var(--color-ink); font-size: var(--text-base); }
+.daily-challenge-kind { color: var(--color-accent); font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.daily-challenge-title > a:not(.daily-challenge-alt) { color: var(--color-ink); font-weight: 700; text-decoration: none; }
+.daily-challenge-title > a:not(.daily-challenge-alt):hover { color: var(--color-accent); text-decoration: underline; }
+.daily-challenge-alt { color: var(--color-muted); font-size: var(--text-xs); }
+/* Exactly two buttons, side by side on one row (T25). */
+.daily-challenge-actions { display: flex; flex-wrap: nowrap; gap: var(--space-xs); margin-top: var(--space-xs); }
+.daily-plan .daily-challenge-actions button:first-child { color: var(--color-accent-ink); background: var(--color-accent); border-color: var(--color-accent); }
+.plan-adjust { margin-block: var(--space-xs); color: var(--color-neutral); font-size: var(--text-sm); }
+.plan-adjust summary { cursor: pointer; color: var(--color-ink-2); }
+.plan-adjust[open] summary { margin-bottom: var(--space-xs); }
 /* "Logged" sits on the same monotone mastery ramp as the status chips and the
    topic map — one screen, one colour language for progress. */
 .completed-challenge { padding: var(--space-md); color: var(--color-ink); background: var(--color-paper-3); border: var(--rule-hair) solid var(--mastery-3) !important; }
@@ -194,15 +202,6 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 @keyframes wrap-up-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .day-wrap-up { animation: none; } }
 .daily-plan .attempt-form { margin-bottom: 0; }
-.quick-log, .quick-log-done { display: grid; gap: var(--space-xs); margin-top: var(--space-sm); }
-.quick-log-buttons, .quick-log-note-actions { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
-.daily-plan li p.quick-log-timer, .daily-plan li p.quick-log-status { margin: 0; color: var(--color-ink); }
-.daily-plan .quick-log-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
-.daily-plan .quick-log-note { display: grid; gap: var(--space-xs); }
-.daily-plan .quick-log-note label { display: grid; gap: var(--space-2xs); color: var(--color-ink-2); font-size: var(--text-sm); }
-.daily-plan .quick-log-note textarea { width: 100%; min-height: 4rem; }
-.daily-plan button.quick-log-link { min-height: 2.75rem; padding-inline: var(--space-xs); color: var(--color-accent); background: transparent; border-color: transparent; text-decoration: underline; }
-.daily-plan button.quick-log-undo { color: var(--color-accent); border-color: var(--color-accent); }
 .struggling-badge { color: var(--color-error); font-weight: 700; }
 .attempt-notes { margin: var(--space-2xs) 0 0; color: var(--color-neutral); font-size: var(--text-sm); }
 
@@ -313,11 +312,11 @@ input:invalid, select:invalid, textarea:invalid { border-color: var(--color-erro
   .workbench.is-focused { grid-template-rows: minmax(0, 1fr); }
   .workbench.is-focused > .workbench-stats, .workbench.is-focused > .workbench-search { display: none; }
   .workbench-focus { padding: var(--space-md); }
-  .section-heading, .daily-challenge-header { align-items: start; flex-direction: column; }
+  .section-heading { align-items: start; flex-direction: column; }
   .workbench-stats { gap: var(--space-md); }
   .catalog-row { grid-template-columns: 2.25rem minmax(0, 1fr); padding: var(--space-md); }
   .problem-meta { grid-column: 2; justify-items: start; grid-auto-flow: column; justify-content: start; gap: var(--space-sm); }
-  .daily-challenge-actions { justify-content: start; }
+  .daily-challenge-actions button { flex: 1 1 0; }
   .attempt-form, .settings article, .topic-map, .topic-panel { padding: var(--space-md); }
   .settings-overlay-panel { padding: var(--space-lg); }
 }

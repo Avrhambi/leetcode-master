@@ -950,6 +950,7 @@ your task ID. Don't implement them.
 - (T23) The learner model is an assumption (new variants teach more than re-solves, forgetting with a spacing effect). The engine comparisons are only as good as it; a real-user check of readiness against mock results would calibrate it.
 - (T23) The finish forecast (T14) still counts new problems per week; with a deadline the readiness line is the better measure. Consider hiding the forecast while a date is set.
 - (T24) A mock's minutes are not logged as `durationMinutes` (per-problem time is unknown), so mocks do not calibrate the T12 estimates. Per-problem lap times would fix that.
+- (T25) The plan's quick-log buttons are gone (owner: two buttons per item). `quickLog.ts`, `attemptUndo.ts` and `db/undoAttempt.ts` stay, tested but without a UI caller; reuse them for a quick log in the problem view, or delete them.
 - (T24) Undo is not offered for a saved mock (the quick log's Undo is per attempt). A mistaken report is corrected with a normal attempt.
 - (T20, closed) Forecast now counts imported marks as done, and `topicSkills` seeds one strong result per imported mark (`importedIds` in `importKnown.ts`), so an imported topic no longer restarts at Easy. Backup validation now drops setting keys it does not know instead of rejecting the file (an older build still rejects a newer file; `formatVersion` stays 3).
 

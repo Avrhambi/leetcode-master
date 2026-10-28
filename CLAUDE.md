@@ -54,7 +54,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `importKnown.ts` ("mark problems you already know": a progress row only, read by `topicSkills` and `finishForecast` via `importedIds` so a mark counts as done, stage 2, first review dealt evenly over 7-21 days; no Attempt rows, so no XP/streak/badges; undo = progress rows with no attempts),
   `statusLabels.ts` (display-only names for the stored `ProgressStatus` enum — the
   enum itself is persisted and must not be renamed),
-  `quickLog.ts` (the plan's three one-tap outcome buttons → a full `AttemptInput` via `attemptForm.ts`, never a light review),
+  `quickLog.ts` (three one-tap outcome presets → a full `AttemptInput` via `attemptForm.ts`, never a light review; its plan buttons were removed in T25 — plan items carry only Give feedback and Skip — so it has no UI caller today),
   `attemptUndo.ts` (pure plan for the quick log's 10-second Undo; `db/undoAttempt.ts` is **the only code that deletes an attempt**: it restores the progress row and recommendation stamps from the snapshot `saveAttempt` returns, recomputes XP with `replayXp`, and never un-earns badges),
   `dayWrapUp.ts` (the "Done for today" block: items, minutes (null when none timed), XP earned today read from `attemptXpAwards`, next review date, reviews still due; derived on every render from attempts and progress, never stored, so an Undo just recomputes it).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
