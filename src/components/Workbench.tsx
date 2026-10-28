@@ -245,16 +245,24 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
     {panel?.kind === 'problem'
       ? <div className="workbench-focus">
           {(() => {
-            const fromReview = panel.back?.kind === 'review';
-            const nextInReview = fromReview
+            const back = panel.back;
+            const chain = back?.kind === 'review' ? 'review' : back?.kind === 'plan' ? 'plan' : undefined;
+            const nextInChain = chain === 'review'
               ? [...reviewSections.owed, ...reviewSections.optional].find((entry) => entry.problem.id !== panel.problem.id)?.problem ?? null
+              : chain === 'plan'
+              ? planItems.find((item) => item.problem.id !== panel.problem.id && !completedProblemIds.has(item.problem.id))?.problem ?? null
               : null;
             return <ProblemDetail
               problem={panel.problem}
-              onBack={() => setPanel(panel.back)}
-              reviewMode={fromReview}
-              nextInReview={nextInReview}
-              onNextReview={(next) => setPanel({ kind: 'problem', problem: next, back: { kind: 'review' } })}
+              onBack={() => {
+                if (back?.kind === 'plan') {
+                  setPanel(null);
+                  setChallengeOpen(true);
+                } else setPanel(back);
+              }}
+              chain={chain}
+              nextInChain={nextInChain}
+              onNext={(next) => setPanel({ kind: 'problem', problem: next, back })}
             />;
           })()}
         </div>
@@ -303,7 +311,7 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
         wrapUp={dayWrapUp({ today: localDate(), planProblemIds: planItems.map((item) => item.problem.id), completedProblemIds, attempts, progress, catalogIds: new Set(allProblems.map((problem) => problem.id)), optionalIds: new Set(reviewSections.optional.map((entry) => entry.problem.id)) })}
         onOpenProblem={(problem) => {
           setChallengeOpen(false);
-          setPanel({ kind: 'problem', problem, back: null });
+          setPanel({ kind: 'problem', problem, back: { kind: 'plan' } });
         }}
       />
     </Overlay>}
