@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { BadgeShelf } from './components/BadgeShelf';
 import { ProblemSetPicker } from './components/ProblemSetPicker';
-import { GamificationBar } from './components/GamificationBar';
+import { LevelChip } from './components/GamificationBar';
 import { UpdateNotice } from './components/UpdateNotice';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { ImportKnown } from './components/ImportKnown';
@@ -17,6 +16,7 @@ import { parseProblemSet, problemsInSet, PROBLEM_SETS } from './services/problem
 import { parseSkipEasies } from './services/goalPlan';
 import { saveSessionBudget } from './db/sessionBudget';
 import { streakEndingOn, weeklyStreakEndingOn } from './services/streak';
+import { BADGES } from './services/constants';
 import type { ProblemList } from './types/models';
 
 function localDate(date = new Date()): string {
@@ -34,6 +34,7 @@ export default function App() {
   const [seedError, setSeedError] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(false);
 
   // The problem set is filtered once, here, so the plan, map, mastery counts and
   // search all see the same problems. `allProblems` only feeds the review queue.
@@ -72,8 +73,7 @@ export default function App() {
       <div className="app-intro">
         <h1>LeetCode Master</h1>
       </div>
-      {gamification && <GamificationBar snapshot={gamification} streakDays={streakDays} streakWeeks={streakWeeks} />}
-      {gamification && <BadgeShelf earned={gamification.badges} problemSet={problemSet} setSize={problems.length} />}
+      {gamification && <LevelChip snapshot={gamification} badgesEarned={gamification.badges.length} badgesTotal={BADGES.length} onOpen={() => setProgressOpen(true)} />}
       {(storedSet === undefined || freshStart) && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
         {storedSet === undefined && <><span>Which list are you working through?</span>
         <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} /></>}
@@ -91,6 +91,10 @@ export default function App() {
       settings={settings}
       problemSet={problemSet}
       streakWeeks={streakWeeks}
+      streakDays={streakDays}
+      gamification={gamification}
+      progressOpen={progressOpen}
+      onCloseProgress={() => setProgressOpen(false)}
       planItems={plan ?? []}
       completedProblemIds={completedProblemIds}
       profile={profile}
