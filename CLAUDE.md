@@ -56,6 +56,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   enum itself is persisted and must not be renamed),
   `quickLog.ts` (three one-tap outcome presets → a full `AttemptInput` via `attemptForm.ts`, never a light review; its plan buttons were removed in T25 — plan items carry only Give feedback and Skip — so it has no UI caller today),
   `attemptUndo.ts` (pure plan for the quick log's 10-second Undo; `db/undoAttempt.ts` is **the only code that deletes an attempt**: it restores the progress row and recommendation stamps from the snapshot `saveAttempt` returns, recomputes XP with `replayXp`, and never un-earns badges),
+  `focusMetrics.ts` (the main screen's metric chips, T25: at most 3, in priority order — running mock, paused new problems, a streak that breaks tonight, a deadline that no longer fits, readiness, forecast; one "start" hint for a brand-new user; everything else is in the Progress overlay),
   `dayWrapUp.ts` (the "Done for today" block: items, minutes (null when none timed), XP earned today read from `attemptXpAwards`, next review date, reviews still due; derived on every render from attempts and progress, never stored, so an Undo just recomputes it).
 - `src/db/` — **direct Dexie calls only**, no repository/adapter/factory/queue/cache/retry.
   `database.ts` holds the versioned schema + migrations; `saveAttempt.ts` writes attempt +
@@ -74,7 +75,9 @@ Do not add a dependency without asking first, and explain why existing code can'
 - `src/hooks/` — `useDailyPlan.ts`, `useGamification.ts` (thin `useLiveQuery` wrappers); `useAttemptTimer.ts` (the one place the attempt timer reads the clock and `localStorage`).
 - `src/components/` — one file per screen/panel. Plain React, no state library beyond
   Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings, the
-  daily challenge and the mock interview use it) — don't write a second one.
+  daily challenge, the mock interview and Progress use it) — don't write a second one.
+  The header is one row (title, `LevelChip`, Settings); `ProgressOverlay.tsx` holds every
+  secondary number and the `BadgeShelf` grid, opened from the level chip (T25).
 - `src/styles/` — `../../tokens.css` (oklch dark "phosphor green" design tokens),
   `global.css`, `gamification.css` (`@import`ed from `global.css`). Plain CSS.
 
@@ -105,7 +108,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   `TopicMap` switches to `PORTRAIT_SHAPE` (6 legs of 3), drawn at full width and
   scrolling vertically inside its own canvas. Also on phones, `main` keeps an explicit
   `minmax(0, 1fr)` column (an auto column grew to the badge strip's width), an open
-  side panel replaces the map, and an open problem hides the stats and search. Verify layout changes in a browser — `npm run verify`
+  side panel replaces the map, and an open problem hides the focus strip (on every width since T25). Verify layout changes in a browser — `npm run verify`
   cannot see overflow, and "the page doesn't scroll" can pass while content is
   crushed, overlapping, or (for the map) scaled into illegibility.
 - **All animation sits behind `prefers-reduced-motion`.** The global rule in `global.css`

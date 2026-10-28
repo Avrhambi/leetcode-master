@@ -38,20 +38,43 @@
   100% { transform: translateX(100%); opacity: 0; }
 }
 
-/* --- Badge strip (milestone badges; distinct from the catalog .badge chips) ---
-   A row of marks in the app header. Each badge's label and hint ride along in the
-   tooltip and the SVG's accessible name, since there is no room for cards. An
-   earned mark is filled; a locked one is a dim outline. */
-/* The strip can outgrow the header slot (13 marks); it scrolls inside its own
-   box so the page itself never gains a scrollbar. */
-.badge-strip-scroll { min-width: 0; overflow-x: auto; }
-.badge-strip { display: flex; align-items: center; gap: var(--space-2xs); padding: var(--space-2xs) var(--space-xs); margin: 0; list-style: none; border: var(--rule-hair) solid var(--color-rule); width: max-content; }
-.milestone { display: grid; place-items: center; }
-.milestone.locked { opacity: 0.45; }
+/* --- Badge grid (Progress overlay; distinct from the catalog .badge chips) ---
+   Earned marks are filled, locked ones a dim outline. Hover or keyboard focus
+   lifts the mark and opens a small card with the name, the hint and the state. */
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.75rem, 1fr)); gap: var(--space-xs); padding: 0; margin: 0; list-style: none; }
+.milestone { position: relative; display: grid; place-items: center; aspect-ratio: 1; border: var(--rule-hair) solid var(--color-rule); cursor: default; transition: transform var(--dur-short) var(--ease-out), border-color var(--dur-short) var(--ease-out); }
+.milestone.earned { border-color: color-mix(in oklch, var(--color-accent) 45%, transparent); }
+.milestone.locked .milestone-mark { opacity: 0.45; }
+.milestone:hover, .milestone:focus-visible { z-index: 1; border-color: var(--color-accent); transform: translateY(-2px) scale(1.08); outline: none; }
 .milestone.earned.fresh { animation: badge-reveal 600ms var(--ease-out) 1; }
-.milestone-mark { display: block; width: 1.25rem; height: 1.25rem; }
+.milestone-mark { display: block; width: 1.5rem; height: 1.5rem; }
 .milestone-mark polygon, .milestone-mark circle, .milestone-mark rect, .milestone-mark path { fill: var(--color-accent); stroke: var(--color-accent); stroke-width: 4; stroke-linejoin: round; }
 .milestone.locked .milestone-mark polygon, .milestone.locked .milestone-mark circle, .milestone.locked .milestone-mark rect, .milestone.locked .milestone-mark path { fill: none; stroke: var(--color-rule-2); }
+.milestone[data-active="true"] { border-color: var(--color-accent); }
+.badge-shelf { display: grid; gap: var(--space-sm); }
+.badge-card { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: var(--space-2xs) var(--space-sm); min-height: 3.25rem; margin: 0; padding: var(--space-xs) var(--space-sm); color: var(--color-ink-2); background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-rule); font-size: var(--text-sm); }
+.badge-card strong { color: var(--color-ink); }
+.badge-card em { justify-self: start; color: var(--color-muted); font-size: var(--text-xs); font-style: normal; }
+.badge-card em[data-earned="true"] { color: var(--color-accent); }
+.badge-card > span { grid-column: 1 / -1; }
+
+/* --- Progress overlay ---------------------------------------------------------- */
+.progress-overlay { display: grid; gap: var(--space-sm); }
+.progress-overlay > h2 { margin: 0; font-size: var(--text-2xl); text-transform: uppercase; }
+.progress-overlay > .eyebrow { margin: 0; }
+.progress-overlay h3 { margin: 0; font-size: var(--text-base); }
+.progress-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: var(--space-sm); margin: 0; }
+.progress-stats div { padding: var(--space-sm); border: var(--rule-hair) solid var(--color-rule); }
+.progress-stats dt { color: var(--color-neutral); font-size: var(--text-xs); }
+.progress-stats dd { margin: 0; color: var(--color-ink); font-family: var(--font-display); font-size: var(--text-lg); }
+.progress-block { display: grid; gap: var(--space-2xs); color: var(--color-ink-2); font-size: var(--text-sm); }
+.progress-block p, .progress-block ul { margin: 0; }
+.progress-block ul { padding-left: var(--space-lg); }
+.progress-block p[data-fits="false"] { color: var(--color-warning); }
+.progress-block summary { cursor: pointer; color: var(--color-ink); font-weight: 700; }
+.progress-topics { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: var(--space-2xs) var(--space-lg); padding: 0 !important; margin-top: var(--space-xs) !important; list-style: none; }
+.progress-topics li { display: flex; justify-content: space-between; gap: var(--space-sm); border-bottom: var(--rule-hair) solid var(--color-rule); }
+.progress-topics li[data-ready="true"] span:last-child { color: var(--color-accent); }
 
 @keyframes badge-reveal {
   0% { transform: translateY(0.5rem); opacity: 0; }
@@ -64,4 +87,6 @@
   .xp-bar[data-leveled='true'] .xp-bar-topline strong { animation: none; }
   .xp-bar[data-leveled='true'] .xp-track::after { animation: none; content: none; }
   .milestone.earned.fresh { animation: none; }
+  .milestone { transition: none; }
+  .milestone:hover, .milestone:focus-visible { transform: none; }
 }

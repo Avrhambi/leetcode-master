@@ -10,9 +10,12 @@ import { backupReminderDue } from '../services/backupHealth';
 import { masteryByTopic } from '../services/mastery';
 import { reviewQueueSections, type DailyPlanItem } from '../services/dailyPlan';
 import { strategyLine, type TrainingStrategy } from '../services/strategy';
-import { readinessDetail, readinessSummary } from '../services/readiness';
+import { readinessSummary } from '../services/readiness';
 import { topicSkills } from '../services/skill';
-import { daysSinceLastMock, mockDue, parseActiveMock } from '../services/mockInterview';
+import { daysSinceLastMock, mockDue, mockHistory, mockSessionLine, parseActiveMock } from '../services/mockInterview';
+import { focusChips } from '../services/focusMetrics';
+import type { GamificationView } from '../hooks/useGamification';
+import { ProgressOverlay } from './ProgressOverlay';
 import { MockInterview } from './MockInterview';
 import { latestNotes } from '../services/reviewNotes';
 import { dayWrapUp } from '../services/dayWrapUp';
@@ -35,8 +38,14 @@ interface WorkbenchProps {
   progressByProblem: Map<string, ProgressStatus>;
   settings: AppSetting[];
   problemSet: ProblemList;
-  // Consecutive calendar weeks with 3+ active days, shown beside the daily streak.
+  // Consecutive calendar weeks with 3+ active days, and the grace-free day streak
+  // ending today (both drive the XP multiplier shown in Progress).
   streakWeeks: number;
+  streakDays: number;
+  gamification: GamificationView | undefined;
+  // The Progress overlay is opened from the header's level chip (App).
+  progressOpen: boolean;
+  onCloseProgress: () => void;
   planItems: DailyPlanItem[];
   completedProblemIds: Set<string>;
   profile: CadenceProfile;
@@ -69,10 +78,11 @@ function graceStateFrom(settings: AppSetting[]): StreakGraceState {
   };
 }
 
-// The single screen: XP strip, a search box, the tiered topic map (with the
-// bare-minimum stats above it and a side panel for a topic's problems, the
-// search results, or one problem's detail), today's plan, badge shelf.
-export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, planItems, completedProblemIds, profile, onAddExtra, onSkip, minutesOf, reviewsUntilNew, reasonOf, sessionBudget, onBudgetChange, strategy }: WorkbenchProps) {
+// The single screen: a one-row focus strip (urgent chips, today's challenge,
+// reviews, mock, search), then the topic map with a side panel for a topic's
+// problems, the search results or the review queue, or one problem full-screen.
+// Today's plan, the mock and Progress (all numbers + badges) open in overlays.
+export function Workbench({ attempts, problems, allProblems, progress, progressByProblem, settings, problemSet, streakWeeks, streakDays, gamification, progressOpen, onCloseProgress, planItems, completedProblemIds, profile, onAddExtra, onSkip, minutesOf, reviewsUntilNew, reasonOf, sessionBudget, onBudgetChange, strategy }: WorkbenchProps) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -139,6 +149,19 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   // challenge is visible without opening the modal.
   const openChallenges = planItems.filter((item) => !completedProblemIds.has(item.problem.id)).length;
 
+  const goalFits = goalPlan?.fits.find((fit) => fit.set === problemSet)?.fits ?? true;
+  const chips = focusChips({
+    freshStart: attempts.length === 0 && progress.length === 0,
+    mockRunning: activeMock !== null,
+    newPaused: reviewsUntilNew > 0 && planItems.length > 0 && planItems.every((item) => item.kind === 'review'),
+    reviewsUntilNew,
+    streak,
+    practicedToday: activeDates.has(today),
+    goal: goalPlan ? { text: goalLineShort(goalPlan, problemSet), fits: goalFits } : null,
+    readinessPct: Math.round(readiness.overall * 100),
+    forecast: forecastLine
+  });
+
   const problemById = new Map(problems.map((problem) => [problem.id, problem]));
   const strugglingTopics = new Set(
     progress
@@ -167,53 +190,52 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
   };
 
   return <section className={`workbench${panel?.kind === 'problem' ? ' is-focused' : ''}`} aria-label="Practice workbench">
-    <div className="workbench-stats" aria-label="Progress summary">
-      <span><b>{streak}</b> day streak{graceDaysUsed > 0 && <> · <span className="grace-note">{graceDaysUsed} grace {graceDaysUsed === 1 ? 'day' : 'days'}</span></>}</span>
-      <span title="Consecutive weeks with 3+ active days"><b>{streakWeeks}</b> {streakWeeks === 1 ? 'week' : 'weeks'} consistent</span>
-      {weeklyGoal !== null && <span className="weekly-goal" data-met={daysThisWeek >= weeklyGoal} title="Days you practised this week (Monday start) against your weekly goal"><b>{daysThisWeek}</b> / {weeklyGoal} days this week{daysThisWeek >= weeklyGoal && ' · goal met'}</span>}
-      <span><b>{attemptsThisWeek}</b> attempts · 7 days</span>
-      <span className="readiness-line" title={readinessDetail(readiness)}>Interview readiness <b>{Math.round(readiness.overall * 100)}%</b> · {readiness.readyCount} of {readiness.topics.length} topics ready</span>
-      {forecastLine && <span className="finish-forecast" title={forecastDetail(forecast)}>{forecastLine}</span>}
-      {goalPlan && <span className="goal-line" data-fits={goalPlan.fits.find((fit) => fit.set === problemSet)?.fits ?? true} title={goalDetail(goalPlan, problemSet).join('\n')}>{goalLineShort(goalPlan, problemSet)}</span>}
-      <button
-        type="button"
-        className="review-trigger"
-        data-open={dueReviews > 0}
-        aria-pressed={panel?.kind === 'review'}
-        onClick={() => {
-          setSearchInput('');
-          setPanel((current) => (current?.kind === 'review' ? null : { kind: 'review' }));
-        }}
-      >
-        <b>{dueReviews}</b> for review
-      </button>
-      <button
-        type="button"
-        className="challenge-trigger mock-trigger"
-        data-due={activeMock !== null || mockIsDue}
-        title={mockNudge ?? undefined}
-        onClick={() => setMockOpen(true)}
-      >
-        {activeMock ? 'Mock running' : 'Mock interview'}
-      </button>
-      <button
-        type="button"
-        className="challenge-trigger"
-        data-open={openChallenges > 0}
-        onClick={() => setChallengeOpen(true)}
-      >
-        Today's challenge{openChallenges > 0 && <span className="challenge-count">{openChallenges}</span>}
-      </button>
+    {/* One row (T25): up to three chips for what needs attention now, then the
+        actions — today's challenge first — and search. The rest is in Progress. */}
+    <div className="workbench-stats" aria-label="Today">
+      <ul className="focus-chips">
+        {chips.map((chip) => <li key={chip.id} className="focus-chip" data-urgent={chip.urgent}>{chip.text}</li>)}
+      </ul>
+      <div className="workbench-actions">
+        <button
+          type="button"
+          className="challenge-trigger"
+          data-open={openChallenges > 0}
+          onClick={() => setChallengeOpen(true)}
+        >
+          Today's challenge{openChallenges > 0 && <span className="challenge-count">{openChallenges}</span>}
+        </button>
+        <button
+          type="button"
+          className="review-trigger"
+          data-open={dueReviews > 0}
+          aria-pressed={panel?.kind === 'review'}
+          onClick={() => {
+            setSearchInput('');
+            setPanel((current) => (current?.kind === 'review' ? null : { kind: 'review' }));
+          }}
+        >
+          Reviews <b>{dueReviews}</b>
+        </button>
+        <button
+          type="button"
+          className="review-trigger mock-trigger"
+          data-due={activeMock !== null || mockIsDue}
+          title={mockNudge ?? undefined}
+          onClick={() => setMockOpen(true)}
+        >
+          {activeMock ? 'Mock running' : 'Mock interview'}
+        </button>
+        <input
+          type="search"
+          className="workbench-search"
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Search problems"
+          aria-label="Search problems"
+        />
+      </div>
     </div>
-
-    <input
-      type="search"
-      className="workbench-search"
-      value={searchInput}
-      onChange={(event) => setSearchInput(event.target.value)}
-      placeholder="Search problems"
-      aria-label="Search problems"
-    />
 
     {/* A problem takes the whole screen: it is the one place real work happens,
         and the map is not useful while you are working. It replaces the map
@@ -273,6 +295,24 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
           setChallengeOpen(false);
           setPanel({ kind: 'problem', problem, back: null });
         }}
+      />
+    </Overlay>}
+
+    {progressOpen && gamification && <Overlay label="Progress" onClose={onCloseProgress}>
+      <ProgressOverlay
+        gamification={gamification}
+        streakDays={streakDays}
+        streakWeeks={streakWeeks}
+        streak={streak}
+        graceDaysUsed={graceDaysUsed}
+        attemptsThisWeek={attemptsThisWeek}
+        weeklyGoal={weeklyGoal === null ? null : { days: daysThisWeek, goal: weeklyGoal }}
+        readiness={readiness}
+        forecast={forecastLine ? { text: forecastLine, detail: forecastDetail(forecast) } : null}
+        goal={goalPlan ? { text: goalLineShort(goalPlan, problemSet), detail: goalDetail(goalPlan, problemSet), fits: goalFits } : null}
+        mockLines={mockHistory(attempts).slice(0, 5).map(mockSessionLine)}
+        problemSet={problemSet}
+        setSize={problems.length}
       />
     </Overlay>}
 

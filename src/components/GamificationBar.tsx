@@ -13,6 +13,18 @@ interface GamificationBarProps {
   streakWeeks: number;
 }
 
+// The header's compact level chip (T25): level and a thin bar toward the next
+// one. It opens the Progress overlay, where the full strip below lives.
+export function LevelChip({ snapshot, badgesEarned, badgesTotal, onOpen }: { snapshot: GamificationSnapshot; badgesEarned: number; badgesTotal: number; onOpen: () => void }) {
+  const { level, xpIntoLevel, xpForNextLevel } = snapshot;
+  const pct = xpForNextLevel > 0 ? Math.round((xpIntoLevel / xpForNextLevel) * 100) : 100;
+  return <button type="button" className="level-chip" onClick={onOpen} aria-label={`Progress: level ${level}, ${pct}% to the next level, ${badgesEarned} of ${badgesTotal} badges`}>
+    <strong>Lv {level}</strong>
+    <span className="level-chip-track" aria-hidden="true"><span style={{ width: `${pct}%` }} /></span>
+    <span className="level-chip-badges">Badges {badgesEarned}/{badgesTotal}</span>
+  </button>;
+}
+
 // Minimal XP / level strip. The fill width transitions on XP change. When the
 // level rises while this component is mounted, a one-shot pulse plays; a level-up
 // that happened while the user was on another screen is not replayed (nothing

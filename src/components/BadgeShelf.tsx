@@ -84,6 +84,7 @@ export function BadgeShelf({ earned, problemSet, setSize }: BadgeShelfProps) {
   const earnedSet = new Set(earned);
   const knownRef = useRef<Set<string> | null>(null);
   const [fresh, setFresh] = useState<Set<string>>(new Set());
+  const [active, setActive] = useState<BadgeId | null>(null);
 
   useEffect(() => {
     if (knownRef.current === null) { knownRef.current = new Set(earned); return; }
@@ -101,19 +102,26 @@ export function BadgeShelf({ earned, problemSet, setSize }: BadgeShelfProps) {
     };
   }, [earned]);
 
-  // A compact strip of marks — the header slot on a screen that does not scroll
-  // has no room for cards, so each badge carries its label and hint in the
-  // tooltip and the accessible name instead.
-  return <div className="badge-strip-scroll">
-    <ul className="badge-strip" aria-label={`Badges, ${earnedSet.size} of ${BADGES.length} earned`}>
-      {BADGES.map((badge) => {
-        const isEarned = earnedSet.has(badge.id);
-        const classes = ['milestone', isEarned ? 'earned' : 'locked', fresh.has(badge.id) ? 'fresh' : ''].filter(Boolean).join(' ');
-        const description = isEarned ? `${badge.label} — earned` : `${badge.label} — locked. ${badgeHint(badge.id, problemSet, setSize)}`;
-        return <li className={classes} key={badge.id} title={description}>
-          <svg className="milestone-mark" viewBox="0 0 100 100" role="img" aria-label={description}>{MARKS[badge.id]}</svg>
-        </li>;
-      })}
+  // A grid of marks in the Progress overlay (T25). Hover, keyboard focus or a tap
+  // lifts a mark and fills the card under the grid with its name, how to earn it
+  // and whether it is earned. The card sits below the grid rather than floating,
+  // so it never overflows the overlay; the same text is each mark's accessible name.
+  const shown = BADGES.find((badge) => badge.id === active);
+  return <div className="badge-shelf">
+    <ul className="badge-grid" aria-label={`Badges, ${earnedSet.size} of ${BADGES.length} earned`} onMouseLeave={() => setActive(null)}>
+    {BADGES.map((badge) => {
+      const isEarned = earnedSet.has(badge.id);
+      const classes = ['milestone', isEarned ? 'earned' : 'locked', fresh.has(badge.id) ? 'fresh' : ''].filter(Boolean).join(' ');
+      const hint = badgeHint(badge.id, problemSet, setSize);
+      return <li className={classes} key={badge.id} tabIndex={0} aria-label={`${badge.label}, ${isEarned ? 'earned' : 'locked'}. ${hint}`} data-active={active === badge.id} onMouseEnter={() => setActive(badge.id)} onFocus={() => setActive(badge.id)} onClick={() => setActive(badge.id)}>
+        <svg className="milestone-mark" viewBox="0 0 100 100" aria-hidden="true">{MARKS[badge.id]}</svg>
+      </li>;
+    })}
     </ul>
+    <p className="badge-card" aria-hidden="true">
+      {shown
+        ? <><strong>{shown.label}</strong> <em data-earned={earnedSet.has(shown.id)}>{earnedSet.has(shown.id) ? 'Earned' : 'Locked'}</em><span>{badgeHint(shown.id, problemSet, setSize)}</span></>
+        : <span>Hover or tap a badge to see how to earn it. {earnedSet.size} of {BADGES.length} earned.</span>}
+    </p>
   </div>;
 }
