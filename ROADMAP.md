@@ -59,6 +59,7 @@ up from there.
 | T22 | Pattern-level reviews: keep patterns fresh, not answers | T11, T13 | — | Done |
 | T23 | Training strategy: deadline- and budget-aware plan, explore vs consolidate, interview readiness | T22, T16 | — | Done |
 | T24 | Mock interviews: timed sets of unseen problems, reported results feed the plan | T23 | — | Done |
+| T25 | Simplify the main screen: roomy map, urgent-only metrics, two-button plan items, review screen, welcome | T24 | — | In progress |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
@@ -923,6 +924,14 @@ date, interview readiness on the main screen, deadline hours on the pattern mode
 Done; see the session log. **Scope:** pick 1–3 unseen problems, one clock, report
 each (tests passed of total, hint), saved as attempts that feed skill (weighted),
 reviews and readiness; a nudge when a mock is due by the strategy.
+
+## T25. Simplify the main screen
+
+In progress. **Why and design:** `docs/design/simplify-ux.md`. **Findings:**
+`docs/review/2026-10-28-app-review.md` (owner's 2026-10-28 review plus a QA, UI/UX
+and regular-user pass). One PR per step: review report, mock timing + single entry
+point, two-button plan items, shell (header, focus strip, Progress overlay, map
+space), review screen, welcome + problem view, remaining findings, final QA.
 
 ## Parking lot
 
