@@ -5,6 +5,9 @@ import { LevelChip } from './components/GamificationBar';
 import { UpdateNotice } from './components/UpdateNotice';
 import { SettingsOverlay } from './components/SettingsOverlay';
 import { ImportKnown } from './components/ImportKnown';
+import { Overlay } from './components/Overlay';
+import { Welcome } from './components/Welcome';
+import { finishOnboarding } from './db/onboarding';
 import { Workbench } from './components/Workbench';
 import { db } from './db/database';
 import { skipRecommendation } from './db/recommendations';
@@ -64,8 +67,11 @@ export default function App() {
   const streakDays = streakEndingOn(activeDates, localDate());
   const streakWeeks = weeklyStreakEndingOn(activeDates, localDate());
 
-  // The import offer rides the first-launch banner for someone with no history at all.
+  // First run (T25): someone with no history and no finished welcome gets the
+  // three-step welcome. The old one-line banner stays only for a pre-T25 user
+  // with history who never picked a list.
   const freshStart = progress.length === 0 && attempts.length === 0;
+  const showWelcome = freshStart && !settings.some((row) => row.key === 'onboardingDone');
   const setCounts = Object.fromEntries(PROBLEM_SETS.map((set) => [set, problemsInSet(allProblems, set, skipEasies).length])) as Record<ProblemList, number>;
 
   return <main>
@@ -74,10 +80,9 @@ export default function App() {
         <h1>LeetCode Master</h1>
       </div>
       {gamification && <LevelChip snapshot={gamification} badgesEarned={gamification.badges.length} badgesTotal={BADGES.length} onOpen={() => setProgressOpen(true)} />}
-      {(storedSet === undefined || freshStart) && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
-        {storedSet === undefined && <><span>Which list are you working through?</span>
-        <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} /></>}
-        {freshStart && <span className="import-offer"><span>Already solved some of them?</span><button type="button" onClick={() => setImportOpen(true)}>Mark problems you already know</button></span>}
+      {storedSet === undefined && !freshStart && allProblems.length > 0 && <div className="problem-set-banner" role="region" aria-label="Choose a problem set">
+        <span>Which list are you working through?</span>
+        <ProblemSetPicker value={problemSet} counts={setCounts} unchosen onChange={(set) => void saveProblemSet(set)} />
       </div>}
       <UpdateNotice />
       <button type="button" className="settings-toggle" onClick={() => setSettingsOpen(true)}>Settings</button>
@@ -108,6 +113,9 @@ export default function App() {
       onSkip={(item) => skipRecommendation(item.problem.id, item.kind)}
     />
     {settingsOpen && <SettingsOverlay onClose={() => setSettingsOpen(false)} onImportKnown={() => { setSettingsOpen(false); setImportOpen(true); }} />}
+    {showWelcome && allProblems.length > 0 && <Overlay label="Welcome" onClose={() => void finishOnboarding(problemSet)}>
+      <Welcome counts={setCounts} onDone={(markKnown) => { if (markKnown) setImportOpen(true); }} />
+    </Overlay>}
     {importOpen && <ImportKnown problems={problems} progress={progress} attempts={attempts} onClose={() => setImportOpen(false)} />}
   </main>;
 }
