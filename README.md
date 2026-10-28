@@ -68,10 +68,11 @@ gaps; a *focused* or *steady* run spends new problems where one more raises your
 odds most, with a bonus for topics you have barely practised (explore vs
 exploit). In the last three days there are no new Hards: close gaps and run mock
 interviews. **Interview readiness** — your estimated chance on an unseen Medium
-in each topic — is shown on the main screen.
+in each topic — is in Progress, and on the main screen when nothing more urgent is.
 
-**Mock interviews.** Pick one to three problems you have not seen, at your level,
-under one clock. Afterwards report each one: all tests passed, some passed (and
+**Mock interviews.** Pick one or two problems you have not seen, at your level,
+under one clock: 30 minutes for one, 60 for two Easies, 90 when a Medium or Hard
+is in the pair. Afterwards report each one: all tests passed, some passed (and
 how many), or not working, and whether you used a hint. The results are saved as
 ordinary attempts, count more toward your readiness than practice does, and
 anything you missed comes back as a review.
