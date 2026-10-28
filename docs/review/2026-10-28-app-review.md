@@ -123,3 +123,31 @@ squeezing the map. `main` is capped at 72 rem, so on 1536 and 1920 px the app is
   setup, settings, review queue → problem → back, search. No console errors.
   Page scroll stayed 0 in every state.
 - No functional regressions found beyond the rendering bugs above.
+
+## Resolution (final QA pass, same day)
+
+| # | Finding | Fixed in |
+|---|---|---|
+| 1, 2, 3, 4, 5, 13, 17 | Map crushed, flat metrics, narrow column, phone chrome, white scrollbars, XP strip, primary action | #30 |
+| 6, 7 | Daily-challenge controls, busy header | #29 |
+| 8, 14 | Two mock entry points, mock timing | #28 |
+| 9, 10 | Review queue columns, duplicate topic text | #31 |
+| 11 | Problem view under the full header | #30 (focus strip hidden on every width) |
+| 12 | Badges without a hover affordance | #30 |
+| 15 | One long Settings scroll | #33 |
+| 16 | No onboarding | #32 |
+| QA | Topic side panel: backup reminder below the list, sideways scrollbar from the badge row | #34 |
+
+Re-measured on the seeded profile (main screen with no panel open, then every
+overlay and full-screen view opened in turn):
+
+| Viewport | Map SVG share (was) | Above the map | Page scroll | Challenge / Mock / Progress body overflow | Two plan buttons on one row |
+|---|---|---|---|---|---|
+| 1536 × 730 | 71 % (43 %, 23 % first run) | 159 px | 0 in every state | 0 / 0 / 0 | yes |
+| 1366 × 768 | 72 % (46 %) | 159 px | 0 | 0 / 0 / 0 | yes |
+| 1920 × 1080 | 80 % (61 %) | 159 px | 0 | 0 / 0 / 0 | yes |
+| 390 × 844 | 70 % portrait route (37 %) | 283 px | 0 | 0 / 0 / 349 px (scrolls in its box) | yes |
+
+No console errors while opening the challenge, mock, reviews, Settings, Progress
+and a topic panel and focusing a badge. The welcome showed once on a fresh origin
+and not after a reload.

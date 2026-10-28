@@ -59,7 +59,7 @@ up from there.
 | T22 | Pattern-level reviews: keep patterns fresh, not answers | T11, T13 | — | Done |
 | T23 | Training strategy: deadline- and budget-aware plan, explore vs consolidate, interview readiness | T22, T16 | — | Done |
 | T24 | Mock interviews: timed sets of unseen problems, reported results feed the plan | T23 | — | Done |
-| T25 | Simplify the main screen: roomy map, urgent-only metrics, two-button plan items, review screen, welcome | T24 | — | In progress |
+| T25 | Simplify the main screen: roomy map, urgent-only metrics, two-button plan items, review screen, welcome | T24 | — | Done |
 
 Suggested order: **T0 → T1 → (T2 ∥ T3) → T4 → T11 → T5 → T6**, with **T7**, **T8**
 and **T9** slotted in whenever a session is free. **T10** goes last. T3, T4, T11
@@ -927,7 +927,7 @@ reviews and readiness; a nudge when a mock is due by the strategy.
 
 ## T25. Simplify the main screen
 
-In progress. **Why and design:** `docs/design/simplify-ux.md`. **Findings:**
+Done; see the session log. **Why and design:** `docs/design/simplify-ux.md`. **Findings:**
 `docs/review/2026-10-28-app-review.md` (owner's 2026-10-28 review plus a QA, UI/UX
 and regular-user pass). One PR per step: review report, mock timing + single entry
 point, two-button plan items, shell (header, focus strip, Progress overlay, map
@@ -1178,3 +1178,19 @@ Each session fills in its own entry in its PR.
 - QA (production build via `vite preview`, Chromium via Playwright, throwaway script outside the repo, 1280 × 800 and 390 × 844 with touch, IndexedDB seeded from a same-origin page that does not run the app): 72 checks, all passing. Readiness line and its per-topic hover; "2 for review" with a covered Easy, a parked Medium, a hint review and two strong Linked List reviews (one owed, one "after this topic's owed review"); the queue's reasons; the plan holds the owed hint review and none of the optional ones; a 120-min budget plans 5–8 items; the open-ended strategy line and, with a date 10 days out, "Sprint · 10 days left"; the mock nudge; mock setup (2 by default, 3 on request, time limit, reroll), the clock and revealed titles, `_blank` + `noreferrer` links, the running mock in `activeMock`, the same mock after a reload ("Mock running" in the header), invalid test counts blocking Save, a saved report writing two attempts with the `mock` field (7 of 10 + hint → partial with `small_hint`, not working → weak), progress rows with a next review, XP up, `activeMock` cleared, the history line "0 of 2 solved · 70% of tests"; the page never scrolls in any of these states; no console or page errors. Screenshots checked by eye at both widths. Not checked: Safari, Firefox, a real 40-minute wait (the clock was checked by reading it), a screen reader.
 - Follow-ups: the parking-lot lines marked T22–T24.
 
+### T25
+- Status / PR / date: Done / #27-#34 / 2026-10-28
+- What shipped:
+  - Review report with measurements (#27).
+  - Mocks are 30 min for 1 problem, 60 for two Easies, 90 otherwise, with no 3-problem option. The main-screen button is the only entry point (#28).
+  - Plan items show title → NeetCode, a small LeetCode link, and exactly Give feedback + Skip for 24 hours on one row. The quick log and "Adjust today" leave the item (#29).
+  - The header is one row with a level chip opening `ProgressOverlay`. A focus strip shows up to 3 chips from `focusMetrics.ts`, then Today's challenge (primary), Reviews, Mock and search. Badges move to a grid with a hover/focus card. `main` is 96rem (#30).
+  - `ReviewQueue.tsx` is a full-width screen (#31).
+  - `Welcome.tsx` is the three-step first run, using the `onboardingDone` setting (#32).
+  - Settings is grouped (#33). The topic-panel layout is fixed (#34).
+- Measured: the map SVG went from 23-46% to 70-80% of the viewport height on desktop. Above the map went from 330-460px to 159px. See `docs/review/2026-10-28-app-review.md`.
+- Decisions & deviations:
+  - The quick log was removed from the plan at the owner's request ("only 2 buttons"). Its services stay, without a UI caller; see the parking lot.
+  - The "running mm:ss" label on the Mock button was not added: the workbench would re-render every second. It reads "Mock running", and the clock is in the mock overlay.
+  - Badges reveal only when Progress is open, since the header strip that animated new ones is gone.
+- QA: Chromium via claude-in-chrome, on a throwaway origin (`localhost:5199`), seeded through `saveAttempt`. Viewports 1536x730, 1366x768, 1920x1080 and 390x844 were measured in a same-origin iframe. The page never scrolls in any state, there are no console errors, and the welcome shows once. Not checked: Safari, Firefox, a screen reader.
