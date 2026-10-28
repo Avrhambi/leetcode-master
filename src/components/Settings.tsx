@@ -126,19 +126,28 @@ export function Settings({ onImportKnown }: { onImportKnown?: () => void }) {
     if (failedAction === 'reset') void reset();
   };
 
+  // Three groups (T25), each a two-column grid on a wide overlay, so the page
+  // reads as "plan / reminders / data" instead of one long column of cards.
   return <section className="settings"><div className="section-heading"><div><p className="eyebrow">Your data</p><h2>Settings</h2></div></div>
     <p className="settings-note">LeetCode Master is local-first. Your practice history stays in this browser.</p>
+    <h3 className="settings-group-title">Your plan</h3>
+    <div className="settings-group">
     <article><h3>Problem set</h3><p>Choose how much of the catalog to practise. Your history is kept when you switch; problems outside the set are hidden and not recommended, but any already due for review stay in the review queue.</p><ProblemSetPicker value={parseProblemSet(storedSet?.value)} counts={counts} onChange={(set) => void saveProblemSet(set)} /></article>
-    <article><h3>Weekly goal</h3><p>Pick how many days a week you want to practise. Your progress shows beside the weekly streak. It is a target for you; it never changes your plan or your XP.</p>
+    <article><h3>Weekly goal</h3><p>Pick how many days a week you want to practise. Your progress shows in Progress (the level chip in the header). It is a target for you; it never changes your plan or your XP.</p>
       <div className="problem-set-picker" role="group" aria-label="Practice days per week">
         <button type="button" aria-pressed={weeklyGoal === null} onClick={() => chooseGoal(null)}>Off</button>
         {WEEKLY_GOAL_OPTIONS.map((days) => <button key={days} type="button" aria-pressed={weeklyGoal === days} onClick={() => chooseGoal(days)}>{days} {days === 1 ? 'day' : 'days'}</button>)}
       </div>
       {goalError !== undefined && <p role="alert">The goal could not be saved. <button type="button" onClick={() => chooseGoal(goalError)}>Retry</button></p>}</article>
     <GoalPlans />
+    </div>
+    <h3 className="settings-group-title">Reminders</h3>
+    <div className="settings-group">
     <CalendarReminder weeklyGoal={weeklyGoal} />
-    <article><h3>Storage</h3><p role="status">{persistenceText} Export a backup regularly. {lastBackupLabel(lastBackup?.value, localDate())}.</p></article>
-    <article><h3>Export backup</h3><p>Download all local study data as JSON.</p><button type="button" onClick={() => void exportBackup()}>Export JSON</button></article>
+    </div>
+    <h3 className="settings-group-title">Your data</h3>
+    <div className="settings-group">
+    <article><h3>Export backup</h3><p role="status">{persistenceText} {lastBackupLabel(lastBackup?.value, localDate())}.</p><p>Download all local study data as JSON. Do this now and then: it is your only safety net.</p><button type="button" onClick={() => void exportBackup()}>Export JSON</button></article>
     <article><h3>Restore backup</h3><p>Replace local study data with a JSON backup file (up to 5 MB).</p><input aria-label="Backup JSON file" type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0] ?? null; setLastFile(file); setPending(null); if (file) void chooseBackup(file); }} />
       {pending && <div role="group" aria-label="Confirm restore"><p>This file has {pending.attempts.length} attempts. Restoring replaces everything stored in this browser.</p>
         <button type="button" onClick={() => void downloadCurrent()}>Download current data first</button>{' '}
@@ -147,6 +156,7 @@ export function Settings({ onImportKnown }: { onImportKnown?: () => void }) {
       {summary && <p role="status">{summary}</p>}</article>
     {onImportKnown && <article><h3>Import prior history</h3><p>Already solved some of the list? Mark those problems as known so they come back for review instead of as new. Marking earns no XP, streak or badges.</p><button type="button" onClick={onImportKnown}>Mark problems you already know</button></article>}
     <article><h3>Reset all data</h3><p>Type <code>RESET</code> to erase study data and reseed the catalog.</p><label>Confirmation<input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} /></label><button type="button" disabled={confirmation !== 'RESET'} onClick={() => void reset()}>Reset all data</button></article>
+    </div>
     {message && <p role="status">{message}</p>}
     {error && <p role="alert">{error} <button type="button" onClick={retry}>Retry</button></p>}
   </section>;
