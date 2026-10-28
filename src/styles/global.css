@@ -162,6 +162,9 @@ button, input, select, textarea, a { transition: background-color var(--dur-shor
 .settings-overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: var(--space-lg); background: color-mix(in oklch, var(--color-paper) 88%, transparent); }
 .settings-overlay-panel { display: grid; grid-template-rows: auto minmax(0, 1fr); width: min(60rem, 100%); max-height: 92dvh; padding: var(--space-md) var(--space-xl) var(--space-xl); overflow: hidden; background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule-2); }
 .settings-overlay-close { justify-self: end; margin-bottom: var(--space-xs); }
+/* The dialog takes focus on open (Overlay.tsx) only so Esc and Tab start inside it;
+   it is not a control, so no focus ring round the whole panel. */
+.settings-overlay-panel:focus { outline: none; }
 .settings-overlay-body { min-height: 0; overflow-y: auto; }
 
 /* ---- Daily plan (inside the "Today's challenge" modal) ---- */
@@ -452,3 +455,19 @@ a.solve-button:hover { color: var(--color-accent); border-color: var(--color-acc
   .review-row .badge-list { display: none; }
   .review-row-start { min-height: 2.75rem; }
 }
+
+/* ---- First-run welcome (T25, inside Overlay) ---- */
+.welcome { display: grid; gap: var(--space-md); max-width: 40rem; margin-inline: auto; padding-block: var(--space-sm) var(--space-md); }
+.welcome h2 { margin: 0; font-size: var(--text-xl); }
+.welcome p { margin: 0; }
+.welcome-steps { display: flex; gap: var(--space-xs); padding: 0; margin: 0; list-style: none; color: var(--color-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; }
+.welcome-steps li { flex: 1 1 0; padding-top: var(--space-xs); border-top: 2px solid var(--color-rule); }
+.welcome-steps li[data-done="true"] { border-top-color: var(--color-accent-deep); }
+.welcome-steps li[data-current="true"] { color: var(--color-accent); border-top-color: var(--color-accent); }
+.welcome-points { display: grid; gap: var(--space-sm); padding-left: var(--space-lg); margin: 0; color: var(--color-ink-2); }
+.welcome-points b { color: var(--color-ink); }
+.welcome-note { color: var(--color-muted); font-size: var(--text-sm); }
+.welcome-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: var(--space-xs); }
+.welcome-actions button { min-height: 2.75rem; padding: var(--space-xs) var(--space-lg); color: var(--color-accent-ink); background: var(--color-accent); border: var(--rule-hair) solid var(--color-accent); border-radius: var(--radius-none); cursor: pointer; font-weight: 700; }
+.welcome-actions button.welcome-secondary { color: var(--color-ink-2); background: transparent; border-color: var(--color-rule-2); font-weight: 400; }
+.welcome-actions button:hover { border-color: var(--color-accent-deep); }

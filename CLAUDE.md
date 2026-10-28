@@ -77,7 +77,7 @@ Do not add a dependency without asking first, and explain why existing code can'
   Dexie's `useLiveQuery`. `Overlay.tsx` is the single modal shell (Settings, the
   daily challenge, the mock interview and Progress use it) — don't write a second one.
   The header is one row (title, `LevelChip`, Settings); `ReviewQueue.tsx` is the full-width review screen (in place of the map, like the problem view). `ProgressOverlay.tsx` holds every
-  secondary number and the `BadgeShelf` grid, opened from the level chip (T25).
+  secondary number and the `BadgeShelf` grid, opened from the level chip (T25). `Welcome.tsx` is the once-only first-run welcome (no history and no `onboardingDone` setting; `db/onboarding.ts` stores the list and the flag in one transaction).
 - `src/styles/` — `../../tokens.css` (oklch dark "phosphor green" design tokens),
   `global.css`, `gamification.css` (`@import`ed from `global.css`). Plain CSS.
 

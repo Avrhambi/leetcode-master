@@ -14,7 +14,7 @@ export interface ProblemProgress { problemId: string; status: ProgressStatus; re
 export interface MockResult { sessionId: string; testsPassed: number | null; testsTotal: number | null; timeLimitMinutes: number; overTime: boolean; }
 export interface Attempt { id: string; problemId: string; attemptedOn: string; outcome: Outcome; perceivedDifficulty: PerceivedDifficulty; helpType: HelpType | null; durationMinutes: number | null; notes: string; quality: Quality; createdAt: string; lightReview?: boolean; mock?: MockResult; }
 export interface RecommendationEvent { id: string; problemId: string; kind: 'new' | 'review'; recommendedAt: string; skippedUntil: string | null; completedAt?: string | null; }
-export type AppSettingKey = 'catalogVersion' | 'streakGraceRemaining' | 'streakGraceRefreshedOn' | 'lastActiveOn' | 'problemSet' | 'lastBackupOn' | 'sessionMinutes' | 'planResetAt' | 'weeklyGoalDays' | 'interviewDate' | 'skipEasies' | 'activeMock';
+export type AppSettingKey = 'catalogVersion' | 'streakGraceRemaining' | 'streakGraceRefreshedOn' | 'lastActiveOn' | 'problemSet' | 'lastBackupOn' | 'sessionMinutes' | 'planResetAt' | 'weeklyGoalDays' | 'interviewDate' | 'skipEasies' | 'activeMock' | 'onboardingDone';
 export interface AppSetting { key: AppSettingKey; value: string; }
 
 // Single-row store (`key: 'state'`). `xp` is lifetime XP; `badges` is the earned
