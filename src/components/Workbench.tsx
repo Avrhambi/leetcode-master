@@ -16,6 +16,7 @@ import { daysSinceLastMock, mockDue, mockHistory, mockSessionLine, parseActiveMo
 import { focusChips } from '../services/focusMetrics';
 import type { GamificationView } from '../hooks/useGamification';
 import { ProgressOverlay } from './ProgressOverlay';
+import { ReviewQueue } from './ReviewQueue';
 import { MockInterview } from './MockInterview';
 import { latestNotes } from '../services/reviewNotes';
 import { dayWrapUp } from '../services/dayWrapUp';
@@ -257,6 +258,16 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
             />;
           })()}
         </div>
+      : panel?.kind === 'review'
+      ? <div className="workbench-focus">
+          <ReviewQueue
+            sections={reviewSections}
+            today={today}
+            backupReminder={backupReminder}
+            onStart={(problem) => setPanel({ kind: 'problem', problem, back: { kind: 'review' } })}
+            onClose={closePanel}
+          />
+        </div>
       : <div className={`workbench-map${panel ? ' has-panel' : ''}`}>
           <TopicMap
             cells={masteryByTopic(problems, progress, problemSet, today)}
@@ -268,7 +279,6 @@ export function Workbench({ attempts, problems, allProblems, progress, progressB
             panel={panel}
             problems={problems}
             progressByProblem={progressByProblem}
-            reviewSections={reviewSections}
             backupReminder={backupReminder}
             onSelectProblem={(problem, back) => setPanel({ kind: 'problem', problem, back })}
             onClose={closePanel}
