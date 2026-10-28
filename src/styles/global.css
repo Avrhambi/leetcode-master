@@ -271,8 +271,12 @@ input:disabled, select:disabled, textarea:disabled, button:disabled { opacity: 0
 
 /* ---- Settings ---- */
 .settings { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-sm); }
-.settings article { display: grid; gap: var(--space-sm); padding: var(--space-xl); }
-.settings article h3 { font-size: var(--text-xl); }
+.settings article { display: grid; align-content: start; gap: var(--space-xs); padding: var(--space-md); }
+.settings article h3 { font-size: var(--text-base); }
+.settings article p { font-size: var(--text-sm); }
+.settings-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr)); gap: var(--space-sm); }
+.settings-group .goal-plans { display: contents; }
+.settings-group-title { margin: var(--space-sm) 0 0; color: var(--color-accent); font-family: var(--font-body); font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; }
 .settings article p { margin: 0; color: var(--color-neutral); }
 .settings article button { width: fit-content; }
 .settings .reminder-time { max-width: 12rem; }
