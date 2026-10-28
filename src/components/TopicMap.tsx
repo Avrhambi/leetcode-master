@@ -3,8 +3,10 @@ import type { TopicMasteryCell } from '../services/mastery';
 import { TIER_LABELS, topicTier, type TopicTier } from '../data/topicTiers';
 import { layoutPath, PORTRAIT_SHAPE, trackPath, WIDE_SHAPE, type PathNode } from '../services/topicPath';
 
-// Phones get the portrait route (same breakpoint as the rest of the layout).
-const PHONE_QUERY = '(max-width: 45rem)';
+// Phones get the portrait route: narrow AND touch (T25). A narrow desktop window
+// (half a screen beside LeetCode) keeps the wide route, scaled to fit, instead
+// of a route that scrolls inside its box.
+const PHONE_QUERY = '(max-width: 45rem) and (pointer: coarse)';
 function subscribePhone(onChange: () => void): () => void {
   const query = window.matchMedia(PHONE_QUERY);
   query.addEventListener('change', onChange);
